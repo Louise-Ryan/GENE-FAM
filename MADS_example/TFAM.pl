@@ -73,6 +73,7 @@ my $annotation_6 = "pseudogene"; #no START codon && in frame stop codon.........
 
 #if automate download is yes, download files for species:
 if ($automate_download eq "Yes" || $automate_download eq "yes"){
+    print "\nAutomatically downloading genome files from ncbi for your query species ... \n\n";
     open(SPECIESFILE, $species_list);
     my @species = <SPECIESFILE>;
     close SPECIESFILE;
@@ -132,15 +133,13 @@ my $nhmmer_out ="_nhmmer.out"; #nhmmer outfile
 if ($annotation_available eq "yes" || $annotation_available eq "Yes"){
     `hmmbuild $phmm_profile $pfam_seed`;
 }
-`hmmbuild $nhmm_profile $nuc_alignment`; #uncomment this #NB!
+`hmmbuild $nhmm_profile $nuc_alignment`; 
 #Run on each genome in directory
 foreach my $genome(@genomes){
     my @genome_files = ();
     my @genome_IDs = ();
     unless ($genome =~ m/$cds_suffix/i){
 	print $genome."\n";
-	#`hmmbuild $phmm_profile $pfam_seed`;
-	#`hmmbuild $nhmm_profile $nuc_alignment`; #uncomment this
 	if ($genome =~ m/([\S]+).*\_$genome_suffix/){
 	    my $genome_ID = $1;
 	    my $wd = getcwd;
@@ -148,37 +147,28 @@ foreach my $genome(@genomes){
 	    `mkdir $outdir`;
 	    my $subdir = $outdir."/hmmer_files";
 	    my $subdir2 = $outdir."/isoform_files";
-	    #print $genome_ID."\n";
 	    my $nhmmer_nucelotide_sequences = $genome_ID.$nhmmer_unnanotated_seqfile;
 	    my $nhmmer_file = $genome_ID."_assembly".$nhmmer_out; #nhmmer out file
 	    my $cds_nuc = $genome_ID.$cds_nucleotide_seqfile;
 	    my $cds_prot = $genome_ID.$cds_protein_seqfile;
 	    my $cds_final_nuc = $genome_ID.$final_cds_nuc;
 	    my $cds_final_prot = $genome_ID.$final_cds_prot;
-	    #if ($annotation_available eq "yes" || $annotation_available eq "Yes"){
-	    #my $phmmer_prot_annotations = $genome_ID.$phmmer_protein_seqfile;
 	    my $phmmer_prot_isoforms = $genome_ID."_transcripts_all_isoforms_protein";
 	    my $unique_longest_transcripts_out = $genome_ID.$nucleotide_longest_transcripts;
 	    my $transcript_nucleotide_isoforms = $genome_ID."_transcripts_all_isoforms_nucleotide";
-	    #my $nhmmer_nucelotide_sequences = $genome_ID.$nhmmer_unnanotated_seqfile;
 	    my $transcript_db = $genome_ID."_transcript_database";
 	    my $transcript_blastout = $genome_ID."_tblastn.out";
 	    my $nblast_db = $genome_ID."_nblast_db";
 	    my $nblastout = $genome_ID."_nblast.out";
 	    my $phmmer_file = $genome_ID.$phmmer_out; #phmmer out file
-	    #my $nhmmer_file = $genome_ID."_assembly".$nhmmer_out; #nhmmer out file
 	    my $nhmmer_transcript_file = $genome_ID."_transcripts".$nhmmer_out;
-	    #my $cds_file = $genome_ID.$cds_nucleotide_seqfile;
 	    my $nblast_cds_db = $genome_ID."_nblast_cds_db";
 	    my $nblast_cds = $genome_ID."_nblast_cds.out";
-	    #my $cds_nuc = $genome_ID.$cds_nucleotide_seqfile;
-		#my $cds_prot = $genome_ID.$cds_protein_seqfile;
 	    if ($annotation_available eq "yes" || $annotation_available eq "Yes"){
 		my $nucleotide_ID = "";
 		my $protein_ID = "";
 		my $cds = "";
 		foreach my $nucleotide(@nucleotide_transcripts){
-		    #print $nucleotide."\n";
 		    if ($nucleotide =~ m/([\S]+).*\_$nt_transcript_suffix/){
 			$nucleotide_ID = $1;
 			if ($genome_ID eq $nucleotide_ID){
@@ -188,7 +178,6 @@ foreach my $genome(@genomes){
 		    }
 		}
 		foreach my $protein(@protein_transcripts){
-		    #print $protein."\n";
 		    if ($protein =~ m/([\S]+).*\_$prot_transcript_suffix/){
 			$protein_ID = $1;
 			if ($genome_ID eq $protein_ID){ 
@@ -199,7 +188,6 @@ foreach my $genome(@genomes){
 		}
 		if ($cds_available eq "yes" || $cds_available eq "Yes"){
 		    foreach my $cds(@cds_transcripts){
-			#print $cds."\n";
 			if ($cds =~ m/([\S]+).*\_$cds_suffix/){
 			    my $cds_ID = $1;
 			    if ($genome_ID eq $cds_ID){
@@ -210,7 +198,6 @@ foreach my $genome(@genomes){
 		    }
 		}
 		#phmmer:
-		#my $phmmer_file = $genome_ID.$phmmer_out;
 		my $nucleotide = $genome_files[0];
 		my $protein = $genome_files[1];
 		print $nucleotide."\n";
@@ -224,7 +211,7 @@ foreach my $genome(@genomes){
 		}else{
 		    `hmmsearch --incE $phmmer_evalue $phmm_profile $protein >> $phmmer_file`;
 		}
-		#open phmmer file
+		print "\nrunning phmmer on protein annotations...\n\n";
 		my $phmmer_results;
 		open(PHMMER, $phmmer_file);
 		{
@@ -238,10 +225,8 @@ foreach my $genome(@genomes){
 		my $phmmer_hit_chunk = $phmm_array[0];
 		my @phmmer_array2 = split("Description", $phmmer_hit_chunk);
 		my $phmmer_hit_chunk2 =  $phmmer_array2[1];
-		#print "chunk:\n$phmmer_hit_chunk2 -------------------\n";
 		my @phmmer_hits = ();
 		if ($phmmer_hit_chunk2 =~ m/.*inclusion[\s]threshold.*/){
-		    #   print "match threshold";
 		    my @phmmer_array3 = split("------ inclusion threshold ------", $phmmer_hit_chunk2);
 		    my $sig_phmmer_hits = $phmmer_array3[0];
 		    @phmmer_hits = split("\n", $sig_phmmer_hits);
@@ -258,13 +243,12 @@ foreach my $genome(@genomes){
 		}
 		foreach my $phit(@phmmer_hits){
 		    $phit =~ s/[\s]+/\|/g;
-		    #print $phit."\n";
 		    my @phmmdetails = split(/\|/, $phit);
 		    shift @phmmdetails;
 		    my $prot_ID = $phmmdetails[8];
-		    print $prot_ID."\n";
+		    #print $prot_ID."\n";
 		    my $cmd = "esl-sfetch $protein $prot_ID >> $phmmer_prot_isoforms"; #fetch protein sequence
-		    print $cmd."\n";
+		    #print $cmd."\n";
 		    `esl-sfetch $protein "$prot_ID" >> $phmmer_prot_isoforms`; #execute command
 		}				
 		my $tblastn_results;
@@ -276,7 +260,6 @@ foreach my $genome(@genomes){
 		    $tblastn_results = (<TBLASTN>);
 		}
 		close TBLASTN;
-		#print $tblastn_results;
 		`esl-sfetch --index $nucleotide`; #index nucleotide transcripts
 		my @tblastn_hits = split(/Query\=/, $tblastn_results);
 		shift @tblastn_hits;
@@ -289,9 +272,7 @@ foreach my $genome(@genomes){
 			my $tophit =">".$queryhits[$i]; #not element zero, this is the string before first hit
 			if ($tophit =~ m/Identities[\s]+\=[\s]+([0-9]+)\/([0-9]+)[\s]+\(([0-9]+).*\)/){
 			    my $identity = $3;
-			    #print $identity."\n";
 			    if ($identity eq 100){
-				#print $identity."!\n!";
 				if ($tophit =~ m/(\>[\S]+)?\s.*/){
 				    my $trans_id = $1;
 				    $trans_id =~ s/\>//g;
@@ -300,22 +281,15 @@ foreach my $genome(@genomes){
 					$loc = $1;
 				    }
 				    if ($trans_id ~~ @transcripts){
-					#print "omit $trans_id as duplicated!";
 				    }
 				    else{	
-					#print "trans: $trans_id \n";
-					#print "loc: $loc \n";
-					#$trans_id =~ s/\>//g;
-					#print "trans: $trans_id \n";
-					print $trans_id."\n";
+					#print $trans_id."\n";
 					push @transcripts, $trans_id; #new
 					unless($loc ~~ @locs){
 					    push @locs, $loc;
 					}
-					#print "$loc is top hit!\n";
-					#`echo \"$loc\" >> testloc.txt`;
 					my $cmd = "esl-sfetch $nucleotide $trans_id >> $transcript_nucleotide_isoforms";
-					print $cmd."\n";
+					#print $cmd."\n";
 					`esl-sfetch $nucleotide $trans_id >> $transcript_nucleotide_isoforms`;
 				    }
 				}
@@ -323,14 +297,14 @@ foreach my $genome(@genomes){
 			}
 		    }
 		}
-		#}
 		## mine nhmmer on transcripts here, then do longest transcript per loc
-		print "\n nblast on transcripts ...\n";
+		#print "\n nblast on transcripts ...\n";
 		if($default_nhmmer_evalue eq "yes"){
 		    `nhmmer $nhmm_profile $nucleotide >> $nhmmer_transcript_file`;
 		}else{
 		    `nhmmer --incE $nhmmer_evalue $nhmm_profile $nucleotide >> $nhmmer_transcript_file`;
 		}
+		print "running nhmmer on mRNA transcripts ...\n\n";
 		my $nhmmer_t_results = "";
 		open(NHMMER_T, $nhmmer_transcript_file);
 		{
@@ -364,12 +338,11 @@ foreach my $genome(@genomes){
 		    shift(@nhmmtdetails);
 		    my $transcript_ID = $nhmmtdetails[3];
 		    unless($transcript_ID ~~ @transcripts){
-			print "new transcript: $transcript_ID \n";
+			#print "new transcript: $transcript_ID \n";
 			my $cmd = "esl-sfetch $nucleotide $transcript_ID \>\> $transcript_nucleotide_isoforms";
-			print $cmd."\n";
+			#print $cmd."\n";
 			`esl-sfetch $nucleotide $transcript_ID >> $transcript_nucleotide_isoforms`;
-			#print to transcript isoform file
-		    }
+		   }
 		}
 		#################################################################################################
 		#pull only unique locs, longest transcript
@@ -381,52 +354,30 @@ foreach my $genome(@genomes){
 		}
 		close TRANSCRIPTS;
 		my @transcript_seqs = split(/\>/, $transcript_file);
-		#my @transcript_seqs = ();
-		#foreach my $ts(@transcript_Seqs){
-		#   my $tsappend = ">".$ts;
-		#  push @transcript_seqs, $tsappend;
-		#}
 		foreach my $LOC(@locs){
 		    my @uniquelocs = ();
-		    print $LOC."-----------------------\n";
-		    #my @transcript_lengths = ();
+		    #print $LOC."-----------------------\n";
 		    my %transcript_lengths;
 		    foreach my $tseq(@transcript_seqs){
-			#print $tseq."\n\n";
-			#if ($tseq =~m/([\S\s]+)?\n([\S\n]+)/){
 			if($tseq =~ m/(.*)\n([\S\n]+)/){
 			    my $theader = ">".$1;
 			    my $tseq = $2;
-			    #print $theader."\n";
 			    my $tID ="";
 			    my $locID ="";
 			    my $tlength = length($tseq);
-			    #print "length: $tlength \n";
 			    if ($theader =~ m/\>([\S]+)?\s.*/){
 				$tID = $1;
-				#print "trans: $tID \n";
 			    }
 			    if ($theader =~ m/\(([\S]+)\)/){
 				$locID = $1;
-				#print "loc: $locID \n";
 			    }
-			    #my $ID_Length = $tID."|".$tlength;
 			    if($locID eq $LOC){
-				#print "$locID equals $LOC \n";
-				#print $tID."\n";
 				$transcript_lengths{$tID} = $tlength; #store header as key and evalue as value in hash as pair
 			    }	
 			}
-			#foreach my $traID(sort { $transcript_lengths{$a} <=> $transcript_lengths{$b} or $a cmp $b } keys %transcript_lengths){
-			#   print $traID."\n";
-			#}
-			#foreach my $traID(sort { $transcript_lengths{$a} <=> $transcript_lengths{$b} or $a cmp $b } keys %transcript_lengths){
-			#print $traID."\n";
 		    }
 		    foreach my $traID(sort { $transcript_lengths{$a} <=> $transcript_lengths{$b} or $a cmp $b } keys %transcript_lengths){
-			#print "------------".$traID."------------\n";
-			print $transcript_lengths{$traID}."\n";
-			#`esl-sfetch $nucleotide $traID >> testtttttt.fa`;
+			#print $transcript_lengths{$traID}."\n";
 			push(@uniquelocs, $traID);
 		    }
 		    my $longest_transcript = pop(@uniquelocs);
@@ -457,11 +408,6 @@ foreach my $genome(@genomes){
 		    my $tmp;
 		    my @queryhits = split(/\>/, $query);
 		    my $tophit =">".$queryhits[1]; #not element zero, this is the string before first
-		    #print "this is tophit: \n $tophit\n";
-		    #if ($tophit =~ m/Identities[\s]+\=[\s]+([0-9]+)\/([0-9]+)[\s]+\(([0-9]+).*\)/){
-		    #my $identity = $3;
-		    #if ($identity eq 100){
-		    # print $tophit."\n\n------------------------------\n\n";
 		    my @exon_hits = split(/Score/, $tophit);
 		    my $contig_details = $exon_hits[0];
 		    if ($contig_details =~ m/\>([\S]+)?\s.*/){
@@ -473,11 +419,9 @@ foreach my $genome(@genomes){
 			    #print "this is an exon:\n$exon\n"; 
 			    if($exon=~m/Sbjct[\s]+([0-9]+)/){
 				$start = $1;
-				#   print "this is start $start\n";
 			    }
 			    while($exon=~s/Sbjct[\s]+[0-9]+[\s]+[\S]+[\s]+([0-9]+)//){
 				$end = $1;
-				#  print "this is end $end\n";
 			    }
 			    if($start > $end){
 				$tmp = $start;
@@ -486,9 +430,6 @@ foreach my $genome(@genomes){
 			    }
 			    push(@start_coords, $start);
 			    push(@end_coords, $end);
-			    #$coordinates = $contig."|".$start."|".$end;
-			    #print $coordinates."\n";
-			    #push @block_coordinates, $coordinates; 
 			}#we want gene start and end, not exon start and end - so we block out intronic regions too
 		    }
 		    my @sorted_start = sort { $a <=> $b } @start_coords;
@@ -496,17 +437,12 @@ foreach my $genome(@genomes){
 		    my $true_start = shift(@sorted_start); #gene start 
 		    my $true_end = pop(@sorted_end); #gene end
 		    $coordinates = $contig."|".$true_start."|".$true_end;
-		    print $coordinates."\n";
+		    #print $coordinates."\n";
 		    push @block_coordinates, $coordinates;
 		}
 		#####################################################################################################
 		#mine cds and output
 		#mine corresponding proteins (longest proteins) and output
-		#
-		#nblast cds file with unique transcripts and take top hit
-		#from cds, take protein identifiers and mine proteins with these ids
-		#	    my $cds_backup_file = $cds."e";
-		#	    `sed -ie "s/lcl|//g" $cds`;
 		if ($cds_available eq "yes" || $cds_available eq "Yes"){
 		    `makeblastdb -in $cds -dbtype="nucl" -out $nblast_cds_db`;
 		    `blastn -db $nblast_cds_db -query $unique_longest_transcripts_out -out $nblast_cds`;
@@ -526,24 +462,17 @@ foreach my $genome(@genomes){
 			my @cdshits = split(/\>/, $cds_hit);
 			my $cds_1 = $cdshits[1];
 			my $top_cds = ">".$cds_1;
-			#print "top cds: \n $top_cds \n";
 			if ($top_cds =~ m/Identities[\s]+\=[\s]+([0-9]+)\/([0-9]+)[\s]+\(([0-9]+).*\)/){
 			    my $identity = $3;
 			    if ($identity eq 100){
 				if ($top_cds =~ m/(\>[\S]+)?\s.*/){
 				    my $identifier = $1;
 				    $identifier =~ s/\>//g;
-				    #push(@identifiers_cds, $identifier);
 				    unless($identifier ~~ @identifiers_cds){
-					print $identifier."\n";
+					#print $identifier."\n";
 					`esl-sfetch $cds \"$identifier\" >> $cds_nuc`;
 					push(@identifiers_cds, $identifier);
 				    }
-				    #@protein_cds_info = split(/\_/, $identifier);
-				    #>lcl|NC_003070.9_cds_NP_001321775.1_4 
-				    #my $protein_cds = $protein_cds_info[3];
-				    #print "get $protein_cds !\n";
-				    #`esl-sfetch $protein $protein_cds >> test.aa`;
 				}
 			    }
 			}
@@ -552,14 +481,12 @@ foreach my $genome(@genomes){
 		    open(CDS,  $cds_nuc);
 		    {
 			local $/ = ">"; #read in by seq
-		    #}
 			while(<CDS>){
 			    my $seq = $_;
-			    #[protein_id=XP_030491006.1]
 			    if ($seq =~ m/.*\[protein\_id\=([\S]+)?\].*/){
 				my $protein_cds = $1;
 				unless($protein_cds ~~ @identifiers_protein_cds){
-				    print "get $protein_cds !\n";
+				    #print "get $protein_cds !\n";
 				    `esl-sfetch $protein $protein_cds >> $cds_prot`;
 				    push(@identifiers_protein_cds, $protein_cds);
 				}
@@ -571,8 +498,8 @@ foreach my $genome(@genomes){
 		#####################################################################################################
 		#nhmmer on assembly to discover new hits
 		#nhmmer then discount anything which overlaps with existing coordinates
+		print "running nhmmer on whole assembly to pull new hits ...\n\n";
 		`esl-sfetch --index $genome`; #index genomefile
-		#my $nhmmer_file = $genome_ID.$nhmmer_out; #nhmmer out file
 		my @nhmmer_coordinates = ();
 		if($default_nhmmer_evalue eq "yes"){
 		    `nhmmer $nhmm_profile $genome >> $nhmmer_file`;
@@ -599,7 +526,6 @@ foreach my $genome(@genomes){
 		    shift(@nhmmer_hits); #remove rubbish element
 		    pop(@nhmmer_hits); #remove empty line at end
 		}else{
-		    #   print "Not matching regex\n";
 		    my @nhmmer_array3 = split("\n\n", $nhmmer_hit_chunk2);
 		    my $sig_nhmmer_hits = $nhmmer_array3[0];
 		    #print $sig_nhmmer_hits."\n";
@@ -609,21 +535,12 @@ foreach my $genome(@genomes){
 		}
 		foreach my $nhit(@nhmmer_hits){
 		    my $ntmp;
-		    #print "this is a hit: $nhit \n";
 		    $nhit =~ s/[\s]+/\|/g;
-		    #print $nhit."\n";
-		    #|3.6e-06|36.3|8.9|NC_044372.1|90827868|90827975|Cannabis|sativa|chromosome|3,|cs10,|whole|genome|shotgun
 		    my @nhmmdetails = split(/\|/, $nhit);
 		    shift @nhmmdetails;
 		    my $ncontig = $nhmmdetails[3]; #print $ncontig."\n";
 		    my $nstart =  $nhmmdetails[4]; #print $nstart."\n";
 		    my $nend =  $nhmmdetails[5]; #print $nend."\n";
-		    #if($nstart > $nend){
-		    #	print "reversed\n";
-		    #	$ntmp = $nstart;
-		    #	$nstart = $nend;
-		    #	$nend = $ntmp;
-		    #   }
 		    my $nhmm_hit = $ncontig."|".$nstart."|".$nend;
 		    push @nhmmer_coordinates, $nhmm_hit;
 		}
@@ -646,9 +563,6 @@ foreach my $genome(@genomes){
 			$strand = "pos";
 		    }
 		    my $nhit_length = $end_n - $start_n;
-		    #print "nhit_length\n";
-		    #print "nhmmer coords:\n";
-		    #print $start_n."...".$end_n."\n";
 		    foreach my $stored_hits(@block_coordinates){
 			my $min_coord = "";
 			my $max_coord = "";
@@ -660,64 +574,49 @@ foreach my $genome(@genomes){
 			my $end_stored = $stored_details[2];
 			my $stored_hit_length = $end_stored - $start_stored;
 			if ($contig_n eq $contig_stored){
-			    #print "stored coords:\n";
-			    # print $start_stored."...".$end_stored."\n";
 			    if ($start_n < $start_stored){
 				$min_coord = $start_n;
-				#print "min coord: $min_coord\n";
 			    }
 			    else{
 				$min_coord = $start_stored;
-				#print "min coord: $min_coord\n";
 			    }
 			    if ($end_n > $end_stored){
 				$max_coord = $end_n;
-				#print "max coord: $max_coord\n";
 			    }
 			    else{
 				$max_coord = $end_stored;
-				#print "max coord: $max_coord\n"
 			    }
 			    $max_span = $max_coord - $min_coord;
-			    #print "span: $max_span\n";
 			    $total_length = $nhit_length + $stored_hit_length;
-			    #print "total length: $total_length\n";
 			    if($max_span<$total_length){
-				#print "overlapping hit\n";
 				$overlap = "Y";
-				#overlap
 			    }else{ #push coordinates to stored and use esl-sfetch to pull hit +- X nts
-				#print "not overlapping\n";
 			    }
 			}
 		    }
 		    if($overlap ne "Y"){
-			print "new hit: ";
+			#print "new hit: ";
 			if ($strand eq "rev"){
 			    $start_n -= $nhmmer_plus; #3' end is $start (hence - plus)
 			    $end_n += $nhmmer_minus; #5' end is $end (hence + minus)
-			    print "reverse strand\n";
+			   # print "reverse strand\n";
 			    my $range = $start_n."\.\.".$end_n;
 			    my $cmd = "esl-sfetch -c $range -r $genome $contig_n >> $nhmmer_nucelotide_sequences";
-			    print $cmd."\n";
+			   # print $cmd."\n";
 			    `$cmd`;
 			}
 			elsif($strand eq "pos"){
 			    $start_n -= $nhmmer_minus;
 			    $end_n += $nhmmer_plus;
-			    print "positive strand\n";
+			    #print "positive strand\n";
 			    my $range = $start_n."\.\.".$end_n;
 			    my $cmd = "esl-sfetch -c $range $genome $contig_n >> $nhmmer_nucelotide_sequences";
-			    print $cmd."\n";
+			    #print $cmd."\n";
 			    `$cmd`;
 			}
-			print $contig_n."...". $start_n."...".$end_n."\n";
-			#my $cmd = "esl-sfetch $genome $contig_n >> ";
+			#print $contig_n."...". $start_n."...".$end_n."\n";
 		    }
 		}
-		#my $wd = getcwd;
-		#my $outdir = $wd."/".$genome_ID."_outfiles";
-		#`mkdir $outdir`;
 		`mkdir $subdir`;
 		`mkdir $subdir2`;
 		`mv $nhmmer_file $phmmer_file $nhmmer_transcript_file $subdir`; #$nhmm_profile #phmm_profile add this to remove, I just don't have alignment 
@@ -725,9 +624,7 @@ foreach my $genome(@genomes){
 		if ($cds_available eq "yes" || $cds_available eq "Yes"){
 		    `cp $cds_nuc $cds_final_nuc`;
 		    `cp $cds_prot $cds_final_prot`;
-		    #`mv $cds_nuc $cds_prot $subdir`;
 		}
-		#`rm *ssi *nhr *nin *nsq  *nblast.out *tblastn.out $nblast_cds`;
 		`rm $transcript_db* $nblast_db* $nblast_cds_db* *nblast.out *tblastn.out $nblast_cds`;
 		`rm *ssi`;
 	    }
@@ -810,41 +707,39 @@ foreach my $genome(@genomes){
 			my $chead = $1;
 			my $cseq = $2;
 			print $chead."\n";
-			#`echo \"$chead\" >> check.txt`;
 			$cseq =~ s/\n//g;
 			$contig_length = length($cseq);
-			#`echo $contig_length >> check.txt`;
 			print $contig_length."\n";
 		    }
 		    if($strand eq "rev"){
 			$start_n -= $nhmmer_plus; #3' end is $start (hence - plus)
 			$end_n += $nhmmer_minus; #5' end is $end (hence + minus)
 			if ($start_n < 1){
-			    print "exceeds contig range, reverting to max contig bounds!\n";
+			    #print "exceeds contig range, reverting to max contig bounds!\n";
 			    $start_n = 1;
 			}
 			if ($end_n > $contig_length){
-			    print "exceeds contig range, reverting to max contig bounds!\n";
+			    #print "exceeds contig range, reverting to max contig bounds!\n";
 			    $end_n = $contig_length;
 			}
-			print "reverse strand\n";
+			#print "reverse strand\n";
 			my $range = $start_n."\.\.".$end_n;
 			my $cmd = "esl-sfetch -c $range -r $genome $contig_n >> $nhmmer_nucelotide_sequences";
-			print $cmd."\n";
+			#print $cmd."\n";
 			`$cmd`;
 		    }
 		    elsif($strand eq "pos"){
 			$start_n -= $nhmmer_minus;
 			$end_n += $nhmmer_plus;
 			if ($start_n < 1){
-			    print "exceeds contig range, reverting to max contig bounds!\n";
+			   # print "exceeds contig range, reverting to max contig bounds!\n";
 			    $start_n = 1;
 			}
 			if ($end_n > $contig_length){
-			    print "exceeds contig range, reverting to max contig bounds!\n";
+			   # print "exceeds contig range, reverting to max contig bounds!\n";
 			    $end_n = $contig_length;
 			}
-			print "positive strand\n";
+			#print "positive strand\n";
 			my $range = $start_n."\.\.".$end_n;
 			my $cmd = "esl-sfetch -c $range $genome $contig_n >> $nhmmer_nucelotide_sequences";
 			print $cmd."\n";
@@ -852,24 +747,19 @@ foreach my $genome(@genomes){
 		    }
 		    print $contig_n."...". $start_n."...".$end_n."\n";
 		}
-		#my $wd = getcwd;
-		#my $outdir = $wd."/".$genome_ID."_outfiles";
 		my $subdir = $outdir."/hmmer_files";
-		#`mkdir $outdir`;
 		`mkdir $subdir`;
 		`mv $nhmmer_file $subdir`;
 		`mv $nhmmer_nucelotide_sequences $outdir`;
 		`rm *ssi`;
 	    }
-	    ### augustus annotations here? seq by seq for both loops
 	    if ($predict_new_hits eq "Yes" || $predict_new_hits eq "yes"){
+		print "running augustus to predict new unannotated hits ...\n\n";
 		`esl-sfetch --index $reference_file`;
-		#`makeblastdb -in $reference_file -dbtype="nucl" -out $seq_db`;
 		my @seqs = ();
 		my $sequences = "";
 		my $seq_db_pre = $genome_ID."_";
 		my $hit_no = 0;
-		#`makeblastdb -in $reference_file -dbtype="nucl" -out $seq_db`;
 		open(SEQS, $nhmmer_nucelotide_sequences);
 		{
 		    local $/;
@@ -892,21 +782,15 @@ foreach my $genome(@genomes){
 			my $domain_end = "";
 			if ($seq_header =~ m/^([\S]+)?\/([0-9]+)\-([0-9]+)\s.*/){
 			    $contig = $1; $start = $2; $end = $3;
-			    # print $contig.":".$start."...".$end."\n";
 			}
 			$domain_scoord = $start + $nhmmer_minus; #reversed with esl-sfetch so all in 5-3' direction
 			$domain_ecoord = $end - $nhmmer_plus;
 			$domain_length = ($domain_ecoord - $domain_scoord) +1;
 			$domain_start = $nhmmer_minus; #i.e 100
 			$domain_end = $domain_length + $nhmmer_minus; #i.e length of domain + 100?
-			#print "domain start: $domain_start ... domain end: $domain_end \n";
 			$seq_header =~ s/\//\_/g;  #NC_044377.1/77156829-77158035 Cannabis sativa chromosome 6,
 			$seq_header =~ s/\-/\_/g;
 			$seq_header = ">Hit".$hit_no."_".$seq_header;
-			#my $seq_db = $seq_db_pre."_Hit".$hit_no;
-			#my $blast_output = "Hit".$hit_no."_blastn.out";
-			#print "this is seq header:\n$seq_header\n";
-			#print $seq_nt."\n";
 			my $tmp_out = "tmp.fa";
 			open(OUT, ">$tmp_out");
 			print OUT $seq_header."\n".$seq_nt;
@@ -918,14 +802,7 @@ foreach my $genome(@genomes){
 			my $prediction_gff = "Hit".$hit_no."prediction_out.gff";
 			`blat -minIdentity=$minidentity $tmp_out $reference_file $psl`;
 			`perl blat2hints.pl --in=$psl --out=$hints`;
-			#`augustus --species=$augustus_species --strand=forward --hintsfile=$hints --extrinsicCfgFile=extrinsic.ME.cfg $tmp_out > $prediction_gff`;
 			`augustus --species=$augustus_species --strand=forward --codingseq=on --hintsfile=$hints --extrinsicCfgFile=extrinsic.ME.cfg $tmp_out > $prediction_gff`;
-			    #--codingseq=on/off
-			#}else{
-			    #`augustus --species=$augustus_species --strand=forward $tmp_out > $prediction_gff`;   
-			#     `augustus --species=$augustus_species --strand=forward --codingseq=on $tmp_out > $prediction_gff`;
-			    #augustus with no hints
-			#}
 			my $prediction_in = "";
 			open(AUG, $prediction_gff);
 			{
@@ -956,24 +833,12 @@ foreach my $genome(@genomes){
 			    my $prediction_found = 0;
 			    my @prediction_coords = ();
 			    foreach my $gd(@gene_dets){
-				#print $gd."\n";
 				$gd =~ s/[\s]+/\|/g;
-				#print $gd."\n";
-				#|AUGUSTUS|gene|4376|4678
 				if ($gd =~ m/\|gene\|([0-9]+)\|([0-9]+)/){
 				    $pred_start = $1; $pred_end = $2;
-				    #print $pred_start."...".$pred_end."\n";
 				    push(@prediction_coords, $pred_start);
 				    push(@prediction_coords, $pred_end);
 				}
-				#tss
-				#exon
-				#start codon
-				#intron
-				#cds
-				#exon
-				#stop codon
-				#tts
 			    }
 			    $pred_start = $prediction_coords[0];
 			    $pred_end = $prediction_coords[1];
@@ -1006,15 +871,14 @@ foreach my $genome(@genomes){
 			    if ($prediction_found  == 1){
 				my $cds_header = ">Hit".$hit_no."_new_augustus_prediction\n";
 				open(CDS_NT, ">>$cds_final_nuc");
-				#print $pred."\n";
 				if ($cds_details =~ m/\[([^\]]+)\]/){
 				    my $cds_seq = $1;
 				    $cds_seq =~ s/\#//g;
 				    $cds_seq =~ s/\s//g;
 				    $cds_seq =~ s/.{80}\K/\n/g;
 				    $cds_seq = uc($cds_seq);
-				    print $cds_header;
-				    print "cds:\n$cds_seq\n";
+				    #print $cds_header;
+				    #print "cds:\n$cds_seq\n";
 				    print CDS_NT $cds_header.$cds_seq."\n";
 				}
 				close CDS_NT;
@@ -1024,34 +888,18 @@ foreach my $genome(@genomes){
 				    $protein_seq =~ s/\#//g;
 				    $protein_seq =~ s/\s//g;
 				    $protein_seq =~ s/.{80}\K/\n/g;
-				    #uc $protein_seq;
-				    print "protein:\n$protein_seq\n";
-				    print CDS_PROT $cds_header.$protein_seq."\n";
-				    #print "this is pred:\n$pred\n";
+				   # print "protein:\n$protein_seq\n";
+				   print CDS_PROT $cds_header.$protein_seq."\n";
 				}
 				close CDS_PROT;
 			    }
 			}
-			
-			#}
-			#}
-			#augustus here
-			#
-			#
-			#Loop through results, and exons:
-			#if min - max (exons accounted for) for a query overlaps with domain, then use this as the reference
-			#trim the sequence?
-			#if no hit, just feed in without a reference??
-			#predict with augustus, if prediction overlaps with domain --> output, otherwise discard (for multiple predictions per region)
-			#RNA seq would be ideal, but maybe we go with reference based approach for now an then try and incorportate this
-			#can use reference based code for sensommatic multiexon since these receptors would not be expressed in accessible tissue anyways.
-			#`rm *nhr *nin *nsq`;
 		    }
 		}
-		#`for file in \*prediction_out.gff; do cat \$file >> predictions_all.gff; done`;
 		`rm Hit* *ssi tmp.fa`;
 	    }
 	    if ($pseudogene_check eq "yes" || $pseudogene_check eq "Yes"){
+		print "Annotating hits with functional or pseudogene status ...\n\n";
 		open(CDS, $cds_final_nuc);
 		my $out = "tmp_cds.fa";
 		my $final_seqs = "";
@@ -1115,17 +963,13 @@ foreach my $genome(@genomes){
 		`mv $cds_nuc $cds_prot $subdir3`;
 		`mv $unique_longest_transcripts_out $subdir3`;
 		`mv $subdir2 $subdir3`;
-		#`mv $nucleotide_longest_transcripts $subdir3`;;
 	    }
 	    if($predict_new_hits eq "Yes" || $predict_new_hits eq "yes"){
 		`mv predictions_log.gff $outdir`;
-		#`mv hits_with_refs.txt $outdir`;
 	    }
-	   # `mv $genome_ID* $outdir`;
 	}
     }
 }
-#`mv $cds_final_nuc $cds_final_prot $outdir`;
 if ($annotation_available eq "yes" || $annotation_available eq "Yes"){
     `for dir in *outfiles; do cp $phmm_profile \$dir/hmmer_files;done`;
     `for dir in *outfiles; do cp $nhmm_profile \$dir/hmmer_files;done`;
@@ -1134,9 +978,8 @@ if ($annotation_available eq "yes" || $annotation_available eq "Yes"){
 }
 else{
     `for dir in *outfiles; do cp $nhmm_profile \$dir/hmmer_files;done`;
-    #`rm $nhmm_profile`;
 }
-
+print "Complete!\n";
 
 sub checkframe{
     my $status=0; #holds annotation status 
