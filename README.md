@@ -5,7 +5,7 @@ Transcription factor family annotation and mining tool
 <b>perl TFAM.pl</b>
 </p>
 Note, the blat2hints.pl script must be in your working directory for augustus to work!
-
+</p>
 <br>
 
 
@@ -30,7 +30,7 @@ https://bioinformaticsreview.com/20200822/installing-blat-a-pairwise-alignment-t
   </ol>
   
 </p>
-
+<br>
 
 ### <ins>Pipeline:</ins>
 <p align="center">
