@@ -598,15 +598,21 @@ foreach my $genome(@genomes){
 			#print "new hit: ";
 			if ($strand eq "rev"){
 			    $start_n -= $nhmmer_plus; #3' end is $start (hence - plus)
+			    if($start_n < 1){
+				$start_n = 1;
+			    }
 			    $end_n += $nhmmer_minus; #5' end is $end (hence + minus)
 			   # print "reverse strand\n";
 			    my $range = $start_n."\.\.".$end_n;
 			    my $cmd = "esl-sfetch -c $range -r $genome $contig_n >> $nhmmer_nucelotide_sequences";
-			   # print $cmd."\n";
+			    #print $cmd."\n";
 			    `$cmd`;
 			}
 			elsif($strand eq "pos"){
 			    $start_n -= $nhmmer_minus;
+			    if($start_n < 1){
+				$start_n = 1;
+			    }
 			    $end_n += $nhmmer_plus;
 			    #print "positive strand\n";
 			    my $range = $start_n."\.\.".$end_n;
@@ -694,7 +700,7 @@ foreach my $genome(@genomes){
 		    my $contig_seq = "";
 		    my $contig_length = "";
 		    my $cmd_1 = "esl-sfetch $genome $contig_n >> $contig_out";
-		    print $cmd_1."\n";
+		    #print $cmd_1."\n";
 		    `$cmd_1`;
 		    open(IN, $contig_out);
 		    {
@@ -715,7 +721,6 @@ foreach my $genome(@genomes){
 			$start_n -= $nhmmer_plus; #3' end is $start (hence - plus)
 			$end_n += $nhmmer_minus; #5' end is $end (hence + minus)
 			if ($start_n < 1){
-			    #print "exceeds contig range, reverting to max contig bounds!\n";
 			    $start_n = 1;
 			}
 			if ($end_n > $contig_length){
@@ -732,7 +737,6 @@ foreach my $genome(@genomes){
 			$start_n -= $nhmmer_minus;
 			$end_n += $nhmmer_plus;
 			if ($start_n < 1){
-			   # print "exceeds contig range, reverting to max contig bounds!\n";
 			    $start_n = 1;
 			}
 			if ($end_n > $contig_length){
@@ -742,7 +746,7 @@ foreach my $genome(@genomes){
 			#print "positive strand\n";
 			my $range = $start_n."\.\.".$end_n;
 			my $cmd = "esl-sfetch -c $range $genome $contig_n >> $nhmmer_nucelotide_sequences";
-			print $cmd."\n";
+			#print $cmd."\n";
 			`$cmd`;
 		    }
 		    print $contig_n."...". $start_n."...".$end_n."\n";
