@@ -5,9 +5,9 @@ Transcription factor family annotation and mining tool
 ### <ins>Overview:</ins>
 
 
-
 ### <ins>Dependencies:</ins>
-
+<ol type="1">
+  
 #### <li>HMMER:</li>
 To install hmmer and easel miniapps, follow instructions from hmmer manual (pgs 17-18): <p>
 http://eddylab.org/software/hmmer/Userguide.pdf
@@ -23,6 +23,7 @@ https://github.com/Gaius-Augustus/Augustus
 #### <li>BLAT:</li>
 Augustus requires blat to generate hints. Follow instructions here: <p>
 https://bioinformaticsreview.com/20200822/installing-blat-a-pairwise-alignment-tool-on-ubuntu/ 
+  </ol>
 
 
 ### <ins>Pipeline:</ins>
