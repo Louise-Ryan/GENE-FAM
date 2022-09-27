@@ -6,7 +6,8 @@ Transcription factor family annotation and mining tool
 </p>
 Note, the blat2hints.pl script must be in your working directory for augustus to work!
 
-### <ins>Overview:</ins>
+<br>
+
 
 ### <ins>Dependencies:</ins>
 <ol type="1">
@@ -27,12 +28,16 @@ https://github.com/Gaius-Augustus/Augustus
 Augustus requires blat to generate hints. Follow instructions here: <p>
 https://bioinformaticsreview.com/20200822/installing-blat-a-pairwise-alignment-tool-on-ubuntu/ 
   </ol>
+  
+</p>
+
 
 ### <ins>Pipeline:</ins>
 <p align="center">
 <img src = "pipeline_image/TFAM_pipeline.png" width=2000>
 </p>
 
+<br>
 
 ### <ins>Options and parameters:</ins>
 <ol type="1">
@@ -56,6 +61,7 @@ https://bioinformaticsreview.com/20200822/installing-blat-a-pairwise-alignment-t
 </p>
 <b>
 </ul>
+<br>
 <li> Input files: </p>    
 </b> 
 <ul> <b> $pfam_seed = "PF00319_seed.txt" </b> <p> Enter the name of your protein PFAM seed alignment here. </li>
@@ -70,6 +76,7 @@ https://bioinformaticsreview.com/20200822/installing-blat-a-pairwise-alignment-t
 </p>
 <b>
 </ul>
+<br>
 <li> Parameters: </p>    
 </b> 
 <ul> 
@@ -87,15 +94,17 @@ https://bioinformaticsreview.com/20200822/installing-blat-a-pairwise-alignment-t
 </p>
 <b>
 </ul>
+<br>
 <li> Profile hmm names: </p>    
 </b> 
 <ul> 
 <li> <b> $phmm_profile = "PF00319.hmm" </b> This is the name of your phmmer hmm profile. Recommend naming this the same as your protein PFAM seed alignment with the “.hmm” extension.
 </p>
-<li> $nhmm_profile = "nucleotide_alignment.hmm" </b> This is the name of your nhmmer hmm profile. Recommend naming this the same as your nucleotide seed alignment with the “.hmm” extension.
+<li> <b> $nhmm_profile = "nucleotide_alignment.hmm" </b> This is the name of your nhmmer hmm profile. Recommend naming this the same as your nucleotide seed alignment with the “.hmm” extension.
 </p>
 <b>
 </ul>
+<br>
 <li> Pseudogene vs Fuctional:</p>    
 </b> 
 <ul>
