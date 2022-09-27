@@ -28,6 +28,12 @@ Augustus requires blat to generate hints. Follow instructions here: <p>
 https://bioinformaticsreview.com/20200822/installing-blat-a-pairwise-alignment-tool-on-ubuntu/ 
   </ol>
 
+### <ins>Pipeline:</ins>
+<p align="center">
+<img src = "pipeline_image/TFAM_pipeline.png" width=2000>
+</p>
+
+
 ### <ins>Options and parameters:</ins>
 <ol type="1">
 <b>
