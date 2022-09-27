@@ -5,7 +5,7 @@ Transcription factor family annotation and mining tool
 <b>perl TFAM.pl</b>
 </p>
 Note, the blat2hints.pl script must be in your working directory for augustus to work!
-</p>
+
 <br>
 
 
