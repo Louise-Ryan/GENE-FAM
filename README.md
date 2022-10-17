@@ -61,21 +61,36 @@ https://bioinformaticsreview.com/20200822/installing-blat-a-pairwise-alignment-t
 <b>
 <li> Options: </p>
 </b>
-<ul>
-<li> <b> $annotation_available = "yes"</b> </p>If NCBI RefSeq annotations are available for your genome, set this variable to "yes". Set as "no" if no annotations are available, and you wish to mine the assembly only. </li>
-</p>
-<li> <b> $cds_available = "yes" = "yes"</b> </p> Keep this as "yes" if cds files are available. Set as "no" if you only want to mine the mRNA files.
-</p>
-<li> <b> $predict_new_hits = "yes"</b> </p> If you want to predict any new, unannotated, hits with augustus, set this to "yes". If augustus is not installed, set this as "no". </li>
-</p>
-<li> <b> $augustus_species = "arabidopsis"</b> </p> If using augustus, set your closely related species here. This is the species that augustus is trained on. </li>
-</p>
-<li> <b>$minidentity = 60 </b> </p> If using augustus, this is the minimum identity required for alignment with a reference receptor to be used to generate prediction hints. </li>
-</p>
-<li> <b> $pseudogene_check = "yes" </b> <p> If yes, all cds seqs with in-frame stop codons, or below threshold length, will be annotated as pseudogenes. </li>
-</p>
-<li> <b> $pseudogene_length = 300 </b></p> Coding sequences below this length are considered pseudogenes (nucleotide length). </li>
-</p>
+
+If NCBI RefSeq annotations are available for your genome, set this variable to "yes". Set as "no" if no annotations are available, and you wish to mine the assembly only:
+```
+$annotation_available = "yes";
+```
+Keep this as "yes" if cds files are available. Set as "no" if you only want to mine the mRNA files:
+```
+$cds_available = "yes" = "yes"; 
+```
+If you want to predict any new, unannotated, hits with augustus, set this to "yes". If augustus is not installed, set this as "no":
+```
+$predict_new_hits = "yes";
+```
+If using augustus, this is the species that augustus is trained on. Set your closely related species here:
+```
+$augustus_species = "arabidopsis";
+```
+If using augustus, this is the minimum identity required for alignment with a reference receptor to be used to generate prediction hints:
+```
+$minidentity = 60;
+```
+If yes, all cds seqs with in-frame stop codons, or below threshold length, will be annotated as pseudogenes:
+```
+$pseudogene_check = "yes";
+```
+Coding sequences below this length are considered pseudogenes (nucleotide length):
+```
+$pseudogene_length = 300 ;
+```
+
 <b>
 </ul>
 <br>
@@ -102,7 +117,6 @@ Enter the name of your species list file here:
 ```
 $species_list = "species.txt";
 ```
-</p>
 <b>
 </ul>
 <br>
