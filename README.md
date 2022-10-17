@@ -23,6 +23,7 @@ https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/
 #### <li>AUGUSTUS:</li>
 Download AUGUSTUS here: <p>
 https://github.com/Gaius-Augustus/Augustus 
+https://github.com/Gaius-Augustus/Augustus/blob/master/docs/INSTALL.md
 
 #### <li>BLAT:</li>
 Augustus requires blat to generate hints. Follow instructions here: <p>
