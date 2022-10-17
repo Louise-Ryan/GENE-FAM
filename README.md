@@ -2,7 +2,9 @@
 Transcription factor family annotation and mining tool
 
 ### <ins>Usage:</ins>
-<b>perl TFAM.pl</b>
+```
+perl TFAM.pl
+```
 </p>
 Note, the blat2hints.pl script must be in your working directory for augustus to work!
 
