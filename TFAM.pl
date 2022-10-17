@@ -18,15 +18,15 @@ my $pseudogene_length = 300; #coding sequences below this length are considered 
 ############################################################################
 #Input Files
 #phmmer and nhmmer alignments for transcription factor domain
-my $pfam_seed = ""; #protein PFAM seed alignment
-my $nuc_alignment = ""; #Nucleotide alignment
+my $pfam_seed = "PF00319_seed.txt"; #protein PFAM seed alignment
+my $nuc_alignment = "MADS_nhmmer_alignment.fa"; #Nucleotide alignment
 #Genome, Nucleotide and Protein file extension names:
 my $genome_suffix = "genomic.fna"; #genome file (default for ncbi) #automatically downloaded if $automate_download is "yes".
 my $nt_transcript_suffix = "rna.fna"; #nucleotide file (default for ncbi) #automatically downloaded if $automate_download is "yes".
 my $prot_transcript_suffix = "protein.faa"; #protein file (default for ncbi) #automatically downloaded if $automate_download is "yes".
 my $cds_suffix = "cds_from_genomic.fna"; #cds file (default for ncbi) #automatically downloaded if $automate_download is "yes".
 #Augustus reference file:
-my $reference_file = ""; #if augustus option is on, enter reference file name here.
+my $reference_file = "MADS_reference_file.fa"; #if augustus option is on, enter reference file name here.
 #Automate ncbi download?
 #FOR REFSEQ GENOMES ONLY!#
 #If yes, script will use a list of species to download assembly and annotation files
@@ -48,8 +48,8 @@ my $nhmmer_minus = 5000; #Add X nucleotides to start of sequence (5' end) #cant 
 ###########################################################################
 #output files
 #hmm profile names
-my $phmm_profile = ".hmm"; #nhmmer profile: use hmmer to build hmm profile from $pfam_seed
-my $nhmm_profile = ".hmm"; #phmmer profile: use hmmer to build hmm profile from $nuc_alignment
+my $phmm_profile = "MADSp.hmm"; #nhmmer profile: use hmmer to build hmm profile from $pfam_seed
+my $nhmm_profile = "MADSn.hmm"; #phmmer profile: use hmmer to build hmm profile from $nuc_alignment
 #Output sequence file names
 my $final_cds_nuc = "_cds_nuc.fa"; #final cds seq file - includes augustus predictions if turned on
 my $final_cds_prot = "_cds_prot.fa"; #final cds seq file - includes augustus predictions if turned on
@@ -807,7 +807,7 @@ foreach my $genome(@genomes){
 			my $prediction_gff = "Hit".$hit_no."prediction_out.gff";
 			`blat -minIdentity=$minidentity $tmp_out $reference_file $psl`;
 			`perl blat2hints.pl --in=$psl --out=$hints`;
-			`augustus --species=$augustus_species --strand=forward --codingseq=on --hintsfile=$hints --extrinsicCfgFile=extrinsic.ME.cfg $tmp_out > $prediction_gff`;
+			system("augustus --species=$augustus_species --strand=forward --codingseq=on --softmasking=0 --hintsfile=$hints --extrinsicCfgFile=\${AUGUSTUS_CONFIG_PATH}extrinsic/extrinsic.ME.cfg $tmp_out > $prediction_gff");
 			my $prediction_in = "";
 			open(AUG, $prediction_gff);
 			{
