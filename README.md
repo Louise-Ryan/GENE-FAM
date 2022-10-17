@@ -17,14 +17,28 @@ To install hmmer and easel miniapps, follow instructions from hmmer manual (pgs 
 http://eddylab.org/software/hmmer/Userguide.pdf
 
 #### <li>BLAST:</li>
-Download latest version of BLAST here: <p>
+<b>Quick install with root privilages:</b>
+```
+sudo apt-get update
+sudo apt-get -y install ncbi-blast+
+```
+<b>Install blast from source:</b> <p>
 https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/
 
 #### <li>AUGUSTUS:</li>
-Download AUGUSTUS here: <p>
-https://github.com/Gaius-Augustus/Augustus <p>
-https://github.com/Gaius-Augustus/Augustus/blob/master/docs/INSTALL.md
+<b>Quick install with root privilages:</b>
+```
+sudo apt-get update
+sudo apt-get install augustus
+```
+<b>Install AUGUSTUS from source </b><p>
+Augustus dependencies: https://github.com/Gaius-Augustus/Augustus/blob/master/docs/INSTALL.md <p>
+Build augustus: https://github.com/Gaius-Augustus/Augustus <p>
 
+Make sure to set your AUGUSTUS_CONFIG_PATH variable by appending the following to your ~/.bashrc file: <p>
+```
+export AUGUSTUS_CONFIG_PATH=/my_path_to_AUGUSTUS/Augustus/config/    #where my_path_to_AUGUSTUS is dependent on where you cloned the augustus repo
+```
 #### <li>BLAT:</li>
 Augustus requires blat to generate hints. Follow instructions here: <p>
 https://bioinformaticsreview.com/20200822/installing-blat-a-pairwise-alignment-tool-on-ubuntu/ 
