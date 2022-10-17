@@ -81,54 +81,95 @@ https://bioinformaticsreview.com/20200822/installing-blat-a-pairwise-alignment-t
 <br>
 <li> Input files: </p>    
 </b> 
-<ul> <b> $pfam_seed = "PF00319_seed.txt" </b> <p> Enter the name of your protein PFAM seed alignment here. </li>
-</p>
-<li> <b> $nuc_alignmnent = "nucletide_alignment" </b> <p> Enter the name of your nucleotide alignment here.
-</p>
-<li> <b> $reference_file = "reference_transcription_factors_mrna.fa" </b> <p>  If augustus prediction ($predict_new_hits) option is on, enter the name of your reference file here.
-</p>
-<li> <b> $automate_download = "yes" </b> <p> If yes, script will use a list of species to download assembly and annotation files.
-</p>
-<li> <b> $species_list = "species.txt" </b> <p> Enter the name of your species list file here.
+
+Enter the name of your protein PFAM seed alignment here:
+```
+$pfam_seed = "PF00319_seed.txt";
+```
+Enter the name of your nucleotide alignment here:
+```
+$nuc_alignmnent = "nucletide_alignment";
+```
+If augustus prediction ($predict_new_hits) option is on, enter the name of your reference file here:
+```
+$reference_file = "reference_transcription_factors_mrna.fa";
+```
+If yes, script will use a list of species to download assembly and annotation files:
+```
+$automate_download = "yes";
+```
+Enter the name of your species list file here:
+```
+$species_list = "species.txt";
+```
 </p>
 <b>
 </ul>
 <br>
 <li> Parameters: </p>    
-</b> 
-<ul> 
-<li> <b> $default_phmmer_evalue = "yes" </b> <p> If “yes”, the default e-value will be used (1e-5). If “no”, you can enter a custom evalue in the 
-</p>
-<li> <b> $phmmer_evalue = "1e-5" </b> <p> If $default_phmmer_evalue is "no", enter your custom evalue here.
-</p>
-<li> <b> $default_nhmmer_evalue = "yes" </b> <p> If “yes”, the default e-value will be used (1e-5). If “no”, you can enter a custom evalue in the $nhmmer_evalue variable below.
-</p>  
-<li> <b> $nhmmer_evalue = "1e-5" </b> <p> If $default_nhmmer_evalue is "no", enter your custom evalue here.	
-</p>
-<li> <b> $nhmmer_plus = 20000 </b> <p> Add X nucleotides to end of sequence (3' end) (cannot exceed 990,000 nt) 
-</p>
-<li> <b> $nhmmer_minus = 5000 </b> <p> Add X nucleotides to start of sequence (5' end) (cannot exceed 990,000 nt)
-</p>
+</b>
+
+If “yes”, the default e-value (1e-5) will be used for <b> protein hmmer </b>. For custom evalue, set this variable to "no":
+```
+$default_phmmer_evalue = "yes";
+```
+
+If $default_phmmer_evalue is "no", enter your custom evalue for <b> protein hmmer </b> here:
+```
+$phmmer_evalue = "1e-5";
+```
+If “yes”, the default e-value (1e-5) will be used for <b> nucleotide hmmer </b>. For custom evalue, set this variable to "no":
+```
+$default_nhmmer_evalue = "yes";
+```
+
+If $default_nhmmer_evalue is "no", enter your custom evalue for <b> nucleotide hmmer </b>  here:	
+```
+$nhmmer_evalue = "1e-5";
+```
+
+For each novel, unannotated hit, X nucleotides are taken from the 5' and 3' ends of the hmmer hit, and fed into augustus. </p>
+
+Add X nucleotides to end of sequence (3' end) (cannot exceed 990,000 nt): 
+
+```
+$nhmmer_plus = 20000;
+```
+Add X nucleotides to start of sequence (5' end) (cannot exceed 990,000 nt):
+```
+$nhmmer_minus = 5000;
+```
 <b>
 </ul>
 <br>
 <li> Profile hmm names: </p>    
 </b> 
-<ul> 
-<li> <b> $phmm_profile = "PF00319.hmm" </b> This is the name of your phmmer hmm profile. Recommend naming this the same as your protein PFAM seed alignment with the “.hmm” extension.
-</p>
-<li> <b> $nhmm_profile = "nucleotide_alignment.hmm" </b> This is the name of your nhmmer hmm profile. Recommend naming this the same as your nucleotide seed alignment with the “.hmm” extension.
-</p>
-<b>
-</ul>
+
+Set the name of your phmmer hmm profile. Recommend naming this the same as your protein PFAM seed alignment with the “.hmm” extension:
+```
+$phmm_profile = "PF00319.hmm";
+```
+Set the name of your nhmmer hmm profile. Recommend naming this the same as your nucleotide seed alignment with the “.hmm” extension:
+```
+$nhmm_profile = "nucleotide_alignment.hmm";
+```
+
 <br>
+<b>
 <li> Pseudogene vs Fuctional:</p>    
 </b> 
-<ul>
-<li> <b> $annotation_short = "pseudogene_short" </b> </p> If prediction is shorter than $pseudogene_length (set below), genes will receive the above annotation in their sequence header. 
-</p>
-<li> <b> $pseudogene_length = “300”. </b> </p> Genes with cds lengths lower than this number be annotated as $pseudogene_short (above) regardless of conditions (1-6).
-</p>
+
+If prediction is shorter than $pseudogene_length (set below), genes will receive the above annotation in their sequence header:
+```
+$annotation_short = "pseudogene_short";
+```
+
+Genes with cds lengths lower than this number be annotated as $pseudogene_short (above) regardless of conditions (1-6):
+```
+$pseudogene_length = “300”;
+```
+
+
 
 
 
