@@ -807,7 +807,7 @@ foreach my $genome(@genomes){
 			my $prediction_gff = "Hit".$hit_no."prediction_out.gff";
 			`blat -minIdentity=$minidentity $tmp_out $reference_file $psl`;
 			`perl blat2hints.pl --in=$psl --out=$hints`;
-			system("augustus --species=$augustus_species --strand=forward --codingseq=on --softmasking=0 --hintsfile=$hints --extrinsicCfgFile=\${AUGUSTUS_CONFIG_PATH}extrinsic/extrinsic.ME.cfg $tmp_out > $prediction_gff");
+			system("augustus --species=$augustus_species --strand=forward --codingseq=on --softmasking=0 --hintsfile=$hints --extrinsicCfgFile=extrinsic.ME.cfg $tmp_out > $prediction_gff");
 			my $prediction_in = "";
 			open(AUG, $prediction_gff);
 			{
