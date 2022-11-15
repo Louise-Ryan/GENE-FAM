@@ -6,7 +6,6 @@ use Cwd;
 ###########################################################################
 #USER PARAMETERS:                                                         #
 ###########################################################################
-#Annotation files available?
 my $annotation_available = "yes"; #If NCBI annotations are available for your genome set below variable to "yes". Set as "no" if no annotations are available, and you wish to mine the assembly only.
 my $cds_available = "yes"; #keep this as yes if cds files are available. Set as "no" if you only want to mine the mrna files.
 my $predict_new_hits = "yes"; #If you want to predict any new, unannotated, hits with augutus, set this to "yes". If augustus is not installed, keep this as "no".
