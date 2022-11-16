@@ -755,7 +755,6 @@ foreach my $genome(@genomes){
 		my $subdir = $outdir."/hmmer_files";
 		`mkdir $subdir`;
 		`mv $nhmmer_file $subdir`;
-		`mv $nhmmer_nucelotide_sequences $outdir`;
 		`rm *ssi`;
 	    }
 	    if ($predict_new_hits eq "Yes" || $predict_new_hits eq "yes"){
@@ -971,6 +970,9 @@ foreach my $genome(@genomes){
 	    }
 	    if($predict_new_hits eq "Yes" || $predict_new_hits eq "yes"){
 		`mv predictions_log.gff $outdir`;
+	    }
+	    if(-e $nhmmer_nucelotide_sequences){
+		`mv $nhmmer_nucelotide_sequences $outdir`;
 	    }
 	}
     }
