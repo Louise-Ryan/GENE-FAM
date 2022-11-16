@@ -68,7 +68,7 @@ $annotation_available = "yes";
 ```
 Keep this as "yes" if cds files are available. Set as "no" if you only want to mine the mRNA files:
 ```
-$cds_available = "yes" = "yes"; 
+$cds_available = "yes"; 
 ```
 If you want to predict any new, unannotated, hits with augustus, set this to "yes". If augustus is not installed, set this as "no":
 ```
