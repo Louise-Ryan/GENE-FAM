@@ -41,7 +41,7 @@ my $phmmer_evalue = "1e-5"; #If $default_phmmer_evalue is "no", use this custom 
 #nhmmer evalue threshold:
 my $default_nhmmer_evalue = "yes"; #yes: default #no: user specified (use $nhmmer_evalue variable below)
 my $nhmmer_evalue = "1e-5"; #If $default_nhmmer_evalue is "no", use this custom evalue
-#Range for unannotated hits - plus or minus X nucelotides
+#Range for unannotated hits - plus or minus X nucleotides
 my $nhmmer_plus = 20000; #Add X nucleotides to end of sequence (3' end) #cant exceed 990,000
 my $nhmmer_minus = 5000; #Add X nucleotides to start of sequence (5' end) #cant exceed 990,000
 
@@ -148,7 +148,7 @@ foreach my $genome(@genomes){
 	    `mkdir $outdir`;
 	    my $subdir = $outdir."/hmmer_files";
 	    my $subdir2 = $outdir."/isoform_files";
-	    my $nhmmer_nucelotide_sequences = $genome_ID.$nhmmer_unnanotated_seqfile;
+	    my $nhmmer_nucleotide_sequences = $genome_ID.$nhmmer_unnanotated_seqfile;
 	    my $nhmmer_file = $genome_ID."_assembly".$nhmmer_out; #nhmmer out file
 	    my $cds_nuc = $genome_ID.$cds_nucleotide_seqfile;
 	    my $cds_prot = $genome_ID.$cds_protein_seqfile;
@@ -605,7 +605,7 @@ foreach my $genome(@genomes){
 			    $end_n += $nhmmer_minus; #5' end is $end (hence + minus)
 			   # print "reverse strand\n";
 			    my $range = $start_n."\.\.".$end_n;
-			    my $cmd = "esl-sfetch -c $range -r $genome $contig_n >> $nhmmer_nucelotide_sequences";
+			    my $cmd = "esl-sfetch -c $range -r $genome $contig_n >> $nhmmer_nucleotide_sequences";
 			    #print $cmd."\n";
 			    `$cmd`;
 			}
@@ -617,7 +617,7 @@ foreach my $genome(@genomes){
 			    $end_n += $nhmmer_plus;
 			    #print "positive strand\n";
 			    my $range = $start_n."\.\.".$end_n;
-			    my $cmd = "esl-sfetch -c $range $genome $contig_n >> $nhmmer_nucelotide_sequences";
+			    my $cmd = "esl-sfetch -c $range $genome $contig_n >> $nhmmer_nucleotide_sequences";
 			    #print $cmd."\n";
 			    `$cmd`;
 			}
@@ -730,7 +730,7 @@ foreach my $genome(@genomes){
 			}
 			#print "reverse strand\n";
 			my $range = $start_n."\.\.".$end_n;
-			my $cmd = "esl-sfetch -c $range -r $genome $contig_n >> $nhmmer_nucelotide_sequences";
+			my $cmd = "esl-sfetch -c $range -r $genome $contig_n >> $nhmmer_nucleotide_sequences";
 			#print $cmd."\n";
 			`$cmd`;
 		    }
@@ -746,7 +746,7 @@ foreach my $genome(@genomes){
 			}
 			#print "positive strand\n";
 			my $range = $start_n."\.\.".$end_n;
-			my $cmd = "esl-sfetch -c $range $genome $contig_n >> $nhmmer_nucelotide_sequences";
+			my $cmd = "esl-sfetch -c $range $genome $contig_n >> $nhmmer_nucleotide_sequences";
 			#print $cmd."\n";
 			`$cmd`;
 		    }
@@ -764,7 +764,7 @@ foreach my $genome(@genomes){
 		my $sequences = "";
 		my $seq_db_pre = $genome_ID."_";
 		my $hit_no = 0;
-		open(SEQS, $nhmmer_nucelotide_sequences);
+		open(SEQS, $nhmmer_nucleotide_sequences);
 		{
 		    local $/;
 		    $sequences = <SEQS>;
@@ -955,10 +955,10 @@ foreach my $genome(@genomes){
 		}
 		`mv $out $cds_final_nuc`;
 	    }
-	    if(-e $nhmmer_nucelotide_sequences){
+	    if(-e $nhmmer_nucleotide_sequences){
 		my $subdir4 = $outdir."/unnanotated_hits";
 		`mkdir $subdir4`;
-		`mv $nhmmer_nucelotide_sequences $subdir4`;
+		`mv $nhmmer_nucleotide_sequences $subdir4`;
 	    }
 	    `mv $cds_final_nuc $cds_final_prot $outdir`;
 	    if ($annotation_available eq "Yes" || $annotation_available eq "yes"){
@@ -971,8 +971,8 @@ foreach my $genome(@genomes){
 	    if($predict_new_hits eq "Yes" || $predict_new_hits eq "yes"){
 		`mv predictions_log.gff $outdir`;
 	    }
-	    if(-e $nhmmer_nucelotide_sequences){
-		`mv $nhmmer_nucelotide_sequences $outdir`;
+	    if(-e $nhmmer_nucleotide_sequences){
+		`mv $nhmmer_nucleotide_sequences $outdir`;
 	    }
 	}
     }

@@ -7,8 +7,8 @@ use Cwd;
 #USER PARAMETERS:                                                         #
 ###########################################################################
 #Annotation files available?
-my $annotation_available = "yes"; #If NCBI annotations are available for your genome set below variable to "yes". Set as "no" if no annotations are available, and you wish to mine the assembly only.
-my $cds_available = "yes"; #keep this as yes if cds files are available. Set as "no" if you only want to mine the mrna files.
+my $annotation_available = "no"; #If NCBI annotations are available for your genome set below variable to "yes". Set as "no" if no annotations are available, and you wish to mine the assembly only.
+my $cds_available = "no"; #keep this as yes if cds files are available. Set as "no" if you only want to mine the mrna files.
 my $predict_new_hits = "yes"; #If you want to predict any new, unannotated, hits with augutus, set this to "yes". If augustus is not installed, keep this as "no".
 my $augustus_species = "arabidopsis"; #If using augustus, set your closely related species here. This is the species that augustus is trained on.
 my $minidentity = 60; #If using augutsus, this is the minimum identity required for alignment with a reference receptor to be used to generate prediction hints.
@@ -18,19 +18,19 @@ my $pseudogene_length = 300; #coding sequences below this length are considered 
 ############################################################################
 #Input Files
 #phmmer and nhmmer alignments for transcription factor domain
-my $pfam_seed = ""; #protein PFAM seed alignment
-my $nuc_alignment = ""; #Nucleotide alignment
+my $pfam_seed = "PF00319_seed.txt"; #protein PFAM seed alignment
+my $nuc_alignment = "MADS_nhmmer_alignment.fa"; #Nucleotide alignment
 #Genome, Nucleotide and Protein file extension names:
 my $genome_suffix = "genomic.fna"; #genome file (default for ncbi) #automatically downloaded if $automate_download is "yes".
 my $nt_transcript_suffix = "rna.fna"; #nucleotide file (default for ncbi) #automatically downloaded if $automate_download is "yes".
 my $prot_transcript_suffix = "protein.faa"; #protein file (default for ncbi) #automatically downloaded if $automate_download is "yes".
 my $cds_suffix = "cds_from_genomic.fna"; #cds file (default for ncbi) #automatically downloaded if $automate_download is "yes".
 #Augustus reference file:
-my $reference_file = ""; #if augustus option is on, enter reference file name here.
+my $reference_file = "MADS_reference_file.fa"; #if augustus option is on, enter reference file name here.
 #Automate ncbi download?
 #FOR REFSEQ GENOMES ONLY!#
 #If yes, script will use a list of species to download assembly and annotation files
-my $automate_download = "yes";
+my $automate_download = "no";
 my $species_list = "species.txt"; #list species in species.txt file to download files for each species
 
 ###########################################################################
@@ -48,8 +48,8 @@ my $nhmmer_minus = 5000; #Add X nucleotides to start of sequence (5' end) #cant 
 ###########################################################################
 #output files
 #hmm profile names
-my $phmm_profile = ""; #nhmmer profile: use hmmer to build hmm profile from $pfam_seed
-my $nhmm_profile = ""; #phmmer profile: use hmmer to build hmm profile from $nuc_alignment
+my $phmm_profile = "MADSp.hmm"; #nhmmer profile: use hmmer to build hmm profile from $pfam_seed
+my $nhmm_profile = "MADSn.hmm"; #phmmer profile: use hmmer to build hmm profile from $nuc_alignment
 #Output sequence file names
 my $final_cds_nuc = "_cds_nuc.fa"; #final cds seq file - includes augustus predictions if turned on
 my $final_cds_prot = "_cds_prot.fa"; #final cds seq file - includes augustus predictions if turned on
