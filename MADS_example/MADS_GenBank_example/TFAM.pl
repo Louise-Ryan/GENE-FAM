@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+;#!/usr/bin/perl
 use strict;
 use warnings;
 use Cwd;
@@ -165,6 +165,9 @@ foreach my $genome(@genomes){
 	    my $nhmmer_transcript_file = $genome_ID."_transcripts".$nhmmer_out;
 	    my $nblast_cds_db = $genome_ID."_nblast_cds_db";
 	    my $nblast_cds = $genome_ID."_nblast_cds.out";
+	    my $nhmmer_assembly_log = $genome_ID."_nhmmer_assembly_domain_log.txt";
+	    my $nhmmer_mads_domain_seqs = $genome_ID."_Domain_sequences_nuc.fa";
+	    my @hit_log = ();
 	    if ($annotation_available eq "yes" || $annotation_available eq "Yes"){
 		my $nucleotide_ID = "";
 		my $protein_ID = "";
@@ -545,6 +548,7 @@ foreach my $genome(@genomes){
 		    my $nhmm_hit = $ncontig."|".$nstart."|".$nend;
 		    push @nhmmer_coordinates, $nhmm_hit;
 		}
+		open(OUT, ">>$nhmmer_assembly_log");
 		foreach my $nhmm_locus(@nhmmer_coordinates){
 		    my $overlap = "";
 		    my $ntmp = "";
@@ -596,18 +600,48 @@ foreach my $genome(@genomes){
 			}
 		    }
 		    if($overlap ne "Y"){
+			my $contig_out = "contig.fa";
+			my $contig_seq = "";
+			my $contig_length = "";
+			my $cmd_1 = "esl-sfetch $genome $contig_n >> $contig_out";
+			#print $cmd_1."\n";
+			`$cmd_1`;
+			open(IN, $contig_out);
+			{
+			    local $/;
+			    $contig_seq = <IN>;
+			}
+			close IN;
+			`rm $contig_out`;
+			if($contig_seq =~ m/(.*)\n([\S\n]+)/){
+			    my $chead = $1;
+			    my $cseq = $2;
+			    #print $chead."\n";
+			    $cseq =~ s/\n//g;
+			    $contig_length = length($cseq);
+			    #print $contig_length."\n";
+			}
+			my $nhmm_dets = $nhmm_locus."|".$contig_length;
+			print OUT $nhmm_dets."\n";
+			#print $nhmm_dets."\n";
 			#print "new hit: ";
+			my $dom_range = $start_n."\.\.".$end_n;
 			if ($strand eq "rev"){
 			    $start_n -= $nhmmer_plus; #3' end is $start (hence - plus)
 			    if($start_n < 1){
 				$start_n = 1;
 			    }
 			    $end_n += $nhmmer_minus; #5' end is $end (hence + minus)
-			   # print "reverse strand\n";
+			    if($end_n > $contig_length){
+				$end_n = $contig_length;
+			    }
+			    # print "reverse strand\n";
 			    my $range = $start_n."\.\.".$end_n;
 			    my $cmd = "esl-sfetch -c $range -r $genome $contig_n >> $nhmmer_nucleotide_sequences";
 			    #print $cmd."\n";
 			    `$cmd`;
+			    my $cmd2 = "esl-sfetch -c $dom_range -r $genome $contig_n >> $nhmmer_mads_domain_seqs ";
+			    `$cmd2`;
 			}
 			elsif($strand eq "pos"){
 			    $start_n -= $nhmmer_minus;
@@ -615,11 +649,16 @@ foreach my $genome(@genomes){
 				$start_n = 1;
 			    }
 			    $end_n += $nhmmer_plus;
+			    if($end_n > $contig_length){
+				$end_n = $contig_length;
+			    }
 			    #print "positive strand\n";
 			    my $range = $start_n."\.\.".$end_n;
 			    my $cmd = "esl-sfetch -c $range $genome $contig_n >> $nhmmer_nucleotide_sequences";
 			    #print $cmd."\n";
 			    `$cmd`;
+			    my $cmd2 = "esl-sfetch -c $dom_range $genome $contig_n >> $nhmmer_mads_domain_seqs";
+			    `$cmd2`;
 			}
 			#print $contig_n."...". $start_n."...".$end_n."\n";
 		    }
@@ -636,6 +675,7 @@ foreach my $genome(@genomes){
 		`rm *ssi`;
 	    }
 	    else{ #only run nhmmer on assembly
+		print "running nhmmer on whole assembly to pull hits ...\n\n";
 		`esl-sfetch --index $genome`;
 		my @nhmmer_coordinates = ();
 		if($default_nhmmer_evalue eq "yes"){
@@ -680,7 +720,9 @@ foreach my $genome(@genomes){
 		    my $nhmm_hit = $ncontig."|".$nstart."|".$nend;
 		    push @nhmmer_coordinates, $nhmm_hit;
 		}
+		open(OUT, ">>$nhmmer_assembly_log");
 		foreach my $nhmm_locus(@nhmmer_coordinates){
+		    #print OUT $nhmm_locus."\n";
 		    my $ntmp = "";
 		    my $strand = "";
 		    my @details = split(/\|/, $nhmm_locus);
@@ -713,12 +755,17 @@ foreach my $genome(@genomes){
 		    if($contig_seq =~ m/(.*)\n([\S\n]+)/){
 			my $chead = $1;
 			my $cseq = $2;
-			print $chead."\n";
+			#print $chead."\n";
 			$cseq =~ s/\n//g;
 			$contig_length = length($cseq);
-			print $contig_length."\n";
+			#print $contig_length."\n";
 		    }
+		    my $nhmm_dets = $nhmm_locus."|".$contig_length;
+		    print OUT $nhmm_dets."\n";
 		    if($strand eq "rev"){
+			my $range_domain = $start_n."\.\.".$end_n;
+			my $cmd1 = "esl-sfetch -c $range_domain -r $genome $contig_n >> $nhmmer_mads_domain_seqs";
+			`$cmd1`;
 			$start_n -= $nhmmer_plus; #3' end is $start (hence - plus)
 			$end_n += $nhmmer_minus; #5' end is $end (hence + minus)
 			if ($start_n < 1){
@@ -735,6 +782,9 @@ foreach my $genome(@genomes){
 			`$cmd`;
 		    }
 		    elsif($strand eq "pos"){
+			my $range_domain = $start_n."\.\.".$end_n;
+			my $cmd1 = "esl-sfetch -c $range_domain $genome $contig_n >> $nhmmer_mads_domain_seqs";
+			`$cmd1`;
 			$start_n -= $nhmmer_minus;
 			$end_n += $nhmmer_plus;
 			if ($start_n < 1){
@@ -750,8 +800,9 @@ foreach my $genome(@genomes){
 			#print $cmd."\n";
 			`$cmd`;
 		    }
-		    print $contig_n."...". $start_n."...".$end_n."\n";
+		    #print $contig_n."...". $start_n."...".$end_n."\n";
 		}
+		close OUT;
 		my $subdir = $outdir."/hmmer_files";
 		`mkdir $subdir`;
 		`mv $nhmmer_file $subdir`;
@@ -771,11 +822,41 @@ foreach my $genome(@genomes){
 		}
 		close SEQS;
 		@seqs = split (/\>/, $sequences);
+		open(IN,  $nhmmer_assembly_log);
+		my $domain_det_list = "";
+		{
+		    local $/;
+		    $domain_det_list = <IN>;
+		}
+		close IN;
+		my @domain_details = split(/\n/, $domain_det_list);
+		#foreach my $detail(@domain_details){
+		#    $detail =~ s/\n//;
+		#    print $detail."\n";
+		#}
 		foreach my $seq(@seqs){
 		    if($seq =~ m/(.*)\n([\S\n]+)/){
 			my $seq_header = $1;
 			my $seq_nt = $2;
+			my $domain_info = $domain_details[0];
+			my @info = split(/\|/, $domain_info);
+			my $contig_name = $info[0];
+			my $domain_info_start = $info[1];
+			my $domain_info_end = $info[2];
+			my $contig_max = $info[3];
+			if($domain_info_start > $domain_info_end){
+			    my $bu = $domain_info_start;
+			    $domain_info_start = $domain_info_end;
+			    $domain_info_end = $bu;
+			}
+			#print $domain_info."\n";
+			#print "This is domain start $domain_info_start \n";
+			#print "This is domain end $domain_info_end \n";
+			#print "This is max contig $contig_max \n";
+			shift(@domain_details);
 			$hit_no +=1;
+			my $hit_annotation = "Hit".$hit_no;
+			push(@hit_log, $hit_annotation);
 			my $contig = "";
 			my $start = "";
 			my $end = "";
@@ -787,11 +868,19 @@ foreach my $genome(@genomes){
 			if ($seq_header =~ m/^([\S]+)?\/([0-9]+)\-([0-9]+)\s.*/){
 			    $contig = $1; $start = $2; $end = $3;
 			}
-			$domain_scoord = $start + $nhmmer_minus; #reversed with esl-sfetch so all in 5-3' direction
-			$domain_ecoord = $end - $nhmmer_plus;
-			$domain_length = ($domain_ecoord - $domain_scoord) +1;
-			$domain_start = $nhmmer_minus; #i.e 100
-			$domain_end = $domain_length + $nhmmer_minus; #i.e length of domain + 100?
+			my $a = $domain_info_start - $nhmmer_minus; #position a 
+			if($a < 1){
+			    my $x = 1 - $a;
+			    my $y = $nhmmer_minus - $x;
+			    $domain_scoord = 1 + $y;
+			}
+			elsif($a >= 1){
+			    $domain_scoord = 1 + $nhmmer_minus;
+			}
+			$domain_length = ($domain_info_end - $domain_info_start) +1;
+			$domain_ecoord = $domain_scoord + $domain_length;
+			$domain_start = $domain_scoord;
+			$domain_end = $domain_ecoord;
 			$seq_header =~ s/\//\_/g;  #NC_044377.1/77156829-77158035 Cannabis sativa chromosome 6,
 			$seq_header =~ s/\-/\_/g;
 			$seq_header = ">Hit".$hit_no."_".$seq_header;
@@ -819,6 +908,10 @@ foreach my $genome(@genomes){
 			my @predictions = split(/#[\s]start[\s]gene/, $prediction_in);
 			shift @predictions;
 			foreach my $pred(@predictions){
+			    #`echo \"-----------------------------\n\" >> predictions_log_ALL.gff`;
+			    #`echo \"$hit_details\" >> predictions_log_ALL.gff`;
+			    #`echo \"$pred\" >> predictions_log_ALL.gff`;
+			    #print "prediction: $pred \n";
 			    my @pred_split = split (/#[\s]protein[\s]sequence/, $pred);
 			    my $gene_cds_details = $pred_split[0];
 			    my $protein_details = $pred_split[1];
@@ -846,21 +939,27 @@ foreach my $genome(@genomes){
 			    }
 			    $pred_start = $prediction_coords[0];
 			    $pred_end = $prediction_coords[1];
+			    #print "Prediction start: $pred_start \n";
+			    #print "Prediction end: $pred_end \n";
 			    if($pred_end > $domain_end){
 				$maximum_end = $pred_end;
+			#	print "Maximum end is pred end: $pred_end \n";
 			    }else{
 				$maximum_end = $domain_end;
+			#	print "Maximum end is domain end: $domain_end \n";
 			    }
 			    if($pred_start < $domain_start){
 				$minimum_start = $pred_start;
+			#	print "Minimum start is pred start: $pred_start \n";
 			    }else{
 				$minimum_start = $domain_start;
+			#	print "Minimum start is domain start: $domain_start \n";
 			    }
 			    $prediction_length = ($pred_end - $pred_start) +1;
 			    $total_length3 = $prediction_length + $domain_length;
 			    $max_span3 = ($maximum_end - $minimum_start) +1;
 			    if ($max_span3 < $total_length3){
-				#print "we want this prediction!\n";
+			#	print "we want this prediction!\n";
 				#print $gd."\n";
 				$prediction_found = 1;
 				my $hit_details = "Hit".$hit_no." prediction:\n";
@@ -874,6 +973,7 @@ foreach my $genome(@genomes){
 			    $cds_details =~ s/\n//g;
 			    if ($prediction_found  == 1){
 				my $cds_header = ">Hit".$hit_no."_new_augustus_prediction\n";
+				my $hit_annotation = "Hit".$hit_no;
 				open(CDS_NT, ">>$cds_final_nuc");
 				if ($cds_details =~ m/\[([^\]]+)\]/){
 				    my $cds_seq = $1;
@@ -901,6 +1001,45 @@ foreach my $genome(@genomes){
 		    }
 		}
 		`rm Hit* *ssi tmp.fa`;
+		my @domain_seqs = "";
+		if(-e $nhmmer_mads_domain_seqs){
+		    open(DOMAINS,$nhmmer_mads_domain_seqs);
+		    {
+			local $/ = ">";
+			while(<DOMAINS>){
+			    my $dom = $_;
+			    if($dom =~ m/\>/){
+				$dom =~ s/\>//g;
+				$dom = ">".$dom;
+			    }
+			    else{
+				$dom = ">".$dom;
+			    }
+			    push (@domain_seqs, $dom);
+			    #my $dom = $_;
+			    #push(@domain_seqs, $dom); 
+			}
+		    }
+		    close DOMAINS;
+		#foreach my $n(@hit_log){
+		#    print "n: $n \n";
+		#}
+		    my $tmp_doms = "tmp_doms.fa";
+		    open(DOMS, ">>$tmp_doms");
+		    foreach my $domain(@domain_seqs){
+			if($domain=~m/(\>[^\n]+)\n([\S\n]+)/){
+			    my $dom_header = $1;
+			    my $dom_seq = $2;
+			    my $hit_label = $hit_log[0];
+			    shift(@hit_log);
+			    $dom_header =~ s/\>//g;
+			    $dom_header = ">".$hit_label."_".$dom_header."\n";
+			    print DOMS $dom_header.$dom_seq;
+			    #print $domain."\n";
+			}
+		    }
+		    `mv $tmp_doms $nhmmer_mads_domain_seqs`;
+		}
 	    }
 	    if ($pseudogene_check eq "yes" || $pseudogene_check eq "Yes"){
 		print "Annotating hits with functional or pseudogene status ...\n\n";
@@ -974,6 +1113,12 @@ foreach my $genome(@genomes){
 	    if(-e $nhmmer_nucleotide_sequences){
 		`mv $nhmmer_nucleotide_sequences $outdir`;
 	    }
+	    if( -e $nhmmer_assembly_log){
+		`rm $nhmmer_assembly_log `;
+	    }
+	    if(-e $nhmmer_mads_domain_seqs){
+		`mv $nhmmer_mads_domain_seqs $outdir`;
+	    }
 	}
     }
 }
@@ -985,6 +1130,7 @@ if ($annotation_available eq "yes" || $annotation_available eq "Yes"){
 }
 else{
     `for dir in *outfiles; do cp $nhmm_profile \$dir/hmmer_files;done`;
+    `rm $nhmm_profile`;
 }
 print "Complete!\n";
 
