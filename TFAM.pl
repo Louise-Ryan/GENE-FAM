@@ -227,7 +227,7 @@ foreach my $genome(@genomes){
 		my $prot_ID = "";
 		my @phmm_array = split(/\>\>/, $phmmer_results);
 		my $phmmer_hit_chunk = $phmm_array[0];
-		my @phmmer_array2 = split("Description", $phmmer_hit_chunk);
+		my @phmmer_array2 = split("Description\n", $phmmer_hit_chunk);
 		my $phmmer_hit_chunk2 =  $phmmer_array2[1];
 		my @phmmer_hits = ();
 		if ($phmmer_hit_chunk2 =~ m/.*inclusion[\s]threshold.*/){
@@ -318,7 +318,7 @@ foreach my $genome(@genomes){
 		close NHMMER_T;
 		my @nhmm_t_array = split(/\>\>/, $nhmmer_t_results);
 		my $nhmmer_t_hit_chunk = $nhmm_t_array[0];
-		my @nhmm_t_array2 = split("Description", $nhmmer_t_hit_chunk);
+		my @nhmm_t_array2 = split("Description\n", $nhmmer_t_hit_chunk);
 		my $nhmmer_t_hit_chunk2 = $nhmm_t_array2[1];
 		my @nhmmer_t_hits = ();
 		if ($nhmmer_t_hit_chunk2 =~ m/.*inclusion[\s]threshold.*/){
@@ -519,7 +519,7 @@ foreach my $genome(@genomes){
 		close NHMMER;
 		my @nhmm_array = split(/\>\>/, $nhmmer_results);
 		my $nhmmer_hit_chunk = $nhmm_array[0];
-		my @nhmmer_array2 = split("Description", $nhmmer_hit_chunk);
+		my @nhmmer_array2 = split("Description\n", $nhmmer_hit_chunk);
 		my $nhmmer_hit_chunk2 =  $nhmmer_array2[1];
 		my @nhmmer_hits = ();
 		if ($nhmmer_hit_chunk2 =~ m/.*inclusion[\s]threshold.*/){
@@ -692,7 +692,7 @@ foreach my $genome(@genomes){
 		close NHMMER;
 		my @nhmm_array = split(/\>\>/, $nhmmer_results);
 		my $nhmmer_hit_chunk = $nhmm_array[0];
-		my @nhmmer_array2 = split("Description", $nhmmer_hit_chunk);
+		my @nhmmer_array2 = split("Description\n", $nhmmer_hit_chunk);
 		my $nhmmer_hit_chunk2 =  $nhmmer_array2[1];
 		my @nhmmer_hits = ();
 		if ($nhmmer_hit_chunk2 =~ m/.*inclusion[\s]threshold.*/){
