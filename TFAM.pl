@@ -234,7 +234,7 @@ foreach my $genome(@genomes){
 		    my @phmmer_array3 = split("------ inclusion threshold ------", $phmmer_hit_chunk2);
 		    my $sig_phmmer_hits = $phmmer_array3[0];
 		    @phmmer_hits = split("\n", $sig_phmmer_hits);
-		    shift(@phmmer_hits); #remove rubbish element 1
+		    #shift(@phmmer_hits); #remove rubbish element 1
 		    shift(@phmmer_hits); #remove rubbish element 2
 		    pop(@phmmer_hits); #remove empty line at end
 		}
@@ -242,7 +242,7 @@ foreach my $genome(@genomes){
 		    my @phmmer_array3 = split("\n\nDomain", $phmmer_hit_chunk2);
 		    my $sig_phmmer_hits = $phmmer_array3[0];
 		    @phmmer_hits = split("\n", $sig_phmmer_hits);
-		    shift(@phmmer_hits); #remove rubbish element 1
+		    #shift(@phmmer_hits); #remove rubbish element 1
 		    shift(@phmmer_hits); #remove rubbish element 2
 		}
 		foreach my $phit(@phmmer_hits){
@@ -325,7 +325,7 @@ foreach my $genome(@genomes){
 		    my @nhmmer_t_array3 = split("------ inclusion threshold ------", $nhmmer_t_hit_chunk2);
 		    my $sig_nhmmer_t_hits = $nhmmer_t_array3[0];
 		    @nhmmer_t_hits = split("\n", $sig_nhmmer_t_hits);
-		    shift(@nhmmer_t_hits);
+		   # shift(@nhmmer_t_hits);
 		    shift(@nhmmer_t_hits);
 		    pop(@nhmmer_t_hits);
 		}
@@ -333,7 +333,7 @@ foreach my $genome(@genomes){
 		    my @nhmmer_t_array3 = split("\n\n", $nhmmer_t_hit_chunk2);
 		    my $sig_nhmmer_t_hits = $nhmmer_t_array3[0];
 		    @nhmmer_t_hits = split("\n", $sig_nhmmer_t_hits);
-		    shift(@nhmmer_t_hits);
+		   # shift(@nhmmer_t_hits);
 		    shift(@nhmmer_t_hits);
 		}
 		foreach my $trans_hit(@nhmmer_t_hits){
@@ -526,7 +526,7 @@ foreach my $genome(@genomes){
 		    my @nhmmer_array3 = split("------ inclusion threshold ------", $nhmmer_hit_chunk2);
 		    my $sig_nhmmer_hits = $nhmmer_array3[0];
 		    @nhmmer_hits = split("\n", $sig_nhmmer_hits);
-		    shift(@nhmmer_hits); #remove rubbish element
+		    #shift(@nhmmer_hits); #remove rubbish element
 		    shift(@nhmmer_hits); #remove rubbish element
 		    pop(@nhmmer_hits); #remove empty line at end
 		}else{
@@ -534,7 +534,7 @@ foreach my $genome(@genomes){
 		    my $sig_nhmmer_hits = $nhmmer_array3[0];
 		    #print $sig_nhmmer_hits."\n";
 		    @nhmmer_hits = split("\n", $sig_nhmmer_hits);
-		    shift(@nhmmer_hits); #remove rubbish element
+		    #shift(@nhmmer_hits); #remove rubbish element
 		    shift(@nhmmer_hits); #remove rubbish element
 		}
 		foreach my $nhit(@nhmmer_hits){
@@ -699,14 +699,14 @@ foreach my $genome(@genomes){
 		    my @nhmmer_array3 = split("------ inclusion threshold ------", $nhmmer_hit_chunk2);
 		    my $sig_nhmmer_hits = $nhmmer_array3[0];
 		    @nhmmer_hits = split("\n", $sig_nhmmer_hits);
-		    shift(@nhmmer_hits); #remove rubbish element
+		    #shift(@nhmmer_hits); #remove rubbish element
 		    shift(@nhmmer_hits); #remove rubbish element
 		    pop(@nhmmer_hits); #remove empty line at end
 		}else{
 		    my @nhmmer_array3 = split("\n\n", $nhmmer_hit_chunk2);
 		    my $sig_nhmmer_hits = $nhmmer_array3[0];
 		    @nhmmer_hits = split("\n", $sig_nhmmer_hits);
-		    shift(@nhmmer_hits); #remove rubbish element
+		    #shift(@nhmmer_hits); #remove rubbish element
 		    shift(@nhmmer_hits); #remove rubbish element
 		}
 		foreach my $nhit(@nhmmer_hits){
