@@ -9,7 +9,7 @@ gunzip GCA_025232715.1_Csat_AbacusV2_genomic.fna.gz
 (alternatively bash download_genome.sh will work)
 
 Once the genome is in your directory, run the following command:
-perl TFAM.pl
+perl TFAM_genbank_example.pl
 
 You can ignore "smartmatch warnings" if they pop up.
 

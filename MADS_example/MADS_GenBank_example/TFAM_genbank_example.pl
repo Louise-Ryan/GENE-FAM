@@ -72,51 +72,22 @@ my $annotation_6 = "pseudogene"; #no START codon && in frame stop codon.........
 #MAIN CODE                                                                  #
 #############################################################################
 
-#if automate download is yes, download files for species:
+#If automate download is set to yes, automatically download genome files
 if ($automate_download eq "Yes" || $automate_download eq "yes"){
-    print "\nAutomatically downloading genome files from ncbi for your query species ... \n\n";
-    open(SPECIESFILE, $species_list);
-    my @species = <SPECIESFILE>;
-    close SPECIESFILE;
-    chomp(@species);
-    `wget https://ftp.ncbi.nlm.nih.gov/genomes/refseq/assembly_summary_refseq.txt`; #RefSeq summary file
-    foreach my $target(@species){
-	print $target."\n";
-	open(SUMMARY, "assembly_summary_refseq.txt");
-	while(<SUMMARY>) { #loop through summary file
-	    my $line=$_;
-	    if ($line =~m/genome[\t]+[0-9]+[\t]+[0-9]+[\t]+$target[\t]/i){
-		print $line."\n";
-		if($line=~m/(ftp[\S]+)/){ #Store FTP link (FTP://...link) 
-		    my $link=$1; 
-		    if($link=~m/(GCF_+[0-9]+\.[0-9])/){ #Match and store genome acession number for summary files
-			my $accession =$1." "; 
-			if($link=~m/\/(GCF\_[\S]+)/){
-			    my $accession = $1;
-			    my $file_cds =$accession."_".$cds_suffix.".gz"; #Append file extension
-			    my $file_genome = $accession."_".$genome_suffix.".gz";
-			    my $file_rna = $accession."_".$nt_transcript_suffix.".gz";
-			    my $file_prot = $accession."_".$prot_transcript_suffix.".gz";
-			    my $final_link_cds = $link."/".$file_cds; #Append file extension and link to ftp link
-			    `wget $final_link_cds`; #wget link to download the genome
-			    sleep(4);
-			    my $final_link_genome = $link."/".$file_genome;
-			    `wget $final_link_genome`;
-			    sleep(4);
-			    my $final_link_rna = $link."/".$file_rna;
-			    `wget $final_link_rna`;
-			    sleep(4);
-			    my $final_link_prot = $link."/".$file_prot;
-			    `wget $final_link_prot`;
-			    sleep(4);
-			    `gunzip *gz`; #unzip file
-			}
-		    }
-		}
-	    }
+    my @status =&downloadGenomes($species_list);
+    print "\n";
+    if(scalar(@status) > 0){
+	print "ERROR: Failed to download files automatically. Please manually download the files listed below and set the \$automate_download variable to \"no\". Aborting job!\n";
+	foreach my $f(@status){
+	    print "Failed to download $f\n";
 	}
+	die;
+    }
+    else{
+	print "Files downloaded successfully! \n";
     }
 }
+
 
 
 #Read in genome, nucleotide and protein files: 
@@ -227,14 +198,14 @@ foreach my $genome(@genomes){
 		my $prot_ID = "";
 		my @phmm_array = split(/\>\>/, $phmmer_results);
 		my $phmmer_hit_chunk = $phmm_array[0];
-		my @phmmer_array2 = split("Description", $phmmer_hit_chunk);
+		my @phmmer_array2 = split("Description\n", $phmmer_hit_chunk);
 		my $phmmer_hit_chunk2 =  $phmmer_array2[1];
 		my @phmmer_hits = ();
 		if ($phmmer_hit_chunk2 =~ m/.*inclusion[\s]threshold.*/){
 		    my @phmmer_array3 = split("------ inclusion threshold ------", $phmmer_hit_chunk2);
 		    my $sig_phmmer_hits = $phmmer_array3[0];
 		    @phmmer_hits = split("\n", $sig_phmmer_hits);
-		    shift(@phmmer_hits); #remove rubbish element 1
+		    #shift(@phmmer_hits); #remove rubbish element 1
 		    shift(@phmmer_hits); #remove rubbish element 2
 		    pop(@phmmer_hits); #remove empty line at end
 		}
@@ -242,7 +213,7 @@ foreach my $genome(@genomes){
 		    my @phmmer_array3 = split("\n\nDomain", $phmmer_hit_chunk2);
 		    my $sig_phmmer_hits = $phmmer_array3[0];
 		    @phmmer_hits = split("\n", $sig_phmmer_hits);
-		    shift(@phmmer_hits); #remove rubbish element 1
+		    #shift(@phmmer_hits); #remove rubbish element 1
 		    shift(@phmmer_hits); #remove rubbish element 2
 		}
 		foreach my $phit(@phmmer_hits){
@@ -318,14 +289,14 @@ foreach my $genome(@genomes){
 		close NHMMER_T;
 		my @nhmm_t_array = split(/\>\>/, $nhmmer_t_results);
 		my $nhmmer_t_hit_chunk = $nhmm_t_array[0];
-		my @nhmm_t_array2 = split("Description", $nhmmer_t_hit_chunk);
+		my @nhmm_t_array2 = split("Description\n", $nhmmer_t_hit_chunk);
 		my $nhmmer_t_hit_chunk2 = $nhmm_t_array2[1];
 		my @nhmmer_t_hits = ();
 		if ($nhmmer_t_hit_chunk2 =~ m/.*inclusion[\s]threshold.*/){
 		    my @nhmmer_t_array3 = split("------ inclusion threshold ------", $nhmmer_t_hit_chunk2);
 		    my $sig_nhmmer_t_hits = $nhmmer_t_array3[0];
 		    @nhmmer_t_hits = split("\n", $sig_nhmmer_t_hits);
-		    shift(@nhmmer_t_hits);
+		   # shift(@nhmmer_t_hits);
 		    shift(@nhmmer_t_hits);
 		    pop(@nhmmer_t_hits);
 		}
@@ -333,7 +304,7 @@ foreach my $genome(@genomes){
 		    my @nhmmer_t_array3 = split("\n\n", $nhmmer_t_hit_chunk2);
 		    my $sig_nhmmer_t_hits = $nhmmer_t_array3[0];
 		    @nhmmer_t_hits = split("\n", $sig_nhmmer_t_hits);
-		    shift(@nhmmer_t_hits);
+		   # shift(@nhmmer_t_hits);
 		    shift(@nhmmer_t_hits);
 		}
 		foreach my $trans_hit(@nhmmer_t_hits){
@@ -519,14 +490,14 @@ foreach my $genome(@genomes){
 		close NHMMER;
 		my @nhmm_array = split(/\>\>/, $nhmmer_results);
 		my $nhmmer_hit_chunk = $nhmm_array[0];
-		my @nhmmer_array2 = split("Description", $nhmmer_hit_chunk);
+		my @nhmmer_array2 = split("Description\n", $nhmmer_hit_chunk);
 		my $nhmmer_hit_chunk2 =  $nhmmer_array2[1];
 		my @nhmmer_hits = ();
 		if ($nhmmer_hit_chunk2 =~ m/.*inclusion[\s]threshold.*/){
 		    my @nhmmer_array3 = split("------ inclusion threshold ------", $nhmmer_hit_chunk2);
 		    my $sig_nhmmer_hits = $nhmmer_array3[0];
 		    @nhmmer_hits = split("\n", $sig_nhmmer_hits);
-		    shift(@nhmmer_hits); #remove rubbish element
+		    #shift(@nhmmer_hits); #remove rubbish element
 		    shift(@nhmmer_hits); #remove rubbish element
 		    pop(@nhmmer_hits); #remove empty line at end
 		}else{
@@ -534,7 +505,7 @@ foreach my $genome(@genomes){
 		    my $sig_nhmmer_hits = $nhmmer_array3[0];
 		    #print $sig_nhmmer_hits."\n";
 		    @nhmmer_hits = split("\n", $sig_nhmmer_hits);
-		    shift(@nhmmer_hits); #remove rubbish element
+		    #shift(@nhmmer_hits); #remove rubbish element
 		    shift(@nhmmer_hits); #remove rubbish element
 		}
 		foreach my $nhit(@nhmmer_hits){
@@ -692,21 +663,21 @@ foreach my $genome(@genomes){
 		close NHMMER;
 		my @nhmm_array = split(/\>\>/, $nhmmer_results);
 		my $nhmmer_hit_chunk = $nhmm_array[0];
-		my @nhmmer_array2 = split("Description", $nhmmer_hit_chunk);
+		my @nhmmer_array2 = split("Description\n", $nhmmer_hit_chunk);
 		my $nhmmer_hit_chunk2 =  $nhmmer_array2[1];
 		my @nhmmer_hits = ();
 		if ($nhmmer_hit_chunk2 =~ m/.*inclusion[\s]threshold.*/){
 		    my @nhmmer_array3 = split("------ inclusion threshold ------", $nhmmer_hit_chunk2);
 		    my $sig_nhmmer_hits = $nhmmer_array3[0];
 		    @nhmmer_hits = split("\n", $sig_nhmmer_hits);
-		    shift(@nhmmer_hits); #remove rubbish element
+		    #shift(@nhmmer_hits); #remove rubbish element
 		    shift(@nhmmer_hits); #remove rubbish element
 		    pop(@nhmmer_hits); #remove empty line at end
 		}else{
 		    my @nhmmer_array3 = split("\n\n", $nhmmer_hit_chunk2);
 		    my $sig_nhmmer_hits = $nhmmer_array3[0];
 		    @nhmmer_hits = split("\n", $sig_nhmmer_hits);
-		    shift(@nhmmer_hits); #remove rubbish element
+		    #shift(@nhmmer_hits); #remove rubbish element
 		    shift(@nhmmer_hits); #remove rubbish element
 		}
 		foreach my $nhit(@nhmmer_hits){
@@ -1195,4 +1166,81 @@ sub checkframe{
     }
     push @framedata,$status; #push status to @framedata array
     return @framedata; #subroutine returns this array with annotation status
+}
+
+
+sub downloadGenomes {
+    my $splist = $_[0];
+    print "\nAutomatically downloading genome files from ncbi for your query species ... \n\n";
+    open(SPECIESFILE, $splist);
+    my @species = <SPECIESFILE>;
+    close SPECIESFILE;
+    chomp(@species);
+    my $assembly_summary = "assembly_summary_refseq.txt";
+    if(-e $assembly_summary){
+	`rm $assembly_summary`;
+    }
+    `wget https://ftp.ncbi.nlm.nih.gov/genomes/refseq/assembly_summary_refseq.txt`; #RefSeq summary file
+    my @status = ();
+    foreach my $target(@species){
+	print $target."\n";
+	open(SUMMARY, "assembly_summary_refseq.txt");
+	while(<SUMMARY>) { #loop through summary file
+	    my $line=$_;
+	    if ($line =~m/genome[\t]+[0-9]+[\t]+[0-9]+[\t]+$target[\t]/i){
+		print $line."\n";
+		if($line=~m/(ftp[\S]+)/){ #Store FTP link (FTP://...link) 
+		    my $link=$1; 
+		    if($link=~m/(GCF_+[0-9]+\.[0-9])/){ #Match and store genome acession number for summary files
+			my $accession =$1." "; 
+			if($link=~m/\/(GCF\_[\S]+)/){
+			    my $accession = $1;
+			    my $file_cds =$accession."_".$cds_suffix.".gz"; #Append file extension
+			    my $file_genome = $accession."_".$genome_suffix.".gz";
+			    my $file_rna = $accession."_".$nt_transcript_suffix.".gz";
+			    my $file_prot = $accession."_".$prot_transcript_suffix.".gz";
+			    my $final_link_cds = $link."/".$file_cds; #Append file extension and link to ftp link
+			    `wget $final_link_cds`; #wget link to download the genome
+			    sleep(4);
+			    my $final_link_genome = $link."/".$file_genome;
+			    `wget $final_link_genome`;
+			    sleep(4);
+			    my $final_link_rna = $link."/".$file_rna;
+			    `wget $final_link_rna`;
+			    sleep(4);
+			    my $final_link_prot = $link."/".$file_prot;
+			    `wget $final_link_prot`;
+			    sleep(4);
+			    `gunzip *gz`; #unzip file
+			    $file_cds =~ s/\.gz//g;
+			    $file_genome =~ s/\.gz//g;
+			    $file_rna =~ s/\.gz//g;
+			    $file_prot =~ s/\.gz//g;
+			    if(-e $file_cds){
+			    }
+			    else{
+				push(@status, $file_cds);
+			    }
+			    if(-e $file_genome){
+			    }
+			    else{
+				push(@status, $file_genome);
+			    }
+			    if(-e $file_rna){
+			    }
+			    else{
+				push(@status, $file_rna);
+			    }
+			    if(-e $file_prot){
+			    }
+			    else{
+				push(@status, $file_prot);
+			    }
+			}
+		    }
+		}
+	    }
+	}
+    }
+    return @status;
 }

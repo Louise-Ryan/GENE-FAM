@@ -72,51 +72,22 @@ my $annotation_6 = "pseudogene"; #no START codon && in frame stop codon.........
 #MAIN CODE                                                                  #
 #############################################################################
 
-#if automate download is yes, download files for species:
+#If automate download is set to yes, automatically download genome files
 if ($automate_download eq "Yes" || $automate_download eq "yes"){
-    print "\nAutomatically downloading genome files from ncbi for your query species ... \n\n";
-    open(SPECIESFILE, $species_list);
-    my @species = <SPECIESFILE>;
-    close SPECIESFILE;
-    chomp(@species);
-    `wget https://ftp.ncbi.nlm.nih.gov/genomes/refseq/assembly_summary_refseq.txt`; #RefSeq summary file
-    foreach my $target(@species){
-	print $target."\n";
-	open(SUMMARY, "assembly_summary_refseq.txt");
-	while(<SUMMARY>) { #loop through summary file
-	    my $line=$_;
-	    if ($line =~m/genome[\t]+[0-9]+[\t]+[0-9]+[\t]+$target[\t]/i){
-		print $line."\n";
-		if($line=~m/(ftp[\S]+)/){ #Store FTP link (FTP://...link) 
-		    my $link=$1; 
-		    if($link=~m/(GCF_+[0-9]+\.[0-9])/){ #Match and store genome acession number for summary files
-			my $accession =$1." "; 
-			if($link=~m/\/(GCF\_[\S]+)/){
-			    my $accession = $1;
-			    my $file_cds =$accession."_".$cds_suffix.".gz"; #Append file extension
-			    my $file_genome = $accession."_".$genome_suffix.".gz";
-			    my $file_rna = $accession."_".$nt_transcript_suffix.".gz";
-			    my $file_prot = $accession."_".$prot_transcript_suffix.".gz";
-			    my $final_link_cds = $link."/".$file_cds; #Append file extension and link to ftp link
-			    `wget $final_link_cds`; #wget link to download the genome
-			    sleep(4);
-			    my $final_link_genome = $link."/".$file_genome;
-			    `wget $final_link_genome`;
-			    sleep(4);
-			    my $final_link_rna = $link."/".$file_rna;
-			    `wget $final_link_rna`;
-			    sleep(4);
-			    my $final_link_prot = $link."/".$file_prot;
-			    `wget $final_link_prot`;
-			    sleep(4);
-			    `gunzip *gz`; #unzip file
-			}
-		    }
-		}
-	    }
+    my @status =&downloadGenomes($species_list);
+    print "\n";
+    if(scalar(@status) > 0){
+	print "ERROR: Failed to download files automatically. Please manually download the files listed below and set the \$automate_download variable to \"no\". Aborting job!\n";
+	foreach my $f(@status){
+	    print "Failed to download $f\n";
 	}
+	die;
+    }
+    else{
+	print "Files downloaded successfully! \n";
     }
 }
+
 
 
 #Read in genome, nucleotide and protein files: 
@@ -1195,4 +1166,81 @@ sub checkframe{
     }
     push @framedata,$status; #push status to @framedata array
     return @framedata; #subroutine returns this array with annotation status
+}
+
+
+sub downloadGenomes {
+    my $splist = $_[0];
+    print "\nAutomatically downloading genome files from ncbi for your query species ... \n\n";
+    open(SPECIESFILE, $splist);
+    my @species = <SPECIESFILE>;
+    close SPECIESFILE;
+    chomp(@species);
+    my $assembly_summary = "assembly_summary_refseq.txt";
+    if(-e $assembly_summary){
+	`rm $assembly_summary`;
+    }
+    `wget https://ftp.ncbi.nlm.nih.gov/genomes/refseq/assembly_summary_refseq.txt`; #RefSeq summary file
+    my @status = ();
+    foreach my $target(@species){
+	print $target."\n";
+	open(SUMMARY, "assembly_summary_refseq.txt");
+	while(<SUMMARY>) { #loop through summary file
+	    my $line=$_;
+	    if ($line =~m/genome[\t]+[0-9]+[\t]+[0-9]+[\t]+$target[\t]/i){
+		print $line."\n";
+		if($line=~m/(ftp[\S]+)/){ #Store FTP link (FTP://...link) 
+		    my $link=$1; 
+		    if($link=~m/(GCF_+[0-9]+\.[0-9])/){ #Match and store genome acession number for summary files
+			my $accession =$1." "; 
+			if($link=~m/\/(GCF\_[\S]+)/){
+			    my $accession = $1;
+			    my $file_cds =$accession."_".$cds_suffix.".gz"; #Append file extension
+			    my $file_genome = $accession."_".$genome_suffix.".gz";
+			    my $file_rna = $accession."_".$nt_transcript_suffix.".gz";
+			    my $file_prot = $accession."_".$prot_transcript_suffix.".gz";
+			    my $final_link_cds = $link."/".$file_cds; #Append file extension and link to ftp link
+			    `wget $final_link_cds`; #wget link to download the genome
+			    sleep(4);
+			    my $final_link_genome = $link."/".$file_genome;
+			    `wget $final_link_genome`;
+			    sleep(4);
+			    my $final_link_rna = $link."/".$file_rna;
+			    `wget $final_link_rna`;
+			    sleep(4);
+			    my $final_link_prot = $link."/".$file_prot;
+			    `wget $final_link_prot`;
+			    sleep(4);
+			    `gunzip *gz`; #unzip file
+			    $file_cds =~ s/\.gz//g;
+			    $file_genome =~ s/\.gz//g;
+			    $file_rna =~ s/\.gz//g;
+			    $file_prot =~ s/\.gz//g;
+			    if(-e $file_cds){
+			    }
+			    else{
+				push(@status, $file_cds);
+			    }
+			    if(-e $file_genome){
+			    }
+			    else{
+				push(@status, $file_genome);
+			    }
+			    if(-e $file_rna){
+			    }
+			    else{
+				push(@status, $file_rna);
+			    }
+			    if(-e $file_prot){
+			    }
+			    else{
+				push(@status, $file_prot);
+			    }
+			}
+		    }
+		}
+	    }
+	}
+    }
+    return @status;
 }

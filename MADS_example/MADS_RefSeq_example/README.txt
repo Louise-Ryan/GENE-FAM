@@ -5,7 +5,7 @@ As these are all RefSeq genomes, with annotation files available, the genomes ca
 The species of interest are specified in the species.txt file.
 
 Run the following command:
-perl TFAM.pl
+perl TFAM_refseq_example.pl
 
 If everything is installed properly, this should work fine!
 
