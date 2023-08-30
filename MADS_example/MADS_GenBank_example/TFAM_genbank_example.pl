@@ -77,52 +77,11 @@ my $annotation_6 = "pseudogene"; #no START codon && in frame stop codon.........
 # 1. Check input files and parameters:
 #######################################
 
-################################
-# 1.1. Check input files exist:
-################################
-
-unless(-e $pfam_seed){
-    print "$pfam_seed does not exist! Did you specify the \$pfam_seed variable? Aborting job!\n";
-    die;
-}
-unless( -e $nuc_alignment){
-    print "$nuc_alignment does not exist! Did you specify the \$nuc_alignment variable? Aborting job!\n";
-    die;
-}
-unless(-e $reference_file){
-    print "$reference_file does not exist! Did you specify the \$reference_file variable? Aborting job!\n";
-    die;
-}
-if($automate_download eq "Yes" || $automate_download eq "yes"){
-    unless(-e $species_list){
-	print "$species_list does not exist! Did you specify the \$species_list variable? Aborting job!\n";
-	die;
-    }
-}
-else{
-    my @check_suffix = ();
-    my @suffix_scalar = ();
-    push(@check_suffix, $genome_suffix);
-    push(@check_suffix, $nt_transcript_suffix);
-    push(@check_suffix, $prot_transcript_suffix);
-    push(@check_suffix, $cds_suffix);
-    foreach my $suffix_value(@check_suffix){
-	my @matching_files = glob("*$suffix_value");
-	unless(@matching_files) {
-	    print "No files ending in $suffix_value exist in working directory. Please check file names and ensure suffix values are correctly assigned in the script. Aborting job!\n";
-	    push (@suffix_scalar, $suffix_value);
-	}
-    }
-    if(scalar(@suffix_scalar) > 0){
-	die;
-    }
-}
-
 ######################################
-# 1.2. Check variables are specified:
+# 1.1. Check variables are specified:
 ######################################
 
-#1.2.1. yes/no options
+#1.1.1. yes/no options
 my @yes_no_scalar = ();
 unless($annotation_available =~ m/^yes$/i || $annotation_available =~ m/^no$/i){
     print "The \$annotation_available parameter is not set correctly. Please specify as \"Yes\" or \"No\" and retry. Aborting job!\n";
@@ -153,7 +112,7 @@ if(scalar(@yes_no_scalar) > 0){
 }
 
 
-#1.2.3. Output files and augustus variable
+#1.1.2. Output files and augustus variable
 my @check_output_vars = ();
 unless($phmm_profile){
     print "Did you forget to specify the \$phmm_profile variable? Aborting job!\n";
@@ -199,7 +158,7 @@ if($phmm_profile eq $nhmm_profile){
     die;
 }
 
-#1.2.4. Numeric values
+#1.1.3. Numeric values
 my @numeric_check = ();
 unless(looks_like_number($minidentity)){
     print "The \$minidentity variable is not numeric. Please ensure a numeric value is set for this variable and try again. Abort job!\n";
@@ -234,10 +193,54 @@ if(scalar(@numeric_check > 0)){
     die;
 }
 
-#1.2.5. Pseudogene names
+#1.1.4. Pseudogene names
 if($pseudogene_check =~ m/^yes$/i){
     unless($annotation_short && $annotation_1 && $annotation_2 && $annotation_3 && $annotation_4 && $annotation_5 && $annotation_6){
 	print "The annotation variables are not set correctly. Please ensure all \$annotation variables are specified and try again. Abort job!\n";
+	die;
+    }
+}
+
+
+################################
+# 1.2. Check input files exist:
+################################
+
+unless(-e $pfam_seed){
+    print "$pfam_seed does not exist! Did you specify the \$pfam_seed variable? Aborting job!\n";
+    die;
+}
+unless( -e $nuc_alignment){
+    print "$nuc_alignment does not exist! Did you specify the \$nuc_alignment variable? Aborting job!\n";
+    die;
+}
+unless(-e $reference_file){
+    print "$reference_file does not exist! Did you specify the \$reference_file variable? Aborting job!\n";
+    die;
+}
+if($automate_download eq "Yes" || $automate_download eq "yes"){
+    unless(-e $species_list){
+	print "$species_list does not exist! Did you specify the \$species_list variable? Aborting job!\n";
+	die;
+    }
+}
+else{
+    my @check_suffix = ();
+    my @suffix_scalar = ();
+    push(@check_suffix, $genome_suffix);
+    unless($annotation_available =~ m/^no$/i){
+	push(@check_suffix, $nt_transcript_suffix);
+	push(@check_suffix, $prot_transcript_suffix);
+	push(@check_suffix, $cds_suffix);
+    }
+    foreach my $suffix_value(@check_suffix){
+	my @matching_files = glob("*$suffix_value");
+	unless(@matching_files) {
+	    print "No files ending in $suffix_value exist in working directory. Please check file names and ensure suffix values are correctly assigned in the script. Aborting job!\n";
+	    push (@suffix_scalar, $suffix_value);
+	}
+    }
+    if(scalar(@suffix_scalar) > 0){
 	die;
     }
 }
