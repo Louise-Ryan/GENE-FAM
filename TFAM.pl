@@ -2,6 +2,7 @@
 use strict;
 use warnings;
 use Cwd;
+use Scalar::Util qw(looks_like_number);
 
 ###########################################################################
 #USER PARAMETERS:                                                         #
@@ -71,6 +72,180 @@ my $annotation_6 = "pseudogene"; #no START codon && in frame stop codon.........
 #############################################################################
 #MAIN CODE                                                                  #
 #############################################################################
+
+#######################################
+# 1. Check input files and parameters:
+#######################################
+
+################################
+# 1.1. Check input files exist:
+################################
+
+unless(-e $pfam_seed){
+    print "$pfam_seed does not exist! Did you specify the \$pfam_seed variable? Aborting job!\n";
+    die;
+}
+unless( -e $nuc_alignment){
+    print "$nuc_alignment does not exist! Did you specify the \$nuc_alignment variable? Aborting job!\n";
+    die;
+}
+unless(-e $reference_file){
+    print "$reference_file does not exist! Did you specify the \$reference_file variable? Aborting job!\n";
+    die;
+}
+if($automate_download eq "Yes" || $automate_download eq "yes"){
+    unless(-e $species_list){
+	print "$species_list does not exist! Did you specify the \$species_list variable? Aborting job!\n";
+	die;
+    }
+}
+else{
+    my @check_suffix = ();
+    my @suffix_scalar = ();
+    push(@check_suffix, $genome_suffix);
+    push(@check_suffix, $nt_transcript_suffix);
+    push(@check_suffix, $prot_transcript_suffix);
+    push(@check_suffix, $cds_suffix);
+    foreach my $suffix_value(@check_suffix){
+	my @matching_files = glob("*$suffix_value");
+	unless(@matching_files) {
+	    print "No files ending in $suffix_value exist in working directory. Please check file names and ensure suffix values are correctly assigned in the script. Aborting job!\n";
+	    push (@suffix_scalar, $suffix_value);
+	}
+    }
+    if(scalar(@suffix_scalar) > 0){
+	die;
+    }
+}
+
+######################################
+# 1.2. Check variables are specified:
+######################################
+
+#1.2.1. yes/no options
+my @yes_no_scalar = ();
+unless($annotation_available =~ m/^yes$/i || $annotation_available =~ m/^no$/i){
+    print "The \$annotation_available parameter is not set correctly. Please specify as \"Yes\" or \"No\" and retry. Aborting job!\n";
+    push(@yes_no_scalar, $annotation_available);
+}
+unless($cds_available =~ m/^yes$/i || $cds_available =~ m/^no$/i){
+    print "The \$cds_available parameter is not set correctly. Please specify as \"yes\" or \"no\" and retry. Aborting job!\n";
+    push(@yes_no_scalar, $cds_available);
+}
+unless($predict_new_hits =~ m/^yes$/i || $predict_new_hits =~ m/^no$/i){
+    print "The \$predict_new_hits parameter is not set correctly. Please specify as \"yes\" or \"no\" and retry. Aborting job!\n";
+    push(@yes_no_scalar, $predict_new_hits);
+}
+unless($pseudogene_check =~ m/^yes$/i || $pseudogene_check =~ m/^no$/i){
+    print "The \$pseudogene_check parameter is not set correctly. Please specify as \"yes\" or \"no\" and retry. Aborting job!\n";
+    push(@yes_no_scalar, $pseudogene_check);
+}
+unless($default_nhmmer_evalue =~ m/^yes$/i || $default_nhmmer_evalue =~ m/^no$/i){
+    print "The \$default_nhmmer_evalue parameter is not set correctly. Please specify as \"yes\" or \"no\" and retry. Aborting job!\n";
+    push(@yes_no_scalar, $default_nhmmer_evalue);
+}
+unless($default_phmmer_evalue =~ m/^yes$/i || $default_phmmer_evalue =~ m/^no$/i){
+    print "The \$default_phmmer_evalue parameter is not set correctly. Please specify as \"yes\" or \"no\" and retry. Aborting job!\n";
+    push(@yes_no_scalar, $default_phmmer_evalue);
+}
+if(scalar(@yes_no_scalar) > 0){
+    die;
+}
+
+
+#1.2.3. Output files and augustus variable
+my @check_output_vars = ();
+unless($phmm_profile){
+    print "Did you forget to specify the \$phmm_profile variable? Aborting job!\n";
+    push(@check_output_vars, $phmm_profile);
+}
+unless($nhmm_profile){
+      print "Did you forget to specify the \$nhmm_profile variable? Aborting job!\n";
+      push(@check_output_vars, $nhmm_profile);
+}
+unless($final_cds_nuc){
+    print "Did you forget to specify the \$final_cds_nuc variable? Aborting job!\n";
+    push(@check_output_vars, $final_cds_nuc);
+}
+unless($final_cds_prot){
+    print "Did you forget to specify the \$final_cds_prot variable? Aborting job!\n";
+    push(@check_output_vars, $final_cds_prot);
+}
+unless($nucleotide_longest_transcripts){
+    print "Did you forget to specify the \$phmm_profile variable? Aborting job!\n";
+    push(@check_output_vars, $phmm_profile);
+}
+unless($cds_nucleotide_seqfile){
+    print "Did you forget to specify the \$nucleotide_longest_transcripts variable? Aborting job!\n";
+    push(@check_output_vars, $nucleotide_longest_transcripts);
+}
+unless($cds_protein_seqfile){
+    print "Did you forget to specify the \$cds_protein_seqfile variable? Aborting job!\n";
+    push(@check_output_vars, $cds_protein_seqfile);
+}
+unless($nhmmer_unnanotated_seqfile){
+    print "Did you forget to specify the \$nhmmer_unnanotated_seqfile variable? Aborting job!\n";
+    push(@check_output_vars, $nhmmer_unnanotated_seqfile);
+}
+unless($augustus_species){
+    print "Did you forget to specify the \$augustus_species variable? Aborting job!\n";
+    push(@check_output_vars, $augustus_species);
+}
+if(scalar(@check_output_vars) > 0){
+    die;
+}
+if($phmm_profile eq $nhmm_profile){
+    print "\$phmm_profile cannot be assigned the same name as \$nhmm_profile. Please rename variables and try again. Abort job!\n";
+    die;
+}
+
+#1.2.4. Numeric values
+my @numeric_check = ();
+unless(looks_like_number($minidentity)){
+    print "The \$minidentity variable is not numeric. Please ensure a numeric value is set for this variable and try again. Abort job!\n";
+    push(@numeric_check, $minidentity);
+}
+unless(looks_like_number($pseudogene_length)){
+    print "The \$pseudogene_length variable is not numeric. Please ensure a numeric value is set for this variable and try again. Abort job!\n";
+    push(@numeric_check, $pseudogene_length);
+}
+unless(looks_like_number($nhmmer_plus)){
+    print "The \$nhmmer_plus variable is not numeric. Please ensure a numeric value is set for this variable and try again. Abort job!\n";
+    push(@numeric_check, $nhmmer_plus);
+}
+unless(looks_like_number($nhmmer_minus)){
+    print "The \$nhmmer_minus variable is not numeric. Please ensure a numeric value is set for this variable and try again. Abort job!\n";
+    push(@numeric_check, $nhmmer_minus);
+}
+if($default_phmmer_evalue =~ m/^no$/i){
+    unless(looks_like_number($phmmer_evalue)){
+	print "The \$phmmer_evalue variable is not numeric. Please ensure a numeric value is set for this variable and try again. Abort job!\n";
+	push(@numeric_check, $phmmer_evalue);
+    }
+}
+if($default_nhmmer_evalue =~ m/^no$/i){
+    unless(looks_like_number($nhmmer_evalue)){
+	print "The \$nhmmer_evalue variable is not numeric. Please ensure a numeric value is set for this variable and try again. Abort job!\n";
+	push(@numeric_check, $nhmmer_evalue);
+    }
+}
+
+if(scalar(@numeric_check > 0)){
+    die;
+}
+
+#1.2.5. Pseudogene names
+if($pseudogene_check =~ m/^yes$/i){
+    unless($annotation_short && $annotation_1 && $annotation_2 && $annotation_3 && $annotation_4 && $annotation_5 && $annotation_6){
+	print "The annotation variables are not set correctly. Please ensure all \$annotation variables are specified and try again. Abort job!\n";
+	die;
+    }
+}
+
+
+#######################################
+# 2. Automatically download files:
+#######################################
 
 #If automate download is set to yes, automatically download genome files
 if ($automate_download eq "Yes" || $automate_download eq "yes"){
