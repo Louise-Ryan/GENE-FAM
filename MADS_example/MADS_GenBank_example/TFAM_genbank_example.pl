@@ -267,6 +267,9 @@ if ($automate_download eq "Yes" || $automate_download eq "yes"){
 }
 
 
+##############################
+# 3.0 Prepare files
+#############################
 
 #Read in genome, nucleotide and protein files: 
 my @genomes=(<*$genome_suffix>); #read in multiple genome names
@@ -276,7 +279,8 @@ my @cds_transcripts = ();
 if ($cds_available eq "yes" || $cds_available eq "Yes"){
     @cds_transcripts = (<*$cds_suffix>);
 }
-#hmmer outfiles
+
+#HMMER files
 my $phmmer_out = "_phmmer.out"; #genome name will be appedned to this file within code so file will look like: genome_phmmer.out
 my $nhmmer_out ="_nhmmer.out"; #nhmmer outfile
 #Build hmms:
@@ -284,10 +288,20 @@ if ($annotation_available eq "yes" || $annotation_available eq "Yes"){
     `hmmbuild $phmm_profile $pfam_seed`;
 }
 `hmmbuild $nhmm_profile $nuc_alignment`; 
-#Run on each genome in directory
+
+
+####################################
+# 4. Run TFAM:
+####################################
+
 foreach my $genome(@genomes){
     my @genome_files = ();
     my @genome_IDs = ();
+    
+    ####################################################
+    # 4.1. Prepare output directories and  file names:
+    ####################################################
+
     unless ($genome =~ m/$cds_suffix/i){
 	print $genome."\n";
 	if ($genome =~ m/([\S]+).*\_$genome_suffix/){
@@ -317,10 +331,12 @@ foreach my $genome(@genomes){
 	    my $nhmmer_assembly_log = $genome_ID."_nhmmer_assembly_domain_log.txt";
 	    my $nhmmer_mads_domain_seqs = $genome_ID."_Domain_sequences_nuc.fa";
 	    my @hit_log = ();
-	    if ($annotation_available eq "yes" || $annotation_available eq "Yes"){
+	    if ($annotation_available =~ m/^yes$/i){
 		my $nucleotide_ID = "";
 		my $protein_ID = "";
 		my $cds = "";
+
+		# RNA file
 		foreach my $nucleotide(@nucleotide_transcripts){
 		    if ($nucleotide =~ m/([\S]+).*\_$nt_transcript_suffix/){
 			$nucleotide_ID = $1;
@@ -330,6 +346,8 @@ foreach my $genome(@genomes){
 			}
 		    }
 		}
+
+		# Protein file
 		foreach my $protein(@protein_transcripts){
 		    if ($protein =~ m/([\S]+).*\_$prot_transcript_suffix/){
 			$protein_ID = $1;
@@ -339,6 +357,8 @@ foreach my $genome(@genomes){
 			}
 		    }
 		}
+
+		# CDS file
 		if ($cds_available eq "yes" || $cds_available eq "Yes"){
 		    foreach my $cds(@cds_transcripts){
 			if ($cds =~ m/([\S]+).*\_$cds_suffix/){
@@ -350,51 +370,53 @@ foreach my $genome(@genomes){
 			}
 		    }
 		}
-		#phmmer:
+		
+		############################################
+		# 4.2. PHMMER on protein annotation files:
+		############################################
+		
 		my $nucleotide = $genome_files[0];
 		my $protein = $genome_files[1];
 		print $nucleotide."\n";
 		print $protein."\n";
-		if ($cds_available eq "yes" || $cds_available eq "Yes"){
+		if ($cds_available =~ m/^yes$/i){
 		    $cds = $genome_files[2];
 		    print $cds."\n";   
 		}
-		if($default_phmmer_evalue eq "yes"){
-		    `hmmsearch $phmm_profile $protein >> $phmmer_file`;
-		}else{
-		    `hmmsearch --incE $phmmer_evalue $phmm_profile $protein >> $phmmer_file`;
-		}
+		
+		##############
+		# Run phmmer #
+		##############
+		
 		print "\nrunning phmmer on protein annotations...\n\n";
-		my $phmmer_results;
-		open(PHMMER, $phmmer_file);
-		{
-		    local $/; #set delimiter to nothing, enables phmmer file to be read in as one chunk
-		    $phmmer_results = <PHMMER>; #store phmmer results
-		}
-		close PHMMER;
-		`esl-sfetch --index $protein`; #index protein transcripts
-		my $prot_ID = "";
-		my @phmm_array = split(/\>\>/, $phmmer_results);
-		my $phmmer_hit_chunk = $phmm_array[0];
-		my @phmmer_array2 = split("Description\n", $phmmer_hit_chunk);
-		my $phmmer_hit_chunk2 =  $phmmer_array2[1];
-		my @phmmer_hits = ();
-		if ($phmmer_hit_chunk2 =~ m/.*inclusion[\s]threshold.*/){
-		    my @phmmer_array3 = split("------ inclusion threshold ------", $phmmer_hit_chunk2);
-		    my $sig_phmmer_hits = $phmmer_array3[0];
-		    @phmmer_hits = split("\n", $sig_phmmer_hits);
-		    #shift(@phmmer_hits); #remove rubbish element 1
-		    shift(@phmmer_hits); #remove rubbish element 2
-		    pop(@phmmer_hits); #remove empty line at end
+		if($default_phmmer_evalue =~ m/^yes$/i){
+		    `hmmsearch $phmm_profile $protein >> $phmmer_file`;
 		}
 		else{
-		    my @phmmer_array3 = split("\n\nDomain", $phmmer_hit_chunk2);
-		    my $sig_phmmer_hits = $phmmer_array3[0];
-		    @phmmer_hits = split("\n", $sig_phmmer_hits);
-		    #shift(@phmmer_hits); #remove rubbish element 1
-		    shift(@phmmer_hits); #remove rubbish element 2
+		    `hmmsearch --incE $phmmer_evalue $phmm_profile $protein >> $phmmer_file`;
 		}
+
+		################################################
+		# Index the protein transcripts for esl-sfetch #
+		################################################
+		
+		`esl-sfetch --index $protein`;
+		
+		########################
+		# Parse phmmer results #
+		########################
+		
+		my @phmmer_hits =&parse_hmmer($phmmer_file);
+
+		
+		##################################################
+		# Write out hits to file (protein: all isoforms) #
+		##################################################
+		
 		foreach my $phit(@phmmer_hits){
+
+		    print "phit: $phit \n";
+		    
 		    $phit =~ s/[\s]+/\|/g;
 		    my @phmmdetails = split(/\|/, $phit);
 		    shift @phmmdetails;
@@ -403,17 +425,40 @@ foreach my $genome(@genomes){
 		    my $cmd = "esl-sfetch $protein $prot_ID >> $phmmer_prot_isoforms"; #fetch protein sequence
 		    #print $cmd."\n";
 		    `esl-sfetch $protein "$prot_ID" >> $phmmer_prot_isoforms`; #execute command
-		}				
+		}
+
+		
+		##############################################################
+		# 4.3. TBLASTN: Protein --> RNA
+		# Pull corresponding nucleotide rna sequences
+		# Database: rna annotations
+		# Query: target protein annotations identified with PHMMER
+		##############################################################
+
+		###############
+		# run tblastn #
+		###############
+		
 		my $tblastn_results;
 		`makeblastdb -in $nucleotide -dbtype="nucl" -out $transcript_db`;
 		`tblastn -db $transcript_db -query $phmmer_prot_isoforms -out $transcript_blastout`;
+
+		#############################
+		# Index the rna annotations #
+		#############################
+		
+		`esl-sfetch --index $nucleotide`; #index nucleotide transcripts
+
+		########################
+		# Parse tblastn output #
+		########################
+		
 		open(TBLASTN, $transcript_blastout);
 		{
 		    local $/; #  change line delimter to nothing - read in file as one chunk
 		    $tblastn_results = (<TBLASTN>);
 		}
 		close TBLASTN;
-		`esl-sfetch --index $nucleotide`; #index nucleotide transcripts
 		my @tblastn_hits = split(/Query\=/, $tblastn_results);
 		shift @tblastn_hits;
 		my @transcripts = (); #new
@@ -441,6 +486,11 @@ foreach my $genome(@genomes){
 					unless($loc ~~ @locs){
 					    push @locs, $loc;
 					}
+
+					#########################################################
+					# Write out rna annotations to file (rna: all isoforms) #
+					#########################################################
+					
 					my $cmd = "esl-sfetch $nucleotide $trans_id >> $transcript_nucleotide_isoforms";
 					#print $cmd."\n";
 					`esl-sfetch $nucleotide $trans_id >> $transcript_nucleotide_isoforms`;
@@ -450,42 +500,37 @@ foreach my $genome(@genomes){
 			}
 		    }
 		}
-		## mine nhmmer on transcripts here, then do longest transcript per loc
-		#print "\n nblast on transcripts ...\n";
-		if($default_nhmmer_evalue eq "yes"){
-		    `nhmmer $nhmm_profile $nucleotide >> $nhmmer_transcript_file`;
-		}else{
-		    `nhmmer --incE $nhmmer_evalue $nhmm_profile $nucleotide >> $nhmmer_transcript_file`;
-		}
+
+		##########################################################################################
+		# 4.4. NHMMER on rna transcripts
+		# Safety net, pick up any additional hits which were missed using phmmer or using tblastn 
+		##########################################################################################
+
+		##############
+		# Run NHMMER #
+		##############
+
 		print "running nhmmer on mRNA transcripts ...\n\n";
-		my $nhmmer_t_results = "";
-		open(NHMMER_T, $nhmmer_transcript_file);
-		{
-		    local$/;
-		    $nhmmer_t_results = <NHMMER_T>;
-		}
-		close NHMMER_T;
-		my @nhmm_t_array = split(/\>\>/, $nhmmer_t_results);
-		my $nhmmer_t_hit_chunk = $nhmm_t_array[0];
-		my @nhmm_t_array2 = split("Description\n", $nhmmer_t_hit_chunk);
-		my $nhmmer_t_hit_chunk2 = $nhmm_t_array2[1];
-		my @nhmmer_t_hits = ();
-		if ($nhmmer_t_hit_chunk2 =~ m/.*inclusion[\s]threshold.*/){
-		    my @nhmmer_t_array3 = split("------ inclusion threshold ------", $nhmmer_t_hit_chunk2);
-		    my $sig_nhmmer_t_hits = $nhmmer_t_array3[0];
-		    @nhmmer_t_hits = split("\n", $sig_nhmmer_t_hits);
-		   # shift(@nhmmer_t_hits);
-		    shift(@nhmmer_t_hits);
-		    pop(@nhmmer_t_hits);
+		if($default_nhmmer_evalue =~ m/^yes$/i){
+		    `nhmmer $nhmm_profile $nucleotide >> $nhmmer_transcript_file`;
 		}
 		else{
-		    my @nhmmer_t_array3 = split("\n\n", $nhmmer_t_hit_chunk2);
-		    my $sig_nhmmer_t_hits = $nhmmer_t_array3[0];
-		    @nhmmer_t_hits = split("\n", $sig_nhmmer_t_hits);
-		   # shift(@nhmmer_t_hits);
-		    shift(@nhmmer_t_hits);
+		    `nhmmer --incE $nhmmer_evalue $nhmm_profile $nucleotide >> $nhmmer_transcript_file`;
 		}
+
+		########################
+		# Parse NHMMER results #
+		########################
+	        
+		my @nhmmer_t_hits =&parse_hmmer($nhmmer_transcript_file);
+	
+
+		#################################################################
+		# Write out any new rna transcripts to file (rna, all isoforms) #
+		#################################################################
+		
 		foreach my $trans_hit(@nhmmer_t_hits){
+		    print "trans hit: $trans_hit \n";
 		    $trans_hit =~ s/[\s]+/\|/g;
 		    my @nhmmtdetails = split(/\|/, $trans_hit);
 		    shift(@nhmmtdetails);
@@ -497,7 +542,16 @@ foreach my $genome(@genomes){
 			`esl-sfetch $nucleotide $transcript_ID >> $transcript_nucleotide_isoforms`;
 		   }
 		}
-		#################################################################################################
+
+		#############################################
+		# 4.5. Pull longest isoform per locus       #
+		# RNA --> CDS nucleotide --> CDS protein    #
+		#############################################
+
+		###################################################
+		# Parse fasta (convert to parsefasta subroutine) #
+		###################################################
+
 		#pull only unique locs, longest transcript
 		my $transcript_file;
 		open(TRANSCRIPTS, $transcript_nucleotide_isoforms);
@@ -517,6 +571,11 @@ foreach my $genome(@genomes){
 			    my $tseq = $2;
 			    my $tID ="";
 			    my $locID ="";
+
+			    ##########################
+			    #  Get sequence length   #
+			    ##########################
+			    
 			    my $tlength = length($tseq);
 			    if ($theader =~ m/\>([\S]+)?\s.*/){
 				$tID = $1;
@@ -529,18 +588,40 @@ foreach my $genome(@genomes){
 			    }	
 			}
 		    }
+
+		    ########################################
+		    #Sort hash to order isoforms by length #
+		    ########################################
+		    
 		    foreach my $traID(sort { $transcript_lengths{$a} <=> $transcript_lengths{$b} or $a cmp $b } keys %transcript_lengths){
 			#print $transcript_lengths{$traID}."\n";
 			push(@uniquelocs, $traID);
 		    }
+		    
+		    #######################################################################
+		    # Pull the longest isoform and write to file (rna, longest isoforms)  #
+		    #######################################################################
+		    
 		    my $longest_transcript = pop(@uniquelocs);
 		    `esl-sfetch $nucleotide $longest_transcript >> $unique_longest_transcripts_out`;
 		}
-		#################################################################################################
-		#blast nucleotide transcripts to assembly
+
+
+		################################################################
+		# Blast longest rna transcripts to assembly to get coordinates #
+		################################################################
+
+		##########################################################
+		# Blast longest rna transcripts against genome assembly  #
+		##########################################################
+		
 		`makeblastdb -in $genome -dbtype="nucl" -out $nblast_db`; #make blast database using query genome
 		`blastn -db $nblast_db -query $unique_longest_transcripts_out -out $nblastout`; #blast assembly with nhmmer results
-		#get coordinates
+
+		###########################################
+		# Parse blastn results to get coordinates #
+		###########################################
+    
 		my $nblast_results;
 		my @block_coordinates = ();
 		my $contig;
@@ -593,15 +674,26 @@ foreach my $genome(@genomes){
 		    #print $coordinates."\n";
 		    push @block_coordinates, $coordinates;
 		}
-		#####################################################################################################
-		#mine cds and output
-		#mine corresponding proteins (longest proteins) and output
-		if ($cds_available eq "yes" || $cds_available eq "Yes"){
+
+		#######################
+		# mine cds and output #
+		#######################
+		
+		###############################################################
+		# Blast longest rna transcripts against cds_from_genomic file #
+		###############################################################
+		
+		if ($cds_available =~ m/^yes$/i){
 		    `makeblastdb -in $cds -dbtype="nucl" -out $nblast_cds_db`;
 		    `blastn -db $nblast_cds_db -query $unique_longest_transcripts_out -out $nblast_cds`;
 		    `esl-sfetch --index $cds`;
 		    my $cds_blasthits = "";
 		    my @identifiers_cds = ();
+
+		    ########################
+		    # Parse blastn results #
+		    ########################
+		    
 		    open(CDSBLAST, $nblast_cds);
 		    {
 			local $/;
@@ -623,8 +715,14 @@ foreach my $genome(@genomes){
 				    $identifier =~ s/\>//g;
 				    unless($identifier ~~ @identifiers_cds){
 					#print $identifier."\n";
+
+					#########################################################
+					# Write CDS annotations to file (CDS, longest isoforms) #
+					#########################################################
+					
 					`esl-sfetch $cds \"$identifier\" >> $cds_nuc`;
 					push(@identifiers_cds, $identifier);
+					
 				    }
 				}
 			    }
@@ -640,6 +738,12 @@ foreach my $genome(@genomes){
 				my $protein_cds = $1;
 				unless($protein_cds ~~ @identifiers_protein_cds){
 				    #print "get $protein_cds !\n";
+
+				    #################################################################
+				    # Use CDS identifiers to pull corresponding proteins            #
+				    # Write protein annotations to file (protein, longest isoforms) #
+				    #################################################################
+				    
 				    `esl-sfetch $protein $protein_cds >> $cds_prot`;
 				    push(@identifiers_protein_cds, $protein_cds);
 				}
@@ -648,9 +752,19 @@ foreach my $genome(@genomes){
 		    }
 		}
 		close CDS;
-		#####################################################################################################
+
+		####################################################################
+		# 4.6. NHMMER on genome assembly to predict novel unannotated hits #
+		####################################################################
+		
 		#nhmmer on assembly to discover new hits
 		#nhmmer then discount anything which overlaps with existing coordinates
+
+
+		##########################
+		# Run nhmmer on assembly #
+		##########################
+		
 		print "running nhmmer on whole assembly to pull new hits ...\n\n";
 		`esl-sfetch --index $genome`; #index genomefile
 		my @nhmmer_coordinates = ();
@@ -659,34 +773,20 @@ foreach my $genome(@genomes){
 		}else{
 		    `nhmmer --incE $nhmmer_evalue $nhmm_profile $genome >> $nhmmer_file`;
 		}
-		my $nhmmer_results;
-		open(NHMMER, $nhmmer_file);
-		{
-		    local $/;
-		    $nhmmer_results = <NHMMER>;
-		}
-		close NHMMER;
-		my @nhmm_array = split(/\>\>/, $nhmmer_results);
-		my $nhmmer_hit_chunk = $nhmm_array[0];
-		my @nhmmer_array2 = split("Description\n", $nhmmer_hit_chunk);
-		my $nhmmer_hit_chunk2 =  $nhmmer_array2[1];
-		my @nhmmer_hits = ();
-		if ($nhmmer_hit_chunk2 =~ m/.*inclusion[\s]threshold.*/){
-		    my @nhmmer_array3 = split("------ inclusion threshold ------", $nhmmer_hit_chunk2);
-		    my $sig_nhmmer_hits = $nhmmer_array3[0];
-		    @nhmmer_hits = split("\n", $sig_nhmmer_hits);
-		    #shift(@nhmmer_hits); #remove rubbish element
-		    shift(@nhmmer_hits); #remove rubbish element
-		    pop(@nhmmer_hits); #remove empty line at end
-		}else{
-		    my @nhmmer_array3 = split("\n\n", $nhmmer_hit_chunk2);
-		    my $sig_nhmmer_hits = $nhmmer_array3[0];
-		    #print $sig_nhmmer_hits."\n";
-		    @nhmmer_hits = split("\n", $sig_nhmmer_hits);
-		    #shift(@nhmmer_hits); #remove rubbish element
-		    shift(@nhmmer_hits); #remove rubbish element
-		}
+
+		########################
+		# Parse nhmmer results #
+		########################
+		
+		my @nhmmer_hits=&parse_hmmer($nhmmer_file);
+
+		
+		####################
+		# Get coordinates  #
+		####################
+		
 		foreach my $nhit(@nhmmer_hits){
+		    print "This is nhit $nhit \n";
 		    my $ntmp;
 		    $nhit =~ s/[\s]+/\|/g;
 		    my @nhmmdetails = split(/\|/, $nhit);
@@ -697,6 +797,11 @@ foreach my $genome(@genomes){
 		    my $nhmm_hit = $ncontig."|".$nstart."|".$nend;
 		    push @nhmmer_coordinates, $nhmm_hit;
 		}
+
+		#####################################################
+		# Infer forward/reverse strand based on coordinates #
+		#####################################################
+		
 		open(OUT, ">>$nhmmer_assembly_log");
 		foreach my $nhmm_locus(@nhmmer_coordinates){
 		    my $overlap = "";
@@ -717,6 +822,12 @@ foreach my $genome(@genomes){
 			$strand = "pos";
 		    }
 		    my $nhit_length = $end_n - $start_n;
+
+		    ###################################################
+		    # Check if hit overlaps with existing annotations #
+		    # Only report as 'novel' if no overlap            #
+		    ###################################################
+		    
 		    foreach my $stored_hits(@block_coordinates){
 			my $min_coord = "";
 			my $max_coord = "";
@@ -748,6 +859,12 @@ foreach my $genome(@genomes){
 			    }
 			}
 		    }
+		    
+		    ####################################################################
+		    # If novel hit (not overlapping), print nucleotide range to file   #
+		    # Also print domain range to file                                  #
+		    ####################################################################
+		    
 		    if($overlap ne "Y"){
 			my $contig_out = "contig.fa";
 			my $contig_seq = "";
@@ -775,6 +892,11 @@ foreach my $genome(@genomes){
 			#print $nhmm_dets."\n";
 			#print "new hit: ";
 			my $dom_range = $start_n."\.\.".$end_n;
+
+			########################################################
+			# Reverse strand: Esl-sfetch range and output to files #
+			########################################################
+			
 			if ($strand eq "rev"){
 			    $start_n -= $nhmmer_plus; #3' end is $start (hence - plus)
 			    if($start_n < 1){
@@ -792,6 +914,11 @@ foreach my $genome(@genomes){
 			    my $cmd2 = "esl-sfetch -c $dom_range -r $genome $contig_n >> $nhmmer_mads_domain_seqs ";
 			    `$cmd2`;
 			}
+
+			#########################################################
+			# Positive strand: Esl-sfetch range and output to files #
+			#########################################################
+			
 			elsif($strand eq "pos"){
 			    $start_n -= $nhmmer_minus;
 			    if($start_n < 1){
@@ -812,6 +939,11 @@ foreach my $genome(@genomes){
 			#print $contig_n."...". $start_n."...".$end_n."\n";
 		    }
 		}
+
+		###################################################
+		# Make outout directories and tidy existing files #
+		###################################################
+		
 		`mkdir $subdir`;
 		`mkdir $subdir2`;
 		`mv $nhmmer_file $phmmer_file $nhmmer_transcript_file $subdir`; #$nhmm_profile #phmm_profile add this to remove, I just don't have alignment 
@@ -823,42 +955,41 @@ foreach my $genome(@genomes){
 		`rm $transcript_db* $nblast_db* $nblast_cds_db* *nblast.out *tblastn.out $nblast_cds`;
 		`rm *ssi`;
 	    }
-	    else{ #only run nhmmer on assembly
+
+	    ############################################################
+	    # If no annotations available, run nhmmer on assembly      #
+	    # No need to check for overlap as no existing annotations  #
+	    ############################################################
+	    
+	    else{
+		
+		##########################
+		# Run NHMMER on assembly #
+		##########################
+		
 		print "running nhmmer on whole assembly to pull hits ...\n\n";
 		`esl-sfetch --index $genome`;
 		my @nhmmer_coordinates = ();
-		if($default_nhmmer_evalue eq "yes"){
+		if($default_nhmmer_evalue =~ m/^yes$/i){
 		    `nhmmer $nhmm_profile $genome >> $nhmmer_file`;
-		}else{
+		}
+		else{
 		    `nhmmer --incE $nhmmer_evalue $nhmm_profile $genome >> $nhmmer_file`;
 		}
-		my $nhmmer_results;
-		open(NHMMER, $nhmmer_file);
-		{
-		    local $/;
-		    $nhmmer_results = <NHMMER>;
-		}
-		close NHMMER;
-		my @nhmm_array = split(/\>\>/, $nhmmer_results);
-		my $nhmmer_hit_chunk = $nhmm_array[0];
-		my @nhmmer_array2 = split("Description\n", $nhmmer_hit_chunk);
-		my $nhmmer_hit_chunk2 =  $nhmmer_array2[1];
-		my @nhmmer_hits = ();
-		if ($nhmmer_hit_chunk2 =~ m/.*inclusion[\s]threshold.*/){
-		    my @nhmmer_array3 = split("------ inclusion threshold ------", $nhmmer_hit_chunk2);
-		    my $sig_nhmmer_hits = $nhmmer_array3[0];
-		    @nhmmer_hits = split("\n", $sig_nhmmer_hits);
-		    #shift(@nhmmer_hits); #remove rubbish element
-		    shift(@nhmmer_hits); #remove rubbish element
-		    pop(@nhmmer_hits); #remove empty line at end
-		}else{
-		    my @nhmmer_array3 = split("\n\n", $nhmmer_hit_chunk2);
-		    my $sig_nhmmer_hits = $nhmmer_array3[0];
-		    @nhmmer_hits = split("\n", $sig_nhmmer_hits);
-		    #shift(@nhmmer_hits); #remove rubbish element
-		    shift(@nhmmer_hits); #remove rubbish element
-		}
+
+		########################
+		# Parse NHMMER results #
+		########################
+		
+		my @nhmmer_hits =&parse_hmmer($nhmmer_file);
+
+		
+		####################
+		# Get coordinates  #
+		####################
+		
 		foreach my $nhit(@nhmmer_hits){
+		    print "This is nhit: $nhit \n";
 		    my $ntmp;
 		    $nhit =~ s/[\s]+/\|/g;
 		    my @nhmmdetails = split(/\|/, $nhit);
@@ -869,6 +1000,12 @@ foreach my $genome(@genomes){
 		    my $nhmm_hit = $ncontig."|".$nstart."|".$nend;
 		    push @nhmmer_coordinates, $nhmm_hit;
 		}
+
+		
+		#####################################################
+		# Infer forward/reverse strand based on coordinates #
+		#####################################################
+		
 		open(OUT, ">>$nhmmer_assembly_log");
 		foreach my $nhmm_locus(@nhmmer_coordinates){
 		    #print OUT $nhmm_locus."\n";
@@ -887,7 +1024,12 @@ foreach my $genome(@genomes){
 		    else{
 			$strand = "pos";
 		    }
-		    #ensure that limit is not surpassed:
+
+		    ####################################################################
+		    # Print nucleotide range to file                                   #
+		    # Also print domain range to file                                  #
+		    ####################################################################
+		    
 		    my $contig_out = "contig.fa";
 		    my $contig_seq = "";
 		    my $contig_length = "";
@@ -911,6 +1053,11 @@ foreach my $genome(@genomes){
 		    }
 		    my $nhmm_dets = $nhmm_locus."|".$contig_length;
 		    print OUT $nhmm_dets."\n";
+
+		    ########################################################
+		    # Reverse strand: Esl-sfetch range and output to files #
+		    ########################################################
+		    
 		    if($strand eq "rev"){
 			my $range_domain = $start_n."\.\.".$end_n;
 			my $cmd1 = "esl-sfetch -c $range_domain -r $genome $contig_n >> $nhmmer_mads_domain_seqs";
@@ -930,6 +1077,11 @@ foreach my $genome(@genomes){
 			#print $cmd."\n";
 			`$cmd`;
 		    }
+
+		    ########################################################
+		    # Forward strand: Esl-sfetch range and output to files #
+		    ########################################################
+		    
 		    elsif($strand eq "pos"){
 			my $range_domain = $start_n."\.\.".$end_n;
 			my $cmd1 = "esl-sfetch -c $range_domain $genome $contig_n >> $nhmmer_mads_domain_seqs";
@@ -952,14 +1104,34 @@ foreach my $genome(@genomes){
 		    #print $contig_n."...". $start_n."...".$end_n."\n";
 		}
 		close OUT;
+
+		###################################################
+		# Make outout directories and tidy existing files #
+		###################################################
+		
 		my $subdir = $outdir."/hmmer_files";
 		`mkdir $subdir`;
 		`mv $nhmmer_file $subdir`;
 		`rm *ssi`;
 	    }
+
+	    #######################################
+	    # 4.7. Predict new hits with AUGUSTUS #
+	    #######################################
+	    
 	    if ($predict_new_hits eq "Yes" || $predict_new_hits eq "yes"){
 		print "running augustus to predict new unannotated hits ...\n\n";
+
+		###################################################################
+		# Index the reference file, this is used to guide gene prediction #
+		###################################################################
+		
 		`esl-sfetch --index $reference_file`;
+
+		##################################################
+		# Parse fasta: nucleotide +/- range for augustus #
+		##################################################
+		
 		my @seqs = ();
 		my $sequences = "";
 		my $seq_db_pre = $genome_ID."_";
@@ -971,6 +1143,11 @@ foreach my $genome(@genomes){
 		}
 		close SEQS;
 		@seqs = split (/\>/, $sequences);
+
+		##################################
+		# Get domain ranges from outfile #
+		##################################
+		
 		open(IN,  $nhmmer_assembly_log);
 		my $domain_det_list = "";
 		{
@@ -983,10 +1160,20 @@ foreach my $genome(@genomes){
 		#    $detail =~ s/\n//;
 		#    print $detail."\n";
 		#}
+
+		######################################################################
+		# Iterate over each novel hit and feed into augustus for predictions #
+		######################################################################
+		
 		foreach my $seq(@seqs){
 		    if($seq =~ m/(.*)\n([\S\n]+)/){
 			my $seq_header = $1;
 			my $seq_nt = $2;
+
+			###########################
+			# Get domain coordinates  #
+			###########################
+			
 			my $domain_info = $domain_details[0];
 			my @info = split(/\|/, $domain_info);
 			my $contig_name = $info[0];
@@ -1030,21 +1217,50 @@ foreach my $genome(@genomes){
 			$domain_ecoord = $domain_scoord + $domain_length;
 			$domain_start = $domain_scoord;
 			$domain_end = $domain_ecoord;
+
+			########################### 
+			# Prepare sequence header #
+			###########################
+			
 			$seq_header =~ s/\//\_/g;  #NC_044377.1/77156829-77158035 Cannabis sativa chromosome 6,
 			$seq_header =~ s/\-/\_/g;
 			$seq_header = ">Hit".$hit_no."_".$seq_header;
 			my $tmp_out = "tmp.fa";
+
+
+			#######################################################
+			# Print hit +/- range to file and feed into augustus  #
+			#######################################################
+			
 			open(OUT, ">$tmp_out");
 			print OUT $seq_header."\n".$seq_nt;
 			close OUT;
+
+			############################
+			# Prepare augustus files   #
+			############################
 			my $reference = "";
 			my $psl = "Hit".$hit_no."_ref.psl";
 			my $hints = "Hit".$hit_no."_hints.gff";
 			my $reference_outseq = "Hit".$hit_no."_ref.fa";
 			my $prediction_gff = "Hit".$hit_no."prediction_out.gff";
+
+			##########################################################################
+			# Use blat and blat2hints to generate hints for augustus gene prediction #
+			##########################################################################
 			`blat -minIdentity=$minidentity $tmp_out $reference_file $psl`;
 			`perl blat2hints.pl --in=$psl --out=$hints`;
+
+			#################
+			# Run AUGUSTUS  #
+			#################
+			
 			system("augustus --species=$augustus_species --strand=forward --codingseq=on --softmasking=0 --hintsfile=$hints --extrinsicCfgFile=extrinsic.ME.cfg $tmp_out > $prediction_gff");
+
+			##############################
+			# Parse AUGUSTUS predictions #
+			##############################
+			
 			my $prediction_in = "";
 			open(AUG, $prediction_gff);
 			{
@@ -1061,6 +1277,11 @@ foreach my $genome(@genomes){
 			    #`echo \"$hit_details\" >> predictions_log_ALL.gff`;
 			    #`echo \"$pred\" >> predictions_log_ALL.gff`;
 			    #print "prediction: $pred \n";
+
+			    ##########################
+			    # Get prediction details #
+			    ##########################
+			    
 			    my @pred_split = split (/#[\s]protein[\s]sequence/, $pred);
 			    my $gene_cds_details = $pred_split[0];
 			    my $protein_details = $pred_split[1];
@@ -1090,39 +1311,56 @@ foreach my $genome(@genomes){
 			    $pred_end = $prediction_coords[1];
 			    #print "Prediction start: $pred_start \n";
 			    #print "Prediction end: $pred_end \n";
+
+			    #####################################################################
+			    # Check that prediction overlaps with target DOMAIN (NHMMER COORDS) #
+			    #####################################################################
+			    
 			    if($pred_end > $domain_end){
 				$maximum_end = $pred_end;
-			#	print "Maximum end is pred end: $pred_end \n";
+				# print "Maximum end is pred end: $pred_end \n";
 			    }else{
 				$maximum_end = $domain_end;
-			#	print "Maximum end is domain end: $domain_end \n";
+				# print "Maximum end is domain end: $domain_end \n";
 			    }
 			    if($pred_start < $domain_start){
 				$minimum_start = $pred_start;
-			#	print "Minimum start is pred start: $pred_start \n";
-			    }else{
+				# print "Minimum start is pred start: $pred_start \n";
+			    }
+			    else{
 				$minimum_start = $domain_start;
-			#	print "Minimum start is domain start: $domain_start \n";
+				# print "Minimum start is domain start: $domain_start \n";
 			    }
 			    $prediction_length = ($pred_end - $pred_start) +1;
 			    $total_length3 = $prediction_length + $domain_length;
 			    $max_span3 = ($maximum_end - $minimum_start) +1;
 			    if ($max_span3 < $total_length3){
-			#	print "we want this prediction!\n";
-				#print $gd."\n";
+				# print "we want this prediction!\n";
+				# print $gd."\n";
 				$prediction_found = 1;
 				my $hit_details = "Hit".$hit_no." prediction:\n";
 				`echo \"-----------------------------\n\" >> predictions_log.gff`;
 				`echo \"$hit_details\" >> predictions_log.gff`;
 				`echo \"$pred\" >> predictions_log.gff`;
-			    }else{
+			    }
+			    else{
 				$prediction_found = 0;
 			    }
 			    $protein_details =~ s/\n//g;
 			    $cds_details =~ s/\n//g;
+
+			    #################################################################
+			    # If prediction overlaps with NHMMER coordinates, print to file #
+			    #################################################################
+
 			    if ($prediction_found  == 1){
 				my $cds_header = ">Hit".$hit_no."_new_augustus_prediction\n";
 				my $hit_annotation = "Hit".$hit_no;
+
+				#######################
+				# CDS nucleotide file #
+				#######################
+				
 				open(CDS_NT, ">>$cds_final_nuc");
 				if ($cds_details =~ m/\[([^\]]+)\]/){
 				    my $cds_seq = $1;
@@ -1135,6 +1373,11 @@ foreach my $genome(@genomes){
 				    print CDS_NT $cds_header.$cds_seq."\n";
 				}
 				close CDS_NT;
+
+				#######################
+				# CDS protein file #
+				#######################
+				
 				open(CDS_PROT, ">>$cds_final_prot");
 				if ($protein_details =~ m/\[([^\]]+)\]/){
 				    my $protein_seq = $1;
@@ -1149,8 +1392,18 @@ foreach my $genome(@genomes){
 			}
 		    }
 		}
+		
+		##############################
+		# Remove the temporary files #
+		##############################
+		
 		`rm Hit* *ssi tmp.fa`;
 		my @domain_seqs = "";
+
+		######################################
+		# Print out domain sequences to file #
+		######################################
+		
 		if(-e $nhmmer_mads_domain_seqs){
 		    open(DOMAINS,$nhmmer_mads_domain_seqs);
 		    {
@@ -1170,9 +1423,7 @@ foreach my $genome(@genomes){
 			}
 		    }
 		    close DOMAINS;
-		#foreach my $n(@hit_log){
-		#    print "n: $n \n";
-		#}
+	       
 		    my $tmp_doms = "tmp_doms.fa";
 		    open(DOMS, ">>$tmp_doms");
 		    foreach my $domain(@domain_seqs){
@@ -1190,6 +1441,11 @@ foreach my $genome(@genomes){
 		    `mv $tmp_doms $nhmmer_mads_domain_seqs`;
 		}
 	    }
+
+	    ###############################################################
+	    # 4.8. Assign pseudogene/functional status to all predictions #
+	    ###############################################################
+	    
 	    if ($pseudogene_check eq "yes" || $pseudogene_check eq "Yes"){
 		print "Annotating hits with functional or pseudogene status ...\n\n";
 		open(CDS, $cds_final_nuc);
@@ -1243,6 +1499,11 @@ foreach my $genome(@genomes){
 		}
 		`mv $out $cds_final_nuc`;
 	    }
+
+	    ################################
+	    # 4.9. Sort output directories #
+	    ################################
+	    
 	    if(-e $nhmmer_nucleotide_sequences){
 		my $subdir4 = $outdir."/unnanotated_hits";
 		`mkdir $subdir4`;
@@ -1271,6 +1532,11 @@ foreach my $genome(@genomes){
 	}
     }
 }
+
+##################################
+# 5.0 CLEAN up working directory #
+##################################
+
 if ($annotation_available eq "yes" || $annotation_available eq "Yes"){
     `for dir in *outfiles; do cp $phmm_profile \$dir/hmmer_files;done`;
     `for dir in *outfiles; do cp $nhmm_profile \$dir/hmmer_files;done`;
@@ -1281,7 +1547,13 @@ else{
     `for dir in *outfiles; do cp $nhmm_profile \$dir/hmmer_files;done`;
     `rm $nhmm_profile`;
 }
+
 print "Complete!\n";
+
+
+################
+# SUBROUTINES: #
+################
 
 sub checkframe{
     my $status=0; #holds annotation status 
@@ -1421,4 +1693,36 @@ sub downloadGenomes {
 	}
     }
     return @status;
+}
+
+
+sub parse_hmmer{
+    my $hmmer_file = $_[0];
+    print "This is hmmer_file: $hmmer_file \n";
+    my $hmmer_results;
+    open(HMMER, $hmmer_file);
+    {
+	local $/; #set delimiter to nothing, enables phmmer file to be read in as one chunk
+	$hmmer_results = <HMMER>; #store phmmer results
+    }
+    close HMMER;
+    my @hmm_array = split(/\>\>/, $hmmer_results);
+    my $hmmer_hit_chunk = $hmm_array[0];
+    my @hmmer_array2 = split("Description\n", $hmmer_hit_chunk);
+    my $hmmer_hit_chunk2 =  $hmmer_array2[1];
+    my @hmmer_hits = ();
+    if ($hmmer_hit_chunk2 =~ m/.*inclusion[\s]threshold.*/){
+	my @hmmer_array3 = split("------ inclusion threshold ------", $hmmer_hit_chunk2);
+	my $sig_hmmer_hits = $hmmer_array3[0];
+	@hmmer_hits = split("\n", $sig_hmmer_hits);
+	shift(@hmmer_hits); #remove rubbish element 
+	pop(@hmmer_hits); #remove empty line at end
+    }
+    else{
+	my @hmmer_array3 = split("\n\nDomain", $hmmer_hit_chunk2);
+	my $sig_hmmer_hits = $hmmer_array3[0];
+	@hmmer_hits = split("\n", $sig_hmmer_hits);
+	shift(@hmmer_hits); #remove rubbish element 1
+    }
+    return @hmmer_hits;
 }
