@@ -414,9 +414,6 @@ foreach my $genome(@genomes){
 		##################################################
 		
 		foreach my $phit(@phmmer_hits){
-
-		    print "phit: $phit \n";
-		    
 		    $phit =~ s/[\s]+/\|/g;
 		    my @phmmdetails = split(/\|/, $phit);
 		    shift @phmmdetails;
@@ -530,7 +527,6 @@ foreach my $genome(@genomes){
 		#################################################################
 		
 		foreach my $trans_hit(@nhmmer_t_hits){
-		    print "trans hit: $trans_hit \n";
 		    $trans_hit =~ s/[\s]+/\|/g;
 		    my @nhmmtdetails = split(/\|/, $trans_hit);
 		    shift(@nhmmtdetails);
@@ -786,7 +782,6 @@ foreach my $genome(@genomes){
 		####################
 		
 		foreach my $nhit(@nhmmer_hits){
-		    print "This is nhit $nhit \n";
 		    my $ntmp;
 		    $nhit =~ s/[\s]+/\|/g;
 		    my @nhmmdetails = split(/\|/, $nhit);
@@ -989,7 +984,6 @@ foreach my $genome(@genomes){
 		####################
 		
 		foreach my $nhit(@nhmmer_hits){
-		    print "This is nhit: $nhit \n";
 		    my $ntmp;
 		    $nhit =~ s/[\s]+/\|/g;
 		    my @nhmmdetails = split(/\|/, $nhit);
