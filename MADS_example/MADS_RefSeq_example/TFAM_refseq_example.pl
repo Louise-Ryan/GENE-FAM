@@ -436,7 +436,6 @@ foreach my $genome(@genomes){
 		# run tblastn #
 		###############
 		
-		my $tblastn_results;
 		`makeblastdb -in $nucleotide -dbtype="nucl" -out $transcript_db`;
 		`tblastn -db $transcript_db -query $phmmer_prot_isoforms -out $transcript_blastout`;
 
@@ -449,53 +448,22 @@ foreach my $genome(@genomes){
 		########################
 		# Parse tblastn output #
 		########################
+	
+		my ($ref_array1, $ref_array2) =&parse_tblastn($transcript_blastout);
 		
-		open(TBLASTN, $transcript_blastout);
-		{
-		    local $/; #  change line delimter to nothing - read in file as one chunk
-		    $tblastn_results = (<TBLASTN>);
-		}
-		close TBLASTN;
-		my @tblastn_hits = split(/Query\=/, $tblastn_results);
-		shift @tblastn_hits;
-		my @transcripts = (); #new
-		my @locs = ();
-		foreach my $query(@tblastn_hits){
-		    my @queryhits = split(/\>/, $query);
-		    my $continue = 1;
-		    for(my $i=0;$i<scalar(@queryhits);$i++){
-			my $tophit =">".$queryhits[$i]; #not element zero, this is the string before first hit
-			if ($tophit =~ m/Identities[\s]+\=[\s]+([0-9]+)\/([0-9]+)[\s]+\(([0-9]+).*\)/){
-			    my $identity = $3;
-			    if ($identity eq 100){
-				if ($tophit =~ m/(\>[\S]+)?\s.*/){
-				    my $trans_id = $1;
-				    $trans_id =~ s/\>//g;
-				    my $loc = "";
-				    if ($tophit =~ m/\(([\S]+)\)/){
-					$loc = $1;
-				    }
-				    if ($trans_id ~~ @transcripts){
-				    }
-				    else{	
-					#print $trans_id."\n";
-					push @transcripts, $trans_id; #new
-					unless($loc ~~ @locs){
-					    push @locs, $loc;
-					}
+		# Dereference the arrays
+		my @transcripts = @$ref_array1;
+		my @locs = @$ref_array2;
+	    
+		
+		#########################################################
+		# Write out rna annotations to file (rna: all isoforms) #
+		#########################################################
 
-					#########################################################
-					# Write out rna annotations to file (rna: all isoforms) #
-					#########################################################
-					
-					my $cmd = "esl-sfetch $nucleotide $trans_id >> $transcript_nucleotide_isoforms";
-					#print $cmd."\n";
-					`esl-sfetch $nucleotide $trans_id >> $transcript_nucleotide_isoforms`;
-				    }
-				}
-			    }
-			}
-		    }
+		foreach my $trans_id(@transcripts){
+		    my $cmd = "esl-sfetch $nucleotide $trans_id >> $transcript_nucleotide_isoforms";
+		    #print $cmd."\n";
+		    `esl-sfetch $nucleotide $trans_id >> $transcript_nucleotide_isoforms`;
 		}
 
 		##########################################################################################
@@ -549,25 +517,21 @@ foreach my $genome(@genomes){
 		###################################################
 
 		#pull only unique locs, longest transcript
-		my $transcript_file;
-		open(TRANSCRIPTS, $transcript_nucleotide_isoforms);
-		{
-		    local $/;
-		    $transcript_file = <TRANSCRIPTS>;
-		}
-		close TRANSCRIPTS;
-		my @transcript_seqs = split(/\>/, $transcript_file);
+	
+		my @transcript_seqs =&parse_fasta($transcript_nucleotide_isoforms);
+
+		
 		foreach my $LOC(@locs){
 		    my @uniquelocs = ();
 		    #print $LOC."-----------------------\n";
 		    my %transcript_lengths;
 		    foreach my $tseq(@transcript_seqs){
-			if($tseq =~ m/(.*)\n([\S\n]+)/){
+			if($tseq =~ m/\>(.*)\n([\S\n]+)/){
 			    my $theader = ">".$1;
 			    my $tseq = $2;
 			    my $tID ="";
 			    my $locID ="";
-
+			    
 			    ##########################
 			    #  Get sequence length   #
 			    ##########################
@@ -617,59 +581,9 @@ foreach my $genome(@genomes){
 		###########################################
 		# Parse blastn results to get coordinates #
 		###########################################
-    
-		my $nblast_results;
-		my @block_coordinates = ();
-		my $contig;
-		my $start;
-		my $end;
-		my $coordinates;
-		open(BLASTN, $nblastout);
-		{
-		    local $/;
-		    $nblast_results = <BLASTN>;
-		}
-		close BLASTN;
-		my @blastn_hits = split(/Query\=/, $nblast_results);
-		shift @blastn_hits;
-		foreach my $query(@blastn_hits){
-		    my @start_coords = ();
-		    my @end_coords = ();
-		    my $tmp;
-		    my @queryhits = split(/\>/, $query);
-		    my $tophit =">".$queryhits[1]; #not element zero, this is the string before first
-		    my @exon_hits = split(/Score/, $tophit);
-		    my $contig_details = $exon_hits[0];
-		    if ($contig_details =~ m/\>([\S]+)?\s.*/){
-			$contig = $1;
-		    }
-		    shift(@exon_hits);
-		    foreach my $exon(@exon_hits){
-			if ($exon =~ m/Identities[\s]+\=[\s]+([0-9]+)\/([0-9]+)[\s]+\(([0-9]+).*\)/){
-			    #print "this is an exon:\n$exon\n"; 
-			    if($exon=~m/Sbjct[\s]+([0-9]+)/){
-				$start = $1;
-			    }
-			    while($exon=~s/Sbjct[\s]+[0-9]+[\s]+[\S]+[\s]+([0-9]+)//){
-				$end = $1;
-			    }
-			    if($start > $end){
-				$tmp = $start;
-				$start = $end;
-				$end = $tmp;
-			    }
-			    push(@start_coords, $start);
-			    push(@end_coords, $end);
-			}#we want gene start and end, not exon start and end - so we block out intronic regions too
-		    }
-		    my @sorted_start = sort { $a <=> $b } @start_coords;
-		    my @sorted_end = sort { $a <=> $b } @end_coords;
-		    my $true_start = shift(@sorted_start); #gene start 
-		    my $true_end = pop(@sorted_end); #gene end
-		    $coordinates = $contig."|".$true_start."|".$true_end;
-		    #print $coordinates."\n";
-		    push @block_coordinates, $coordinates;
-		}
+
+		my @block_coordinates =&get_blastn_coords($nblastout);
+	       
 
 		#######################
 		# mine cds and output #
@@ -683,47 +597,22 @@ foreach my $genome(@genomes){
 		    `makeblastdb -in $cds -dbtype="nucl" -out $nblast_cds_db`;
 		    `blastn -db $nblast_cds_db -query $unique_longest_transcripts_out -out $nblast_cds`;
 		    `esl-sfetch --index $cds`;
-		    my $cds_blasthits = "";
-		    my @identifiers_cds = ();
 
 		    ########################
 		    # Parse blastn results #
 		    ########################
-		    
-		    open(CDSBLAST, $nblast_cds);
-		    {
-			local $/;
-			$cds_blasthits = <CDSBLAST>;
-		    }
-		    close CDSBLAST;
-		    my @cds_hits = split(/Query\=/, $cds_blasthits);
-		    shift @cds_hits;
-		    foreach my $cds_hit(@cds_hits){
-			#my @protein_cds_info = ();
-			my @cdshits = split(/\>/, $cds_hit);
-			my $cds_1 = $cdshits[1];
-			my $top_cds = ">".$cds_1;
-			if ($top_cds =~ m/Identities[\s]+\=[\s]+([0-9]+)\/([0-9]+)[\s]+\(([0-9]+).*\)/){
-			    my $identity = $3;
-			    if ($identity eq 100){
-				if ($top_cds =~ m/(\>[\S]+)?\s.*/){
-				    my $identifier = $1;
-				    $identifier =~ s/\>//g;
-				    unless($identifier ~~ @identifiers_cds){
-					#print $identifier."\n";
 
-					#########################################################
-					# Write CDS annotations to file (CDS, longest isoforms) #
-					#########################################################
-					
-					`esl-sfetch $cds \"$identifier\" >> $cds_nuc`;
-					push(@identifiers_cds, $identifier);
-					
-				    }
-				}
-			    }
-			}
+		    my @identifiers_cds =&parse_blast($nblast_cds);
+		    
+		    
+		    #########################################################
+		    # Write CDS annotations to file (CDS, longest isoforms) #
+		    #########################################################
+
+		    foreach my $identifier_name(@identifiers_cds){
+			`esl-sfetch $cds \"$identifier_name\" >> $cds_nuc`;
 		    }
+		    
 		    my @identifiers_protein_cds = ();
 		    open(CDS,  $cds_nuc);
 		    {
@@ -1126,18 +1015,12 @@ foreach my $genome(@genomes){
 		# Parse fasta: nucleotide +/- range for augustus #
 		##################################################
 		
-		my @seqs = ();
 		my $sequences = "";
 		my $seq_db_pre = $genome_ID."_";
 		my $hit_no = 0;
-		open(SEQS, $nhmmer_nucleotide_sequences);
-		{
-		    local $/;
-		    $sequences = <SEQS>;
-		}
-		close SEQS;
-		@seqs = split (/\>/, $sequences);
-
+	
+		my @seqs =&parse_fasta($nhmmer_nucleotide_sequences);
+		
 		##################################
 		# Get domain ranges from outfile #
 		##################################
@@ -1160,7 +1043,7 @@ foreach my $genome(@genomes){
 		######################################################################
 		
 		foreach my $seq(@seqs){
-		    if($seq =~ m/(.*)\n([\S\n]+)/){
+		    if($seq =~ m/\>(.*)\n([\S\n]+)/){
 			my $seq_header = $1;
 			my $seq_nt = $2;
 
@@ -1719,4 +1602,162 @@ sub parse_hmmer{
 	shift(@hmmer_hits); #remove rubbish element 1
     }
     return @hmmer_hits;
+}
+
+sub parse_fasta{ #returns sequences stored in an array
+    my $seqfile = $_[0];
+    my @seqs = ();
+    open(SEQS, "$seqfile");
+    {
+	local $/ = ">";
+	while(<SEQS>){
+	    my $seq = $_;
+	    if($seq =~ m/\>/){
+		$seq =~ s/\>//g;
+		$seq = ">".$seq;
+	    }
+	    else{
+		$seq = ">".$seq;
+	    }
+	    push (@seqs, $seq);
+	}
+    }
+    close SEQS;
+    shift @seqs;
+    return @seqs;
+}
+
+sub parse_blast{
+    my $blast_out_file = $_[0];
+    my $blasthits = "";
+    my @identifiers = ();
+    open(BLASTFILE, $blast_out_file);
+    {
+	local $/;
+	$blasthits = <BLASTFILE>;
+    }
+    close BLASTFILE;
+    my @blast_hits = split(/Query\=/, $blasthits);
+    shift @blast_hits;
+    foreach my $hit(@blast_hits){
+	my @hits = split(/\>/, $hit);
+	my $val_1 = $hits[1];
+	my $top_hit = ">".$val_1;
+	if ($top_hit =~ m/Identities[\s]+\=[\s]+([0-9]+)\/([0-9]+)[\s]+\(([0-9]+).*\)/){
+	    my $identity = $3;
+	    if ($identity eq 100){
+		if ($top_hit =~ m/(\>[\S]+)?\s.*/){
+		    my $identifier = $1;
+		    $identifier =~ s/\>//g;
+		    unless($identifier ~~ @identifiers){
+			push(@identifiers, $identifier);
+			
+		    }
+		}
+	    }
+	}
+    }
+    return @identifiers;
+}
+
+sub parse_tblastn{
+    my $tblastn_outfile = $_[0];
+    my $tblastn_results;
+    my @transcripts_array = (); #new
+    my @locs_array = ();
+    open(TBLASTN, $tblastn_outfile);
+    {
+        local $/; #  change line delimter to nothing - read in file as one chunk
+        $tblastn_results = (<TBLASTN>);
+    }
+    close TBLASTN;
+    my @tblastn_hits = split(/Query\=/, $tblastn_results);
+    shift @tblastn_hits;
+    foreach my $query(@tblastn_hits){
+        my @queryhits = split(/\>/, $query);
+        for(my $i=0;$i<scalar(@queryhits);$i++){
+	    my $tophit =">".$queryhits[$i]; #not element zero, this is the string before first hit
+	    if ($tophit =~ m/Identities[\s]+\=[\s]+([0-9]+)\/([0-9]+)[\s]+\(([0-9]+).*\)/){
+		my $identity = $3;
+		if ($identity eq 100){
+		    if ($tophit =~ m/(\>[\S]+)?\s.*/){
+			my $trans_id_name = $1;
+			$trans_id_name =~ s/\>//g;
+			my $loc_name = "";
+			if ($tophit =~ m/\(([\S]+)\)/){
+			    $loc_name = $1;
+			}
+			if ($trans_id_name ~~ @transcripts_array){
+			}
+			else{	
+			    #print $trans_id."\n";
+			    push @transcripts_array, $trans_id_name; #new
+			    unless($loc_name ~~ @locs_array){
+				push @locs_array, $loc_name;
+			    }
+			}
+		    }
+		}
+	    }
+	}
+    }
+    return (\@transcripts_array, \@locs_array);
+}
+
+
+sub get_blastn_coords{
+    my $nblast_outfile = $_[0];
+    my $nblast_results;
+    my @block_coords = ();
+    my $contig;
+    my $start;
+    my $end;
+    my $coordinates;
+    open(BLASTN, $nblast_outfile);
+    {
+	local $/;
+	$nblast_results = <BLASTN>;
+    }
+    close BLASTN;
+    my @blastn_hits = split(/Query\=/, $nblast_results);
+    shift @blastn_hits;
+    foreach my $query(@blastn_hits){
+	my @start_coords = ();
+	my @end_coords = ();
+	my $tmp;
+	my @queryhits = split(/\>/, $query);
+	my $tophit =">".$queryhits[1]; #not element zero, this is the string before first
+	my @exon_hits = split(/Score/, $tophit);
+	my $contig_details = $exon_hits[0];
+	if ($contig_details =~ m/\>([\S]+)?\s.*/){
+	    $contig = $1;
+	}
+	shift(@exon_hits);
+	foreach my $exon(@exon_hits){
+	    if ($exon =~ m/Identities[\s]+\=[\s]+([0-9]+)\/([0-9]+)[\s]+\(([0-9]+).*\)/){
+		#print "this is an exon:\n$exon\n"; 
+		if($exon=~m/Sbjct[\s]+([0-9]+)/){
+		    $start = $1;
+		}
+		while($exon=~s/Sbjct[\s]+[0-9]+[\s]+[\S]+[\s]+([0-9]+)//){
+		    $end = $1;
+		}
+		if($start > $end){
+		    $tmp = $start;
+		    $start = $end;
+		    $end = $tmp;
+		}
+		push(@start_coords, $start);
+		push(@end_coords, $end);
+	    }#we want gene start and end, not exon start and end - so we block out intronic regions too
+	}
+	my @sorted_start = sort { $a <=> $b } @start_coords;
+	my @sorted_end = sort { $a <=> $b } @end_coords;
+	my $true_start = shift(@sorted_start); #gene start 
+	my $true_end = pop(@sorted_end); #gene end
+	$coordinates = $contig."|".$true_start."|".$true_end;
+	#print $coordinates."\n";
+	push @block_coords, $coordinates;
+    }
+    return @block_coords;
 }
