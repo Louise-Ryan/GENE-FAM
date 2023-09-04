@@ -285,10 +285,9 @@ if ($cds_available eq "yes" || $cds_available eq "Yes"){
 #HMMER files
 my $phmmer_out = "_phmmer.out"; #genome name will be appedned to this file within code so file will look like: genome_phmmer.out
 my $nhmmer_out ="_nhmmer.out"; #nhmmer outfile
+
 #Build hmms:
-if ($annotation_available eq "yes" || $annotation_available eq "Yes"){
-    `hmmbuild $phmm_profile $pfam_seed`;
-}
+`hmmbuild $phmm_profile $pfam_seed`;
 `hmmbuild $nhmm_profile $nuc_alignment`; 
 
 
@@ -1303,7 +1302,7 @@ foreach my $genome(@genomes){
 					
 					my $hmm_status =&hmm_filter(@prediction_details);
 					
-					print "This is hmm status: $hmm_status \n";
+					#print "This is hmm status: $hmm_status \n";
 					
 					if($hmm_status == 1){
 					    $prediction_found = 1;
@@ -1316,9 +1315,9 @@ foreach my $genome(@genomes){
 					}
 					else{
 					    $prediction_found = 0;
-					    print "these seqs failed ...\n";
-					    print $hit_header.$protein_seq."\n";
-					    print $hit_header.$cds_seq."\n";
+					    #print "these seqs failed ...\n";
+					    #print $hit_header.$protein_seq."\n";
+					    #print $hit_header.$cds_seq."\n";
 					}
 				    }
 				    else{
@@ -1663,7 +1662,6 @@ sub downloadGenomes {
 
 sub parse_hmmer{
     my $hmmer_file = $_[0];
-    print "This is hmmer_file: $hmmer_file \n";
     my $hmmer_results;
     open(HMMER, $hmmer_file);
     {
@@ -1853,12 +1851,8 @@ sub get_blastn_coords{
 sub hmm_filter{
     my @hmminputs = @_;
     my $hmm_file = $hmminputs[0];
-    print "This is hmm_file $hmm_file \n";
     my $prediction_file = $hmminputs[1];
-    print "This is prediction file $prediction_file \n";
-    `cat $prediction_file`;
     my $evalue_threshold = $hmminputs[2];
-    print "This is evalue threshold: $evalue_threshold \n";
     my $hmm_out = "tmp_hmmfilter.out";
     
     if($evalue_threshold =~ m/^default$/i){
@@ -1880,8 +1874,6 @@ sub hmm_filter{
     my @hmmhits = split(/$expression/, $results_file);
     my $summary = $hmmhits[1];
     my @stats = split(/\n/, $summary);
-    print "This :";
-    print join("\n", @stats), "\n";
     my $target_seqs = $stats[2];
     my $passed_hits = $stats[8];
     my $targets = "";
