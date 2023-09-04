@@ -45,6 +45,8 @@ my $nhmmer_evalue = "1e-5"; #If $default_nhmmer_evalue is "no", use this custom 
 #Range for unannotated hits - plus or minus X nucleotides
 my $nhmmer_plus = 20000; #Add X nucleotides to end of sequence (3' end) #cant exceed 990,000
 my $nhmmer_minus = 5000; #Add X nucleotides to start of sequence (5' end) #cant exceed 990,000
+# Threshold for domain cover in augustus predictions
+my $domain_cover_threshold = 0.9; #Augustus predictions which fail to cover this percentage of the hmmer identified region will be discarded
 
 ###########################################################################
 #output files
@@ -638,6 +640,7 @@ foreach my $genome(@genomes){
 		}
 		close CDS;
 
+		
 		####################################################################
 		# 4.6. NHMMER on genome assembly to predict novel unannotated hits #
 		####################################################################
@@ -1149,126 +1152,211 @@ foreach my $genome(@genomes){
 			my @exon_coords = ();
 			my @predictions = split(/#[\s]start[\s]gene/, $prediction_in);
 			shift @predictions;
-			foreach my $pred(@predictions){
-			    #`echo \"-----------------------------\n\" >> predictions_log_ALL.gff`;
-			    #`echo \"$hit_details\" >> predictions_log_ALL.gff`;
-			    #`echo \"$pred\" >> predictions_log_ALL.gff`;
-			    #print "prediction: $pred \n";
+			
 
+			my $prediction_found = 0;
+			my $verified_cds_seq = "";
+			my $verified_prot_seq = "";
+
+			
+			foreach my $pred(@predictions){
+			    
 			    ##########################
 			    # Get prediction details #
 			    ##########################
-			    
-			    my @pred_split = split (/#[\s]protein[\s]sequence/, $pred);
-			    my $gene_cds_details = $pred_split[0];
-			    my $protein_details = $pred_split[1];
-			    my @split_again = split(/#[\s]coding[\s]sequence/, $gene_cds_details);
-			    my $gene_details = $split_again[0];
-			    my $cds_details = $split_again[1];
-			    my @gene_dets = split(/\n/, $gene_details);
-			    shift(@gene_dets);
-			    my $pred_start = "";
-			    my $pred_end = "";
-			    my $maximum_end = "";
-			    my $minimum_start = "";
-			    my $total_length3 = "";
-			    my $max_span3 = "";
-			    my $prediction_length = "";
-			    my $prediction_found = 0;
-			    my @prediction_coords = ();
-			    foreach my $gd(@gene_dets){
-				$gd =~ s/[\s]+/\|/g;
-				if ($gd =~ m/\|gene\|([0-9]+)\|([0-9]+)/){
-				    $pred_start = $1; $pred_end = $2;
-				    push(@prediction_coords, $pred_start);
-				    push(@prediction_coords, $pred_end);
-				}
-			    }
-			    $pred_start = $prediction_coords[0];
-			    $pred_end = $prediction_coords[1];
-			    #print "Prediction start: $pred_start \n";
-			    #print "Prediction end: $pred_end \n";
-
-			    #####################################################################
-			    # Check that prediction overlaps with target DOMAIN (NHMMER COORDS) #
-			    #####################################################################
-			    
-			    if($pred_end > $domain_end){
-				$maximum_end = $pred_end;
-				# print "Maximum end is pred end: $pred_end \n";
-			    }else{
-				$maximum_end = $domain_end;
-				# print "Maximum end is domain end: $domain_end \n";
-			    }
-			    if($pred_start < $domain_start){
-				$minimum_start = $pred_start;
-				# print "Minimum start is pred start: $pred_start \n";
-			    }
-			    else{
-				$minimum_start = $domain_start;
-				# print "Minimum start is domain start: $domain_start \n";
-			    }
-			    $prediction_length = ($pred_end - $pred_start) +1;
-			    $total_length3 = $prediction_length + $domain_length;
-			    $max_span3 = ($maximum_end - $minimum_start) +1;
-			    if ($max_span3 < $total_length3){
-				# print "we want this prediction!\n";
-				# print $gd."\n";
-				$prediction_found = 1;
-				my $hit_details = "Hit".$hit_no." prediction:\n";
-				`echo \"-----------------------------\n\" >> predictions_log.gff`;
-				`echo \"$hit_details\" >> predictions_log.gff`;
-				`echo \"$pred\" >> predictions_log.gff`;
-			    }
-			    else{
-				$prediction_found = 0;
-			    }
-			    $protein_details =~ s/\n//g;
-			    $cds_details =~ s/\n//g;
-
-			    #################################################################
-			    # If prediction overlaps with NHMMER coordinates, print to file #
-			    #################################################################
-
-			    if ($prediction_found  == 1){
-				my $cds_header = ">Hit".$hit_no."_new_augustus_prediction\n";
-				my $hit_annotation = "Hit".$hit_no;
-
-				#######################
-				# CDS nucleotide file #
-				#######################
+			    unless($prediction_found == 1){
+				my @pred_split = split (/#[\s]protein[\s]sequence/, $pred);
+				my $gene_cds_details = $pred_split[0];
+				my $protein_details = $pred_split[1];
+				my @split_again = split(/#[\s]coding[\s]sequence/, $gene_cds_details);
+				my $gene_details = $split_again[0];
+				my $cds_details = $split_again[1];
+				my @gene_dets = split(/\n/, $gene_details);
+				shift(@gene_dets);
+				my $pred_start = "";
+				my $pred_end = "";
+				my $maximum_end = "";
+				my $minimum_start = "";
+				my $total_length3 = "";
+				my $max_span3 = "";
+				my $prediction_length = "";
+				my @prediction_coords = ();
 				
-				open(CDS_NT, ">>$cds_final_nuc");
-				if ($cds_details =~ m/\[([^\]]+)\]/){
-				    my $cds_seq = $1;
-				    $cds_seq =~ s/\#//g;
-				    $cds_seq =~ s/\s//g;
-				    $cds_seq =~ s/.{80}\K/\n/g;
-				    $cds_seq = uc($cds_seq);
-				    #print $cds_header;
-				    #print "cds:\n$cds_seq\n";
-				    print CDS_NT $cds_header.$cds_seq."\n";
+				foreach my $gd(@gene_dets){
+				    $gd =~ s/[\s]+/\|/g;
+				    if ($gd =~ m/\|gene\|([0-9]+)\|([0-9]+)/){
+					$pred_start = $1; $pred_end = $2;
+					push(@prediction_coords, $pred_start);
+					push(@prediction_coords, $pred_end);
+				    }
 				}
-				close CDS_NT;
-
-				#######################
-				# CDS protein file #
-				#######################
+				$pred_start = $prediction_coords[0];
+				$pred_end = $prediction_coords[1];
 				
-				open(CDS_PROT, ">>$cds_final_prot");
-				if ($protein_details =~ m/\[([^\]]+)\]/){
-				    my $protein_seq = $1;
-				    $protein_seq =~ s/\#//g;
-				    $protein_seq =~ s/\s//g;
-				    $protein_seq =~ s/.{80}\K/\n/g;
-				   # print "protein:\n$protein_seq\n";
-				   print CDS_PROT $cds_header.$protein_seq."\n";
+				#####################################################################
+				# Check that prediction overlaps with target DOMAIN (NHMMER COORDS) #
+				#####################################################################
+				
+				if($pred_end > $domain_end){
+				    $maximum_end = $pred_end;
+				    # print "Maximum end is pred end: $pred_end \n";
+				}else{
+				    $maximum_end = $domain_end;
+				    # print "Maximum end is domain end: $domain_end \n";
 				}
-				close CDS_PROT;
+				if($pred_start < $domain_start){
+				    $minimum_start = $pred_start;
+				    # print "Minimum start is pred start: $pred_start \n";
+				}
+				else{
+				    $minimum_start = $domain_start;
+				    # print "Minimum start is domain start: $domain_start \n";
+				}
+				$prediction_length = ($pred_end - $pred_start) +1;
+				$total_length3 = $prediction_length + $domain_length;
+				$max_span3 = ($maximum_end - $minimum_start) +1;
+				if ($max_span3 < $total_length3){
+				    # print "we want this prediction!\n";
+				    # print $gd."\n";
+				    
+				    ### NEW:
+				    
+				    #print "Prediction start: $pred_start \n";
+				    #print "Prediction end: $pred_end \n";
+				    #print "Domain start: $domain_start \n";
+				    #print "Domain end: $domain_end \n";
+				    my $domain_not_covered = $max_span3 - $prediction_length;
+				    my $percentage_domain_not_covered = $domain_not_covered / $domain_length;
+				    #print "Domain not covered: $domain_not_covered \n";
+				    #print "Percentage domain not covered: $percentage_domain_not_covered \n";
+				    my $percentage_domain_cover = 1 - $percentage_domain_not_covered;
+				    #print "Percentage domain cover: $percentage_domain_cover \n";
+				    
+				    
+				    if($percentage_domain_cover >= $domain_cover_threshold){
+					
+					$protein_details =~ s/\n//g;
+					$cds_details =~ s/\n//g;
+
+					my $hit_header = ">Hit".$hit_no."_new_augustus_prediction\n";
+					#######################
+					# CDS nucleotide      #
+					#######################
+					my $cds_seq = "";
+					if ($cds_details =~ m/\[([^\]]+)\]/){
+					    $cds_seq = $1;
+					    $cds_seq =~ s/\#//g;
+					    $cds_seq =~ s/\s//g;
+					    $cds_seq =~ s/.{80}\K/\n/g;
+					    $cds_seq = uc($cds_seq);
+					    #print $cds_header;
+					    #print "cds:\n$cds_seq\n";
+					}
+					
+					
+					#######################
+					# CDS protein         #
+					#######################
+					
+					my $protein_seq = "";
+					if ($protein_details =~ m/\[([^\]]+)\]/){
+					    $protein_seq = $1;
+					    $protein_seq =~ s/\#//g;
+					    $protein_seq =~ s/\s//g;
+					    $protein_seq =~ s/.{80}\K/\n/g;
+					    # print "protein:\n$protein_seq\n";
+					}
+					
+					
+					#######################################################
+					# Prep temporary file with protein sequence for hmmer #
+					#######################################################
+					
+					my $tmp_prot_out = "tmp_prot_out.fa"; 
+					open(TPO, ">$tmp_prot_out");
+					print TPO $hit_header.$protein_seq."\n";
+					close TPO;
+					
+					######################################
+					# Prepare input files for subroutine #
+					######################################
+					
+					my @prediction_details = ();
+					push(@prediction_details, $phmm_profile);
+					push(@prediction_details, $tmp_prot_out);
+					
+					####################################
+					# Push evaule for hmmer subroutine #
+					####################################
+					
+					if($default_phmmer_evalue =~ m/^yes$/i){
+					    my $default = "default";
+					    push(@prediction_details, $default);
+					}
+					else{
+					    push(@prediction_details, $phmmer_evalue);
+					}
+					
+					##############
+					# HMM filter #
+					##############
+					
+					my $hmm_status =&hmm_filter(@prediction_details);
+					
+					print "This is hmm status: $hmm_status \n";
+					
+					if($hmm_status == 1){
+					    $prediction_found = 1;
+					    my $hit_details = "Hit".$hit_no." prediction:\n";
+					    $verified_cds_seq = $cds_seq;
+					    $verified_prot_seq = $protein_seq;
+					    `echo \"-----------------------------\n\" >> predictions_log.gff`;
+					    `echo \"$hit_details\" >> predictions_log.gff`;
+					    `echo \"$pred\" >> predictions_log.gff`;
+					}
+					else{
+					    $prediction_found = 0;
+					    print "these seqs failed ...\n";
+					    print $hit_header.$protein_seq."\n";
+					    print $hit_header.$cds_seq."\n";
+					}
+				    }
+				    else{
+					$prediction_found = 0;
+				    }
+				}
+				else{
+				    $prediction_found = 0;
+				}
 			    }
+			}
+			
+			#################################################################
+			# If prediction overlaps with NHMMER coordinates, print to file #
+			#################################################################
+			    
+			my $cds_header = ">Hit".$hit_no."_new_augustus_prediction\n";
+			
+			if ($prediction_found  == 1){
+			    $cds_header = ">Hit".$hit_no."_new_augustus_prediction\n";
+			    my $hit_annotation = "Hit".$hit_no;
+			    
+			    # Print to CDS nucleotide
+			    open(CDS_NT, ">>$cds_final_nuc");
+			    print CDS_NT $cds_header.$verified_cds_seq."\n";
+			    close CDS_NT;
+			    
+			    # Print to CDS protein
+			    open(CDS_PROT, ">>$cds_final_prot");
+			    print CDS_PROT $cds_header.$verified_prot_seq."\n";
+			    close CDS_PROT;
+			}
+			else{
+			    #write to summary file
 			}
 		    }
 		}
+	    
 		
 		##############################
 		# Remove the temporary files #
@@ -1760,4 +1848,73 @@ sub get_blastn_coords{
 	push @block_coords, $coordinates;
     }
     return @block_coords;
+}
+
+sub hmm_filter{
+    my @hmminputs = @_;
+    my $hmm_file = $hmminputs[0];
+    print "This is hmm_file $hmm_file \n";
+    my $prediction_file = $hmminputs[1];
+    print "This is prediction file $prediction_file \n";
+    `cat $prediction_file`;
+    my $evalue_threshold = $hmminputs[2];
+    print "This is evalue threshold: $evalue_threshold \n";
+    my $hmm_out = "tmp_hmmfilter.out";
+    
+    if($evalue_threshold =~ m/^default$/i){
+	`hmmsearch $hmm_file $prediction_file > $hmm_out`;
+    }
+    else{
+	`hmmsearch --incE $evalue_threshold $hmm_file $prediction_file > $hmm_out`;
+    }	
+    
+    my $results_file;
+    open(IN, $hmm_out);
+    {
+        local $/;
+        $results_file = <IN>;
+    }
+    close IN;
+    my $regex = "\-";
+    my $expression = $regex x 37;
+    my @hmmhits = split(/$expression/, $results_file);
+    my $summary = $hmmhits[1];
+    my @stats = split(/\n/, $summary);
+    print "This :";
+    print join("\n", @stats), "\n";
+    my $target_seqs = $stats[2];
+    my $passed_hits = $stats[8];
+    my $targets = "";
+    my $hits = "";
+    if($target_seqs){
+	if ($target_seqs =~ m/\:[\s]+([0-9]+)\s/){
+	    $targets = $1;
+	}
+    }
+    if($passed_hits){
+	if ($passed_hits =~ m/\:[\s]+([0-9]+)\s/){
+	    $hits = $1;
+	}
+    }
+    my $hmm_status = 0;
+    if($targets){
+	if($targets == 1){
+	    if ($hits ==1){
+		$hmm_status = 1;
+		return $hmm_status;
+	    }
+	    else{
+		$hmm_status = 0;
+		return $hmm_status;
+	    }
+	}
+	else{
+	    $hmm_status = 0;
+	    return $hmm_status;
+	}
+    }
+    else{
+	$hmm_status = 0;
+	return $hmm_status;   
+    }
 }
