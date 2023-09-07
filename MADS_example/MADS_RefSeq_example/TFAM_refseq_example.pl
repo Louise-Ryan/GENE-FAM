@@ -246,6 +246,13 @@ else{
 	die;
     }
 }
+my $blat2hints_file = "blat2hints.pl";
+if($predict_new_hits =~ m/^yes$/i){
+    unless(-e $blat2hints_file){
+	print "blat2hints.pl is not in current working directory. Please copy this file to your working directory and try again. Aborting job!\n";
+	die;
+    }
+}
 
 
 #######################################
