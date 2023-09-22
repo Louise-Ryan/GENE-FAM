@@ -503,7 +503,8 @@ foreach my $genome(@genomes){
 		    my $prot_ID = $phmmdetails[8];
 
 		    #Populate protein phmmer hash
-		    unless($prot_ID ~~ @protein_key_seen){
+		    #unless($prot_ID ~~ @protein_key_seen){
+		    unless(grep { $_ eq $prot_ID } @protein_key_seen) {
 			#push(@protein_key_seen, $prot_ID);
 			$protein_hmm_key{$prot_ID} = \@protein_phmm_details;
 		    }
@@ -597,12 +598,14 @@ foreach my $genome(@genomes){
 		    my $transcript_ID = $nhmmtdetails[3];
 
 		    #Populate mrna nhmmer hash
-		    unless($transcript_ID ~~ @mrna_key_seen){
+		    #unless($transcript_ID ~~ @mrna_key_seen){
+		    unless(grep { $_ eq $transcript_ID } @mrna_key_seen) {
 			$mrna_hmm_key{$transcript_ID} = \@mrna_nhmm_details;
 		    }
 
 		    #Pull mRNA IDs
-		    unless($transcript_ID ~~ @mRNA_IDs){
+		    #unless($transcript_ID ~~ @mRNA_IDs){
+		    unless(grep { $_ eq $transcript_ID } @mRNA_IDs) {
 			#print "new transcript: $transcript_ID \n";
 			push(@new_mRNAs, $transcript_ID);
 			my $gff_ID = "rna-".$transcript_ID;
@@ -692,12 +695,14 @@ foreach my $genome(@genomes){
 		    }
 
 		    #Populate nucleotide CDS nhmmer hash
-		    unless($new_CDS_ID ~~ @cds_key_seen){
+		    #unless($new_CDS_ID ~~ @cds_key_seen){
+		    unless(grep { $_ eq $new_CDS_ID } @cds_key_seen) {
 			$cds_hmm_key{$new_CDS_ID} = \@cds_nhmm_details;
 		    }
 
 		    #Pull CDS Identifiers
-		    unless($new_CDS_ID ~~ @CDS_IDs){
+		    #unless($new_CDS_ID ~~ @CDS_IDs){
+		    unless(grep { $_ eq $new_CDS_ID } @CDS_IDs) {
 			#print "new CDS: $new_CDS_ID \n";
 			push(@new_CDS_IDs, $new_CDS_ID);
 		    }
@@ -855,7 +860,8 @@ foreach my $genome(@genomes){
 		    my @information = split(/\|/, $info_hash{$rnaid});
 		    my $locus = $information[6];
 		    my %locus_lengths;
-		    unless($locus ~~ @locus_seen){
+		    #unless($locus ~~ @locus_seen){
+		    unless(grep { $_ eq $locus } @locus_seen) {
 			push(@locus_seen, $locus);
 			#print "========================================\n";
 			#print "Looking for longest isoform for $locus ..\n";
@@ -917,7 +923,8 @@ foreach my $genome(@genomes){
 		foreach my $mrnaid(@longest_mrnas){
 		    my @details = split(/\|/, $info_hash{$mrnaid});
 		    my $contig = $details[0];
-		    unless($contig ~~ @contig_IDs){
+		    #unless($contig ~~ @contig_IDs){
+		    unless(grep { $_ eq $contig } @contig_IDs) {
 			push(@contig_IDs, $contig);
 		    }
 		    my $mrna_start = $details[2];
@@ -967,7 +974,8 @@ foreach my $genome(@genomes){
 		    my $ncbi_CDS_ID = $ncbi_hit_info[8];
 
 		    # Only print to file if longest isoform
-		    if($ncbi_mRNA_ID ~~ @longest_mrnas || $ncbi_CDS_ID ~~ @longest_isoforms){
+		    #if($ncbi_mRNA_ID ~~ @longest_mrnas || $ncbi_CDS_ID ~~ @longest_isoforms){
+		    if(grep { $_ eq $ncbi_mRNA_ID } @longest_mrnas || grep { $_ eq $ncbi_CDS_ID } @longest_isoforms) {
 			
 			
 			# Contig length
@@ -2742,7 +2750,9 @@ sub parse_gff{
 			}
 
 			#Check that ID is target
-			if($attribute_hash{$identifier_type} ~~ @identifiers){
+			#if($attribute_hash{$identifier_type} ~~ @identifiers){
+			if(grep { $_ eq $attribute_hash{$identifier_type} } @identifiers) {
+			    
 
 			    $gene_details[0] = $seqname; #contig name
 			    #$gene_details[1] = $type;
@@ -2826,7 +2836,8 @@ sub parse_gff{
 			    $attribute_hash{$key} = $value;
 			}
 			my $id = "ID";
-			if($attribute_hash{$id} ~~ @rna_IDs){
+			#if($attribute_hash{$id} ~~ @rna_IDs){
+			if(grep { $_ eq $attribute_hash{$id} } @rna_IDs) {
 			    my $gene_id = $attribute_hash{"Parent"};
 			    $gene_id =~ s/gene-//g;
 			    my $rna_name = $attribute_hash{$id};
@@ -2926,8 +2937,10 @@ sub mine_seqs{
 	    if($header =~ m/\[protein\_id\=([^\]]+)/){
 		$seqID = $1;
 	    }
-	}   
-	if($seqID ~~ @ID_array){
+	}
+	#if($seqID ~~ @ID_array){
+	if(grep { $_ eq $seqID } @ID_array) {
+	    
 	    #print "SEQID: $seqID \n";
 	    unless($header =~ m/\Q$ncbi_flag\E/){
 		$header.=$ncbi_flag;
