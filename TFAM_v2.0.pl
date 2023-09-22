@@ -9,7 +9,6 @@ use Scalar::Util qw(looks_like_number);
 ###########################################################################
 #Annotation files available?
 my $annotation_available = "yes"; #If NCBI annotations are available for your genome set below variable to "yes". Set as "no" if no annotations are available, and you wish to mine the assembly only.
-my $cds_available = "yes"; #keep this as yes if cds files are available. Set as "no" if you only want to mine the mrna files.
 my $predict_new_hits = "yes"; #If you want to predict any new, unannotated, hits with augutus, set this to "yes". If augustus is not installed, keep this as "no".
 my $augustus_species = "arabidopsis"; #If using augustus, set your closely related species here. This is the species that augustus is trained on.
 my $minidentity = 60; #If using augutsus, this is the minimum identity required for alignment with a reference receptor to be used to generate prediction hints.
@@ -91,10 +90,16 @@ unless($annotation_available =~ m/^yes$/i || $annotation_available =~ m/^no$/i){
     print "The \$annotation_available parameter is not set correctly. Please specify as \"Yes\" or \"No\" and retry. Aborting job!\n";
     push(@yes_no_scalar, $annotation_available);
 }
-unless($cds_available =~ m/^yes$/i || $cds_available =~ m/^no$/i){
-    print "The \$cds_available parameter is not set correctly. Please specify as \"yes\" or \"no\" and retry. Aborting job!\n";
-    push(@yes_no_scalar, $cds_available);
+
+if($annotation_available !~ m/^yes$/i && $predict_new_hits !~ m/^yes$/i){
+    print "The \$annotation_available and \$predict_new_hits variables cannot both be set to \"no\".\n";
+    print "If you want to predict new hits in an assembly, where no annotations are available, please set \$annotation_available to \"no\" and \$predict_new_hits to \"yes\".\n";
+    print "If you want to predict new hits in an assembly, where annotations are available, please set both \$annotation_available and \$predict_new_hits to \"yes\".\n";
+    print "If you do not want to predict new hits, and annotations are available, please set \$annotation_available to \"yes\" and \$predict_new_hits to \"no\".\n";
+    print "Please retry once variables have been correctly assigned. Aborting job!\n";
+    die;
 }
+
 unless($predict_new_hits =~ m/^yes$/i || $predict_new_hits =~ m/^no$/i){
     print "The \$predict_new_hits parameter is not set correctly. Please specify as \"yes\" or \"no\" and retry. Aborting job!\n";
     push(@yes_no_scalar, $predict_new_hits);
@@ -286,10 +291,8 @@ if ($automate_download eq "Yes" || $automate_download eq "yes"){
 my @genomes=(<*$genome_suffix>); #read in multiple genome names
 my @nucleotide_transcripts =(<*$nt_transcript_suffix>);
 my @protein_transcripts = (<*$prot_transcript_suffix>);
-my @cds_transcripts = ();
-if ($cds_available eq "yes" || $cds_available eq "Yes"){
-    @cds_transcripts = (<*$cds_suffix>);
-}
+my @cds_transcripts = (<*$cds_suffix>);
+
 my @gff_files = (<*$gff_suffix>);
 
 #HMMER files
@@ -404,6 +407,7 @@ foreach my $genome(@genomes){
 		my $nucleotide_ID = "";
 		my $protein_ID = "";
 		my $cds = "";
+		my $cds_available = "yes";
 
 		# RNA file
 		foreach my $nucleotide(@nucleotide_transcripts){
@@ -975,7 +979,7 @@ foreach my $genome(@genomes){
 
 		    # Only print to file if longest isoform
 		    #if($ncbi_mRNA_ID ~~ @longest_mrnas || $ncbi_CDS_ID ~~ @longest_isoforms){
-		    if(grep { $_ eq $ncbi_mRNA_ID } @longest_mrnas || grep { $_ eq $ncbi_CDS_ID } @longest_isoforms) {
+		    if((grep { $_ eq $ncbi_mRNA_ID } @longest_mrnas) || (grep { $_ eq $ncbi_CDS_ID } @longest_isoforms)) {
 			
 			
 			# Contig length
@@ -1093,6 +1097,7 @@ foreach my $genome(@genomes){
 				#print "FALSE \n";
 			    #}
 			}
+			print "I am here \n";
 			$tsv_entry.=  $genomic_Ds."\t";
 			$tsv_entry.=  $genomic_De."\n";
 		    
@@ -1100,8 +1105,7 @@ foreach my $genome(@genomes){
 			print TSV $tsv_entry;
 		    }
 		    
-		}
-		
+		}	
 		
 		####################################################################
 		# 4.6. NHMMER on genome assembly to predict novel unannotated hits #
@@ -1110,168 +1114,173 @@ foreach my $genome(@genomes){
 		#nhmmer on assembly to discover new hits
 		#nhmmer then discount anything which overlaps with existing coordinates
 
-
-		##########################
-		# Run nhmmer on assembly #
-		##########################
-		
-		print "running nhmmer on whole assembly to pull new hits ...\n\n";
-		`esl-sfetch --index $genome`; #index genomefile
-		my @nhmmer_coordinates = ();
-		if($default_nhmmer_evalue eq "yes"){
-		    `nhmmer $nhmm_profile $genome >> $nhmmer_file`;
-		}else{
-		    `nhmmer --incE $nhmmer_evalue $nhmm_profile $genome >> $nhmmer_file`;
-		}
-
-		########################
-		# Parse nhmmer results #
-		########################
-		
-		my @nhmmer_hits=&parse_hmmer($nhmmer_file);
-		
-		
-		####################
-		# Get coordinates  #
-		####################
-		
-		foreach my $nhit(@nhmmer_hits){
-		    my $ntmp;
-		    $nhit =~ s/[\s]+/\|/g;
-		    my @nhmmdetails = split(/\|/, $nhit);
-		    shift @nhmmdetails;
-		    my $nevalue = $nhmmdetails[0];
-		    push(@nhmmer_evalues, $nevalue);
-		    my $ncontig = $nhmmdetails[3]; #print $ncontig."\n";
-		    my $nstart =  $nhmmdetails[4]; #print $nstart."\n";
-		    my $nend =  $nhmmdetails[5]; #print $nend."\n";
-		    my $nhmm_hit = $ncontig."|".$nstart."|".$nend;
-		    push @nhmmer_coordinates, $nhmm_hit;
-		}
-
-		#####################################################
-		# Infer forward/reverse strand based on coordinates #
-		#####################################################
-		
-		foreach my $nhmm_locus(@nhmmer_coordinates){
-		    my $overlap = "";
-		    my $ntmp = "";
-		    my $strand = "";
-		    my @details = split(/\|/, $nhmm_locus);
-		    my $contig_n = $details[0]; #need to add Xnts 
-		    my $start_n = $details[1]; #need to add Xnts
-		    my $end_n = $details[2];
-		    if($start_n > $end_n){
-			$ntmp = $start_n;
-			$start_n = $end_n;
-			$end_n = $ntmp;
-			$strand = "rev";
-		    }
-		    else{
-			$strand = "pos";
-		    }
-		    my $nhit_length = $end_n - $start_n;
-
-		    ###################################################
-		    # Check if hit overlaps with existing annotations #
-		    # Only report as 'novel' if no overlap            #
-		    ###################################################
+		if ($predict_new_hits eq "Yes" || $predict_new_hits eq "yes"){
+		    ##########################
+		    # Run nhmmer on assembly #
+		    ##########################
 		    
-		    foreach my $stored_hits(@block_coordinates){
-			my $min_coord = "";
-			my $max_coord = "";
-			my $max_span = "";
-			my $total_length = "";
-			my @stored_details = split(/\|/, $stored_hits);			
-			my $contig_stored = $stored_details[0];
-			my $start_stored = $stored_details[1];
-			my $end_stored = $stored_details[2];
-			my $stored_hit_length = $end_stored - $start_stored;
-			if ($contig_n eq $contig_stored){
-			    if ($start_n < $start_stored){
-				$min_coord = $start_n;
-			    }
-			    else{
-				$min_coord = $start_stored;
-			    }
-			    if ($end_n > $end_stored){
-				$max_coord = $end_n;
-			    }
-			    else{
-				$max_coord = $end_stored;
-			    }
-			    $max_span = $max_coord - $min_coord;
-			    $total_length = $nhit_length + $stored_hit_length;
-			    if($max_span<$total_length){
-				$overlap = "Y";
-			    }else{ #push coordinates to stored and use esl-sfetch to pull hit +- X nts
-			    }
+		    print "running nhmmer on whole assembly to pull new hits ...\n\n";
+		    `esl-sfetch --index $genome`; #index genomefile
+		    my @nhmmer_coordinates = ();
+		    if($default_nhmmer_evalue eq "yes"){
+			`nhmmer $nhmm_profile $genome >> $nhmmer_file`;
+		    }else{
+			`nhmmer --incE $nhmmer_evalue $nhmm_profile $genome >> $nhmmer_file`;
+		    }
+
+		    ########################
+		    # Parse nhmmer results #
+		    ########################
+		    
+		    my @nhmmer_hits=&parse_hmmer($nhmmer_file);
+		    
+		    
+		    ####################
+		    # Get coordinates  #
+		    ####################
+		    
+		    foreach my $nhit(@nhmmer_hits){
+			my $ntmp;
+			$nhit =~ s/[\s]+/\|/g;
+			my @nhmmdetails = split(/\|/, $nhit);
+			shift @nhmmdetails;
+			my $nevalue = $nhmmdetails[0];
+			push(@nhmmer_evalues, $nevalue);
+			my $ncontig = $nhmmdetails[3]; #print $ncontig."\n";
+			my $nstart =  $nhmmdetails[4]; #print $nstart."\n";
+			my $nend =  $nhmmdetails[5]; #print $nend."\n";
+			my $nhmm_hit = $ncontig."|".$nstart."|".$nend;
+			push @nhmmer_coordinates, $nhmm_hit;
+		    }
+
+		    #####################################################
+		    # Infer forward/reverse strand based on coordinates #
+		    #####################################################
+		    
+		    foreach my $nhmm_locus(@nhmmer_coordinates){
+			my $overlap = "";
+			my $ntmp = "";
+			my $strand = "";
+			my @details = split(/\|/, $nhmm_locus);
+			my $contig_n = $details[0]; #need to add Xnts 
+			my $start_n = $details[1]; #need to add Xnts
+			my $end_n = $details[2];
+			if($start_n > $end_n){
+			    $ntmp = $start_n;
+			    $start_n = $end_n;
+			    $end_n = $ntmp;
+			    $strand = "rev";
 			}
-		    }
-		    
-		    ####################################################################
-		    # If novel hit (not overlapping), print nucleotide range to file   #
-		    # Also print domain range to file                                  #
-		    ####################################################################
-		    
-		    if($overlap ne "Y"){
-			my $contig_length = $contig_lengths{$contig_n};
-			my $nhmm_dets = $nhmm_locus."|".$contig_length."|".$strand;
-			push (@domain_details, $nhmm_dets);
-		
-			########################################################
-			# Reverse strand: Esl-sfetch range and output to files #
-			########################################################
+			else{
+			    $strand = "pos";
+			}
+			my $nhit_length = $end_n - $start_n;
+
+			###################################################
+			# Check if hit overlaps with existing annotations #
+			# Only report as 'novel' if no overlap            #
+			###################################################
 			
-			if ($strand eq "rev"){
-			    $start_n -= $nhmmer_plus; #3' end is $start (hence - plus)
-			    if($start_n < 1){
-				$start_n = 1;
+			foreach my $stored_hits(@block_coordinates){
+			    my $min_coord = "";
+			    my $max_coord = "";
+			    my $max_span = "";
+			    my $total_length = "";
+			    my @stored_details = split(/\|/, $stored_hits);			
+			    my $contig_stored = $stored_details[0];
+			    my $start_stored = $stored_details[1];
+			    my $end_stored = $stored_details[2];
+			    my $stored_hit_length = $end_stored - $start_stored;
+			    if ($contig_n eq $contig_stored){
+				if ($start_n < $start_stored){
+				    $min_coord = $start_n;
+				}
+				else{
+				    $min_coord = $start_stored;
+				}
+				if ($end_n > $end_stored){
+				    $max_coord = $end_n;
+				}
+				else{
+				    $max_coord = $end_stored;
+				}
+				$max_span = $max_coord - $min_coord;
+				$total_length = $nhit_length + $stored_hit_length;
+				if($max_span<$total_length){
+				    $overlap = "Y";
+				}else{ #push coordinates to stored and use esl-sfetch to pull hit +- X nts
+				}
 			    }
-			    $end_n += $nhmmer_minus; #5' end is $end (hence + minus)
-			    if($end_n > $contig_length){
-				$end_n = $contig_length;
-			    }
-			    # print "reverse strand\n";
-			    my $range = $start_n."\.\.".$end_n;
-			    my $cmd = "esl-sfetch -c $range -r $genome $contig_n >> $nhmmer_nucleotide_sequences";
-			    `$cmd`;
 			}
-
-			#########################################################
-			# Positive strand: Esl-sfetch range and output to files #
-			#########################################################
 			
-			elsif($strand eq "pos"){
-			    $start_n -= $nhmmer_minus;
-			    if($start_n < 1){
-				$start_n = 1;
+			####################################################################
+			# If novel hit (not overlapping), print nucleotide range to file   #
+			# Also print domain range to file                                  #
+			####################################################################
+			
+			if($overlap ne "Y"){
+			    my $contig_length = $contig_lengths{$contig_n};
+			    my $nhmm_dets = $nhmm_locus."|".$contig_length."|".$strand;
+			    push (@domain_details, $nhmm_dets);
+			    
+			    ########################################################
+			    # Reverse strand: Esl-sfetch range and output to files #
+			    ########################################################
+			    
+			    if ($strand eq "rev"){
+				$start_n -= $nhmmer_plus; #3' end is $start (hence - plus)
+				if($start_n < 1){
+				    $start_n = 1;
+				}
+				$end_n += $nhmmer_minus; #5' end is $end (hence + minus)
+				if($end_n > $contig_length){
+				    $end_n = $contig_length;
+				}
+				# print "reverse strand\n";
+				my $range = $start_n."\.\.".$end_n;
+				my $cmd = "esl-sfetch -c $range -r $genome $contig_n >> $nhmmer_nucleotide_sequences";
+				`$cmd`;
 			    }
-			    $end_n += $nhmmer_plus;
-			    if($end_n > $contig_length){
-				$end_n = $contig_length;
+
+			    #########################################################
+			    # Positive strand: Esl-sfetch range and output to files #
+			    #########################################################
+			    
+			    elsif($strand eq "pos"){
+				$start_n -= $nhmmer_minus;
+				if($start_n < 1){
+				    $start_n = 1;
+				}
+				$end_n += $nhmmer_plus;
+				if($end_n > $contig_length){
+				    $end_n = $contig_length;
+				}
+				#print "positive strand\n";
+				my $range = $start_n."\.\.".$end_n;
+				my $cmd = "esl-sfetch -c $range $genome $contig_n >> $nhmmer_nucleotide_sequences";
+				`$cmd`;
 			    }
-			    #print "positive strand\n";
-			    my $range = $start_n."\.\.".$end_n;
-			    my $cmd = "esl-sfetch -c $range $genome $contig_n >> $nhmmer_nucleotide_sequences";
-			    `$cmd`;
 			}
 		    }
+		    `rm *ssi`;
 		}
-	
+		    
 		###################################################
 		# Make outout directories and tidy existing files #
 		###################################################
 		
 		`mkdir $subdir`;
 		`mkdir $subdir2`;
-		`mv $nhmmer_file $phmmer_file $nhmmer_transcript_file $subdir`; #$nhmm_profile #phmm_profile add this to remove, I just don't have alignment 
-		`mv $phmmer_prot_isoforms $transcript_nucleotide_isoforms $subdir2`;
+		if(-e $nhmmer_file && $phmmer_file && $nhmmer_transcript_file){
+		    `mv $nhmmer_file $phmmer_file $nhmmer_transcript_file $subdir`;
+		}
+		if(-e $phmmer_prot_isoforms && -e $transcript_nucleotide_isoforms){
+		    `mv $phmmer_prot_isoforms $transcript_nucleotide_isoforms $subdir2`;
+		}
 		if ($cds_available eq "yes" || $cds_available eq "Yes"){
 		    `cp $cds_nuc $cds_final_nuc`;
 		    `cp $cds_prot $cds_final_prot`;
 		}
-		`rm *ssi`;
 	    }
 	    
 	    ############################################################
@@ -1280,136 +1289,138 @@ foreach my $genome(@genomes){
 	    ############################################################
 	    
 	    else{
-		
-		##########################
-		# Run NHMMER on assembly #
-		##########################
-		
-		print "running nhmmer on whole assembly to pull hits ...\n\n";
-		`esl-sfetch --index $genome`;
-		my @nhmmer_coordinates = ();
-		if($default_nhmmer_evalue =~ m/^yes$/i){
-		    `nhmmer $nhmm_profile $genome >> $nhmmer_file`;
-		}
-		else{
-		    `nhmmer --incE $nhmmer_evalue $nhmm_profile $genome >> $nhmmer_file`;
-		}
-
-		########################
-		# Parse NHMMER results #
-		########################
-		
-		my @nhmmer_hits =&parse_hmmer($nhmmer_file);
-
-		
-		####################
-		# Get coordinates  #
-		####################
-		
-		foreach my $nhit(@nhmmer_hits){
-		    my $ntmp;
-		    $nhit =~ s/[\s]+/\|/g;
-		    my @nhmmdetails = split(/\|/, $nhit);
-		    shift @nhmmdetails;
-		    my $nevalue = $nhmmdetails[0];
-		    push(@nhmmer_evalues, $nevalue);
-		    my $ncontig = $nhmmdetails[3]; #print $ncontig."\n";
-		    my $nstart =  $nhmmdetails[4]; #print $nstart."\n";
-		    my $nend =  $nhmmdetails[5]; #print $nend."\n";
-		    my $nhmm_hit = $ncontig."|".$nstart."|".$nend;
-		    push @nhmmer_coordinates, $nhmm_hit;
-		}
-
-
-		######################
-		# Get contig lengths #
-		######################
-		
-		my $contig_hash_ref =&get_contig_lengths($genome);
-		my %contig_lengths = %$contig_hash_ref;
-		
-		#foreach my $contig_key(keys %contig_lengths){
-		#    print $contig_key.":".$contig_lengths{$contig_key}."\n";
-		#}
-		
-		#####################################################
-		# Infer forward/reverse strand based on coordinates #
-		#####################################################
-		
-		foreach my $nhmm_locus(@nhmmer_coordinates){
-		    #print OUT $nhmm_locus."\n";
-		    my $ntmp = "";
-		    my $strand = "";
-		    my @details = split(/\|/, $nhmm_locus);
-		    my $contig_n = $details[0];
-		    my $start_n = $details[1];
-		    my $end_n = $details[2];
-		    if($start_n > $end_n){
-			$ntmp = $start_n;
-			$start_n = $end_n;
-			$end_n = $ntmp;
-			$strand = "rev";
+		if ($predict_new_hits eq "Yes" || $predict_new_hits eq "yes"){
+		    
+		    ##########################
+		    # Run NHMMER on assembly #
+		    ##########################
+		    
+		    print "running nhmmer on whole assembly to pull hits ...\n\n";
+		    `esl-sfetch --index $genome`;
+		    my @nhmmer_coordinates = ();
+		    if($default_nhmmer_evalue =~ m/^yes$/i){
+			`nhmmer $nhmm_profile $genome >> $nhmmer_file`;
 		    }
 		    else{
-			$strand = "pos";
+			`nhmmer --incE $nhmmer_evalue $nhmm_profile $genome >> $nhmmer_file`;
 		    }
 
-		    ####################################################################
-		    # Print nucleotide range to file                                   #
-		    # Also print domain range to file                                  #
-		    ####################################################################
+		    ########################
+		    # Parse NHMMER results #
+		    ########################
 		    
-		    my $contig_length = $contig_lengths{$contig_n};
-		    my $nhmm_dets = $nhmm_locus."|".$contig_length."|".$strand;
-		    push(@domain_details, $nhmm_dets);
-		   
-		    ########################################################
-		    # Reverse strand: Esl-sfetch range and output to files #
-		    ########################################################
+		    my @nhmmer_hits =&parse_hmmer($nhmmer_file);
+
 		    
-		    if($strand eq "rev"){
-			$start_n -= $nhmmer_plus; #3' end is $start (hence - plus)
-			$end_n += $nhmmer_minus; #5' end is $end (hence + minus)
-			if ($start_n < 1){
-			    $start_n = 1;
-			}
-			if ($end_n > $contig_length){
-			    #print "exceeds contig range, reverting to max contig bounds!\n";
-			    $end_n = $contig_length;
-			}
-			my $range = $start_n."\.\.".$end_n;
-			my $cmd = "esl-sfetch -c $range -r $genome $contig_n >> $nhmmer_nucleotide_sequences";
-			`$cmd`;
+		    ####################
+		    # Get coordinates  #
+		    ####################
+		    
+		    foreach my $nhit(@nhmmer_hits){
+			my $ntmp;
+			$nhit =~ s/[\s]+/\|/g;
+			my @nhmmdetails = split(/\|/, $nhit);
+			shift @nhmmdetails;
+			my $nevalue = $nhmmdetails[0];
+			push(@nhmmer_evalues, $nevalue);
+			my $ncontig = $nhmmdetails[3]; #print $ncontig."\n";
+			my $nstart =  $nhmmdetails[4]; #print $nstart."\n";
+			my $nend =  $nhmmdetails[5]; #print $nend."\n";
+			my $nhmm_hit = $ncontig."|".$nstart."|".$nend;
+			push @nhmmer_coordinates, $nhmm_hit;
 		    }
 
-		    ########################################################
-		    # Forward strand: Esl-sfetch range and output to files #
-		    ########################################################
+
+		    ######################
+		    # Get contig lengths #
+		    ######################
 		    
-		    elsif($strand eq "pos"){
-			$start_n -= $nhmmer_minus;
-			$end_n += $nhmmer_plus;
-			if ($start_n < 1){
-			    $start_n = 1;
+		    my $contig_hash_ref =&get_contig_lengths($genome);
+		    my %contig_lengths = %$contig_hash_ref;
+		    
+		    #foreach my $contig_key(keys %contig_lengths){
+		    #    print $contig_key.":".$contig_lengths{$contig_key}."\n";
+		    #}
+		    
+		    #####################################################
+		    # Infer forward/reverse strand based on coordinates #
+		    #####################################################
+		    
+		    foreach my $nhmm_locus(@nhmmer_coordinates){
+			#print OUT $nhmm_locus."\n";
+			my $ntmp = "";
+			my $strand = "";
+			my @details = split(/\|/, $nhmm_locus);
+			my $contig_n = $details[0];
+			my $start_n = $details[1];
+			my $end_n = $details[2];
+			if($start_n > $end_n){
+			    $ntmp = $start_n;
+			    $start_n = $end_n;
+			    $end_n = $ntmp;
+			    $strand = "rev";
 			}
-			if ($end_n > $contig_length){
-			   # print "exceeds contig range, reverting to max contig bounds!\n";
-			    $end_n = $contig_length;
+			else{
+			    $strand = "pos";
 			}
-			my $range = $start_n."\.\.".$end_n;
-			my $cmd = "esl-sfetch -c $range $genome $contig_n >> $nhmmer_nucleotide_sequences";
-			`$cmd`;
+
+			####################################################################
+			# Print nucleotide range to file                                   #
+			# Also print domain range to file                                  #
+			####################################################################
+			
+			my $contig_length = $contig_lengths{$contig_n};
+			my $nhmm_dets = $nhmm_locus."|".$contig_length."|".$strand;
+			push(@domain_details, $nhmm_dets);
+			
+			########################################################
+			# Reverse strand: Esl-sfetch range and output to files #
+			########################################################
+			
+			if($strand eq "rev"){
+			    $start_n -= $nhmmer_plus; #3' end is $start (hence - plus)
+			    $end_n += $nhmmer_minus; #5' end is $end (hence + minus)
+			    if ($start_n < 1){
+				$start_n = 1;
+			    }
+			    if ($end_n > $contig_length){
+				#print "exceeds contig range, reverting to max contig bounds!\n";
+				$end_n = $contig_length;
+			    }
+			    my $range = $start_n."\.\.".$end_n;
+			    my $cmd = "esl-sfetch -c $range -r $genome $contig_n >> $nhmmer_nucleotide_sequences";
+			    `$cmd`;
+			}
+
+			########################################################
+			# Forward strand: Esl-sfetch range and output to files #
+			########################################################
+			
+			elsif($strand eq "pos"){
+			    $start_n -= $nhmmer_minus;
+			    $end_n += $nhmmer_plus;
+			    if ($start_n < 1){
+				$start_n = 1;
+			    }
+			    if ($end_n > $contig_length){
+				# print "exceeds contig range, reverting to max contig bounds!\n";
+				$end_n = $contig_length;
+			    }
+			    my $range = $start_n."\.\.".$end_n;
+			    my $cmd = "esl-sfetch -c $range $genome $contig_n >> $nhmmer_nucleotide_sequences";
+			    `$cmd`;
+			}
 		    }
+		    
+		    ###################################################
+		    # Make outout directories and tidy existing files #
+		    ###################################################
+		    
+		    my $subdir = $outdir."/hmmer_files";
+		    `mkdir $subdir`;
+		    `mv $nhmmer_file $subdir`;
+		    `rm *ssi`;
 		}
-	
-		###################################################
-		# Make outout directories and tidy existing files #
-		###################################################
-		
-		my $subdir = $outdir."/hmmer_files";
-		`mkdir $subdir`;
-		`mv $nhmmer_file $subdir`;
-		`rm *ssi`;
 	    }
 
 	    #######################################
@@ -2303,7 +2314,7 @@ foreach my $genome(@genomes){
 		if($hit_prefix){
 		    `rm $hit_prefix*`;
 		}
-		`rm *ssi tmp.fa`;
+		`rm tmp.fa`;
 		my @domain_seqs = "";
 		
 	    }
