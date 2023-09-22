@@ -343,9 +343,7 @@ foreach my $genome(@genomes){
 	    my $cds_final_nuc = $genome_ID.$final_cds_nuc; # CDS (with augustus)
 	    my $cds_final_prot = $genome_ID.$final_cds_prot; # CDS (with augustus)
 
-	    # Domain sequences out file
-	    my $nhmmer_mads_domain_seqs = $genome_ID."_Domain_sequences_nuc.fa";
-
+	    
 	    # Hmmer out files
 	    my $phmmer_file = $genome_ID.$phmmer_out; #phmmer out file
 	    my $nhmmer_transcript_file = $genome_ID."_transcripts".$nhmmer_out;
@@ -392,38 +390,6 @@ foreach my $genome(@genomes){
 	    $tsv_details.="nhmmer End (CDS)\t";
 	    $tsv_details.="nhmmer Start (Genomic)\t";
 	    $tsv_details.="nhmmer End (Genomic)\n";
-
-	    #$tsv_details.="NCBI Annotation (Yes/No)\t";
-	    #$tsv_details.="Name\t";
-	    #$tsv_details.="Contig\t";
-	    #$tsv_details.="Contig Length\t";
-	    #$tsv_details.="Strand\t";
-	    #$tsv_details.="Locus Name\t";
-	    #$tsv_details.="mRNA Identifier\t";
-	    #$tsv_details.="mRNA Start Coordinate\t";
-	    #$tsv_details.="mRNA End Coordinate\t";
-	    #$tsv_details.="CDS Identifier\t";
-	    #$tsv_details.="CDS Start Coordinate\t";
-	    #$tsv_details.="CDS End coordinate\t";
-	    #$tsv_details.="CDS Length\t";
-	    #$tsv_details.="Hmmer Full Sequence Evalue (Protein)\t";
-	    #$tsv_details.="Hmmer Domain Evalue (Protein)\t";
-	    #$tsv_details.="nhmmer Evalue (mRNA)\t";
-	    #$tsv_details.="nhmmer Start (mRNA)\t";
-	    #$tsv_details.="nhmmer End (mRNA)\t";
-	    #$tsv_details.="nhmmer Evalue (CDS)\t";
-	    #$tsv_details.="nhmmer Start (CDS)\t";
-	    #$tsv_details.="nhmmer End (CDS)\t";
-	    #$tsv_details.="Novel Hit (Yes/No)\t";
-	    #$tsv_details.="Hit Name\t";
-	    #$tsv_details.="nhmmer Start (genomic)\t";
-	    #$tsv_details.="nhmmer End (genomic)\t";
-	    #$tsv_details.="Augustus Prediction (Yes/No)\t";
-	    #$tsv_details.="HMM Filter (Pass/Fail)\t";
-	    #$tsv_details.="nhmmer Start (augustus prediction)\t";
-	    #$tsv_details.="nhmmer End (augustus prediction)\t";
-	    #$tsv_details.="Status (Functional/Pseudogene)\t";
-	    #$tsv_details.="Remove as duplicate (Yes/No)\n";
 
 	    open(TSV_FILE, ">$tsv_summary");
 	    print TSV_FILE $tsv_details;
@@ -1244,8 +1210,7 @@ foreach my $genome(@genomes){
 			my $contig_length = $contig_lengths{$contig_n};
 			my $nhmm_dets = $nhmm_locus."|".$contig_length."|".$strand;
 			push (@domain_details, $nhmm_dets);
-			my $dom_range = $start_n."\.\.".$end_n;
-
+		
 			########################################################
 			# Reverse strand: Esl-sfetch range and output to files #
 			########################################################
@@ -1263,8 +1228,6 @@ foreach my $genome(@genomes){
 			    my $range = $start_n."\.\.".$end_n;
 			    my $cmd = "esl-sfetch -c $range -r $genome $contig_n >> $nhmmer_nucleotide_sequences";
 			    `$cmd`;
-			    my $cmd2 = "esl-sfetch -c $dom_range -r $genome $contig_n >> $nhmmer_mads_domain_seqs ";
-			    `$cmd2`;
 			}
 
 			#########################################################
@@ -1284,8 +1247,6 @@ foreach my $genome(@genomes){
 			    my $range = $start_n."\.\.".$end_n;
 			    my $cmd = "esl-sfetch -c $range $genome $contig_n >> $nhmmer_nucleotide_sequences";
 			    `$cmd`;
-			    my $cmd2 = "esl-sfetch -c $dom_range $genome $contig_n >> $nhmmer_mads_domain_seqs";
-			    `$cmd2`;
 			}
 		    }
 		}
@@ -1399,9 +1360,6 @@ foreach my $genome(@genomes){
 		    ########################################################
 		    
 		    if($strand eq "rev"){
-			my $range_domain = $start_n."\.\.".$end_n;
-			my $cmd1 = "esl-sfetch -c $range_domain -r $genome $contig_n >> $nhmmer_mads_domain_seqs";
-			`$cmd1`;
 			$start_n -= $nhmmer_plus; #3' end is $start (hence - plus)
 			$end_n += $nhmmer_minus; #5' end is $end (hence + minus)
 			if ($start_n < 1){
@@ -1421,9 +1379,6 @@ foreach my $genome(@genomes){
 		    ########################################################
 		    
 		    elsif($strand eq "pos"){
-			my $range_domain = $start_n."\.\.".$end_n;
-			my $cmd1 = "esl-sfetch -c $range_domain $genome $contig_n >> $nhmmer_mads_domain_seqs";
-			`$cmd1`;
 			$start_n -= $nhmmer_minus;
 			$end_n += $nhmmer_plus;
 			if ($start_n < 1){
@@ -2342,47 +2297,7 @@ foreach my $genome(@genomes){
 		}
 		`rm *ssi tmp.fa`;
 		my @domain_seqs = "";
-
-		######################################
-		# Print out domain sequences to file #
-		######################################
 		
-		if(-e $nhmmer_mads_domain_seqs){
-		    open(DOMAINS,$nhmmer_mads_domain_seqs);
-		    {
-			local $/ = ">";
-			while(<DOMAINS>){
-			    my $dom = $_;
-			    if($dom =~ m/\>/){
-				$dom =~ s/\>//g;
-				$dom = ">".$dom;
-			    }
-			    else{
-				$dom = ">".$dom;
-			    }
-			    push (@domain_seqs, $dom);
-			    #my $dom = $_;
-			    #push(@domain_seqs, $dom); 
-			}
-		    }
-		    close DOMAINS;
-	       
-		    my $tmp_doms = "tmp_doms.fa";
-		    open(DOMS, ">>$tmp_doms");
-		    foreach my $domain(@domain_seqs){
-			if($domain=~m/(\>[^\n]+)\n([\S\n]+)/){
-			    my $dom_header = $1;
-			    my $dom_seq = $2;
-			    my $hit_label = $hit_log[0];
-			    shift(@hit_log);
-			    $dom_header =~ s/\>//g;
-			    $dom_header = ">".$hit_label."_".$dom_header."\n";
-			    print DOMS $dom_header.$dom_seq;
-			    #print $domain."\n";
-			}
-		    }
-		    `mv $tmp_doms $nhmmer_mads_domain_seqs`;
-		}
 	    }
 
 	    ###############################################################
@@ -2503,9 +2418,6 @@ foreach my $genome(@genomes){
 	    }
 	    if(-e $nhmmer_nucleotide_sequences){
 		`mv $nhmmer_nucleotide_sequences $outdir`;
-	    }
-	    if(-e $nhmmer_mads_domain_seqs){
-		`mv $nhmmer_mads_domain_seqs $outdir`;
 	    }
 	}
     }
