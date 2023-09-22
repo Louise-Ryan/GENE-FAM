@@ -76,6 +76,30 @@ my $annotation_6 = "pseudogene"; #no START codon && in frame stop codon.........
 #MAIN CODE                                                                  #
 #############################################################################
 
+my @lines = (
+    "    _____   ______   _   _   ______            ______            __  __ ",
+    "   / ____| |  ____| | \\ | | |  ____|          |  ____|   /\\     |  \\/  |",
+    "  | |  __  | |__    |  \\| | | |__     ______  | |__     /  \\    | \\  / |",
+    "  | | |_ | |  __|   | . ` | |  __|   |______| |  __|   / /\\ \\   | |\\/| |",
+    "  | |__| | | |____  | |\\  | | |____           | |     / ____ \\  | |  | |",
+    "   \\_____| |______| |_| \\_| |______|          |_|    /_/    \\_\\ |_|  |_|"
+    );
+
+# Find the maximum line length
+my $max_length = length($lines[0]);
+for my $line (@lines) {
+    my $length = length($line);
+    $max_length = $length if $length > $max_length;
+}
+print "\n", "\=" x 80, "\n";
+# Print the lines of text with padding to ensure a consistent length
+foreach my $line (@lines) {
+    my $padding = $max_length - length($line);
+    print $line . ' ' x $padding . "\n";
+}
+print "\n", "\=" x 80, "\n\n";
+
+
 #######################################
 # 1. Check input files and parameters:
 #######################################
@@ -322,7 +346,9 @@ foreach my $genome(@genomes){
     ####################################################
 
     unless ($genome =~ m/$cds_suffix/i){
-	print $genome."\n";
+	print "-" x 60, "\n";
+	print "Mining $genome:\n";
+	print "-" x 60, "\n";
 	if ($genome =~ m/([\S]+).*\_$genome_suffix/){
 	    my $genome_ID = $1;
 
@@ -457,14 +483,12 @@ foreach my $genome(@genomes){
 		
 		my $nucleotide = $genome_files[0];
 		my $protein = $genome_files[1];
-		print $nucleotide."\n";
-		print $protein."\n";
-		if ($cds_available =~ m/^yes$/i){
-		    $cds = $genome_files[2];
-		    print $cds."\n";   
-		}
+		#print $nucleotide."\n";
+		#print $protein."\n";
+		$cds = $genome_files[2];
+		#print $cds."\n";   
 		my $gff = $genome_files[3];
-		print $gff."\n";
+		#print $gff."\n";
 	
 		
 		##############
