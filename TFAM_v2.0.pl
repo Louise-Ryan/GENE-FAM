@@ -1097,7 +1097,7 @@ foreach my $genome(@genomes){
 				#print "FALSE \n";
 			    #}
 			}
-			print "I am here \n";
+			#print "I am here \n";
 			$tsv_entry.=  $genomic_Ds."\t";
 			$tsv_entry.=  $genomic_De."\n";
 		    
