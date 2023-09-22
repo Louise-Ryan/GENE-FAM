@@ -1686,26 +1686,53 @@ foreach my $genome(@genomes){
 				#####################################################################
 				# Check that prediction overlaps with target DOMAIN (NHMMER COORDS) #
 				#####################################################################
-				
-				if($pred_end > $domain_end){
-				    $maximum_end = $pred_end;
-				    # print "Maximum end is pred end: $pred_end \n";
-				}else{
-				    $maximum_end = $domain_end;
-				    # print "Maximum end is domain end: $domain_end \n";
-				}
-				if($pred_start < $domain_start){
-				    $minimum_start = $pred_start;
-				    # print "Minimum start is pred start: $pred_start \n";
-				}
-				else{
-				    $minimum_start = $domain_start;
-				    # print "Minimum start is domain start: $domain_start \n";
-				}
-				$prediction_length = ($pred_end - $pred_start) +1;
-				$total_length3 = $prediction_length + $domain_length;
-				$max_span3 = ($maximum_end - $minimum_start) +1;
 
+				if($cds_start ne "NA" && $cds_end ne "NA"){
+				    if($cds_start > $domain_end){
+					$maximum_end = $cds_end;
+					# print "Maximum end is pred end: $pred_end \n";
+				    }else{
+					$maximum_end = $domain_end;
+					# print "Maximum end is domain end: $domain_end \n";
+				    }
+				    if($cds_start < $domain_start){
+					$minimum_start = $cds_start;
+					# print "Minimum start is pred start: $pred_start \n";
+				    }
+				    else{
+					$minimum_start = $domain_start;
+					# print "Minimum start is domain start: $domain_start \n";
+				    }
+				    $prediction_length = ($cds_end - $cds_start) +1;
+				    $total_length3 = $prediction_length + $domain_length;
+				    $max_span3 = ($maximum_end - $minimum_start) +1;
+				}
+				
+				###############################################
+				# If no CDS values, check overlap with mRNA
+				###############################################
+				
+				else{
+				    if($pred_start > $domain_end){
+					$maximum_end = $pred_end;
+					# print "Maximum end is pred end: $pred_end \n";
+				    }else{
+					$maximum_end = $domain_end;
+					# print "Maximum end is domain end: $domain_end \n";
+				    }
+				    if($pred_start < $domain_start){
+					$minimum_start = $pred_start;
+					# print "Minimum start is pred start: $pred_start \n";
+				    }
+				    else{
+					$minimum_start = $domain_start;
+					# print "Minimum start is domain start: $domain_start \n";
+				    }
+				    $prediction_length = ($pred_end - $pred_start) +1;
+				    $total_length3 = $prediction_length + $domain_length;
+				    $max_span3 = ($maximum_end - $minimum_start) +1;
+				}
+				
 				#############################
 				# Check prediction overlap: #
 				#############################
