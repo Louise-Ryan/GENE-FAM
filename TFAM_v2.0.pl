@@ -14,6 +14,8 @@ my $augustus_species = "arabidopsis"; #If using augustus, set your closely relat
 my $minidentity = 60; #If using augutsus, this is the minimum identity required for alignment with a reference receptor to be used to generate prediction hints.
 my $pseudogene_check = "yes"; #If yes, all cds seqs with in frame stop codons, or below threshold length, will be annotated as pseudogenes.
 my $pseudogene_length = 300; #coding sequences below this length are considered pesuogenes (nucloetide length).
+my $remove_duplicates = "no";
+my $duplicate_threshold = "0.9"; #Percentage identity which pairs must share to be considered 'duplicates'. 
 
 ############################################################################
 #Input Files
@@ -320,7 +322,7 @@ my @cds_transcripts = (<*$cds_suffix>);
 my @gff_files = (<*$gff_suffix>);
 
 #HMMER files
-my $phmmer_out = "_phmmer.out"; #genome name will be appedned to this file within code so file will look like: genome_phmmer.out
+my $phmmer_out = "_hmmer.out"; #genome name will be appedned to this file within code so file will look like: genome_phmmer.out
 my $nhmmer_out ="_nhmmer.out"; #nhmmer outfile
 
 #Build hmms:
@@ -340,6 +342,7 @@ foreach my $genome(@genomes){
     my @domain_details = ();
     my @nhmmer_evalues = ();
     my %cds_functional_hash;
+    my @protein_names = ();
     
     ####################################################
     # 4.1. Prepare output directories and  file names:
@@ -356,14 +359,15 @@ foreach my $genome(@genomes){
 	    my $wd = getcwd;
 	    my $outdir = $wd."/".$genome_ID."_outfiles";
 	    `mkdir $outdir`;
-	    my $subdir = $outdir."/hmmer_files";
-	    my $subdir2 = $outdir."/isoform_files";
+	    my $subdir = $outdir."/Hmmer-output-files";
+	    my $subdir2 = $outdir."/Isoform-files";
+	    my $subdir3 = $outdir."/Predictions-log";
+	    my $subdir4 = $outdir."/Percent-identity-matrix";
 
 	    # All isoforms files
-	    my $transcript_nucleotide_isoforms = $genome_ID."_all_isoforms_mRNA.fa"; #mRNA
+	    my $transcript_nucleotide_isoforms = $genome_ID."_all_isoforms_mrna.fa"; #mRNA
 	    my $cds_all_isoforms = $genome_ID."_all_isoforms_cds_nucleotide.fa"; #nucleotide CDS
 	    my $phmmer_prot_isoforms = $genome_ID."_all_isoforms_cds_protein.fa"; #protein CDS
-
 
 	    # Longest isoforms files
 	    my $unique_longest_transcripts_out = $genome_ID.$nucleotide_longest_transcripts; #mRNA 
@@ -371,14 +375,22 @@ foreach my $genome(@genomes){
 	    my $cds_prot = $genome_ID.$cds_protein_seqfile; # CDS protein (no augustus)
 	    my $cds_final_nuc = $genome_ID.$final_cds_nuc; # CDS (with augustus)
 	    my $cds_final_prot = $genome_ID.$final_cds_prot; # CDS (with augustus)
-
-	    
+   
 	    # Hmmer out files
-	    my $phmmer_file = $genome_ID.$phmmer_out; #phmmer out file
-	    my $nhmmer_transcript_file = $genome_ID."_transcripts".$nhmmer_out;
+	    my $phmmer_file = $genome_ID."_cds_protein".$phmmer_out; #phmmer out file
+	    my $nhmmer_transcript_file = $genome_ID."_mrna".$nhmmer_out;
 	    my $nhmmer_nucleotide_sequences = $genome_ID.$nhmmer_unnanotated_seqfile;
-	    my $nhmmer_file = $genome_ID."_assembly".$nhmmer_out; #nhmmer out file
+	    my $nhmmer_file = $genome_ID."_genome_assembly".$nhmmer_out; #nhmmer out file
 	    my $nhmmer_cds_file = $genome_ID."_cds_nucleotide".$nhmmer_out;
+
+	    # Augustus predictions log file
+	    my $augustus_prediction_log = $genome_ID."_augustus_prediction_log.gff";
+	    
+	    # Summary tsv file
+	    my $tsv_summary = $genome_ID."_summary.tsv";
+	    
+	    # Matrix out file
+	    my $matrix_out = $genome_ID."_percent_identity_matrix.tsv";
 	   
 	    # LOG file
 	    my @hit_log = ();
@@ -388,7 +400,6 @@ foreach my $genome(@genomes){
 	    ######################
 
 	    my %details_hash;
-	    my $tsv_summary = $genome_ID."_summary.tsv";
 	    my $tsv_details = "";
 
 	    $tsv_details.="Name\t";
@@ -495,7 +506,7 @@ foreach my $genome(@genomes){
 		# Run phmmer #
 		##############
 		
-		print "\nrunning phmmer on protein annotations...\n\n";
+		print "\nrunning hmmsearch on protein CDS annotations...\n\n";
 		if($default_phmmer_evalue =~ m/^yes$/i){
 		    `hmmsearch $phmm_profile $protein >> $phmmer_file`;
 		}
@@ -580,7 +591,7 @@ foreach my $genome(@genomes){
 		# Run NHMMER #
 		##############
 
-		print "running nhmmer on mRNA transcripts ...\n\n";
+     		print "running nhmmer on mRNA annotations ...\n\n";
 		if($default_nhmmer_evalue =~ m/^yes$/i){
 		    `nhmmer $nhmm_profile $nucleotide >> $nhmmer_transcript_file`;
 		}
@@ -672,7 +683,7 @@ foreach my $genome(@genomes){
 		# 4.4. Run NHMMER on CDS nucleotide #
 		#####################################
 
-		print "running nhmmer on CDS nucleotide ...\n\n";
+		print "running nhmmer on nucleotide CDS annotations  ...\n\n";
 		if($default_nhmmer_evalue =~ m/^yes$/i){
 		    `nhmmer $nhmm_profile $cds >> $nhmmer_cds_file`;
 		}
@@ -920,6 +931,8 @@ foreach my $genome(@genomes){
 		    }
 		}
 
+		push (@protein_names, @longest_isoforms);
+
 		#########################################
 		# Print longest isoforms to files:      #
 		# 1) mRNA, longest isoforms             #
@@ -1139,11 +1152,17 @@ foreach my $genome(@genomes){
 		#nhmmer then discount anything which overlaps with existing coordinates
 
 		if ($predict_new_hits eq "Yes" || $predict_new_hits eq "yes"){
+
 		    ##########################
 		    # Run nhmmer on assembly #
 		    ##########################
+
+		    #print "Building genome database for nhmmer ...\n";
+		    #my $genome_db = $genome_ID."genome.db";
+		    #`makehmmerdb $genome $genome_db`;
+
 		    
-		    print "running nhmmer on whole assembly to pull new hits ...\n\n";
+		    print "running nhmmer on whole genome assembly to pull new hits ...\n\n";
 		    `esl-sfetch --index $genome`; #index genomefile
 		    my @nhmmer_coordinates = ();
 		    if($default_nhmmer_evalue eq "yes"){
@@ -1297,9 +1316,10 @@ foreach my $genome(@genomes){
 		`mkdir $subdir2`;
 		if(-e $nhmmer_file && $phmmer_file && $nhmmer_transcript_file){
 		    `mv $nhmmer_file $phmmer_file $nhmmer_transcript_file $subdir`;
+		    `mv $nhmmer_cds_file $subdir`;
 		}
 		if(-e $phmmer_prot_isoforms && -e $transcript_nucleotide_isoforms){
-		    `mv $phmmer_prot_isoforms $transcript_nucleotide_isoforms $subdir2`;
+		    `mv $phmmer_prot_isoforms $transcript_nucleotide_isoforms  $cds_all_isoforms $subdir2`;
 		}
 		if ($cds_available eq "yes" || $cds_available eq "Yes"){
 		    `cp $cds_nuc $cds_final_nuc`;
@@ -1319,7 +1339,7 @@ foreach my $genome(@genomes){
 		    # Run NHMMER on assembly #
 		    ##########################
 		    
-		    print "running nhmmer on whole assembly to pull hits ...\n\n";
+		    print "running nhmmer on whole genome assembly to pull hits ...\n\n";
 		    `esl-sfetch --index $genome`;
 		    my @nhmmer_coordinates = ();
 		    if($default_nhmmer_evalue =~ m/^yes$/i){
@@ -1440,7 +1460,7 @@ foreach my $genome(@genomes){
 		    # Make outout directories and tidy existing files #
 		    ###################################################
 		    
-		    my $subdir = $outdir."/hmmer_files";
+		    #my $subdir = $outdir."/hmmer_files";
 		    `mkdir $subdir`;
 		    `mv $nhmmer_file $subdir`;
 		    `rm *ssi`;
@@ -1459,7 +1479,7 @@ foreach my $genome(@genomes){
 
 	    
 	    if ($predict_new_hits eq "Yes" || $predict_new_hits eq "yes"){
-		print "running augustus to predict novel hits ...\n\n";
+		print "running augustus to predict new hits ...\n\n";
 
 		###################################################################
 		# Index the reference file, this is used to guide gene prediction #
@@ -2238,6 +2258,9 @@ foreach my $genome(@genomes){
 					##############
 					
 					my $hmm_status =&hmm_filter(@prediction_details);
+
+					`rm $tmp_prot_out`;
+					`rm *hmmfilter.out`;
 					
 					#print "This is hmm status: $hmm_status \n";
 					
@@ -2246,9 +2269,9 @@ foreach my $genome(@genomes){
 					    my $hit_details = $hit_prefix.$hit_no." prediction:\n";
 					    $verified_cds_seq = $cds_seq;
 					    $verified_prot_seq = $protein_seq;
-					    `echo \"-----------------------------\n\" >> predictions_log.gff`;
-					    `echo \"$hit_details\" >> predictions_log.gff`;
-					    `echo \"$pred\" >> predictions_log.gff`;
+					    `echo \"-----------------------------\n\" >> $augustus_prediction_log`;
+					    `echo \"$hit_details\" >> $augustus_prediction_log`;
+					    `echo \"$pred\" >> $augustus_prediction_log`;
 					    $tsv_details[2] = "Yes";
 					    $tsv_details[3] = "Pass";
 
@@ -2326,6 +2349,7 @@ foreach my $genome(@genomes){
 			    #my $cds_header = ">".$hit_prefix.$hit_no."_new_augustus_prediction\n";
 			    #$cds_header = ">".$hit_prefix.$hit_no."_new_augustus_prediction\n";
 			    my $hit_annotation = $hit_prefix.$hit_no;
+			    push(@protein_names, $hit_annotation);
 
 			    my $cds_copy = $verified_cds_seq;
 			    $cds_copy =~ s/\n//g;
@@ -2366,6 +2390,7 @@ foreach my $genome(@genomes){
 		    `rm $hit_prefix*`;
 		}
 		`rm tmp.fa`;
+		`rm *ssi`;
 		my @domain_seqs = "";
 		
 	    }
@@ -2463,31 +2488,134 @@ foreach my $genome(@genomes){
 		}
 		`mv $out $cds_final_file`;
 	    }
+ 	    
+	    ###############################
+	    # Remove duplicates option    #
+	    ###############################
+
+	    print "generating percent identity matrix ...\n\n";
+	    # Blast protein file against itself to calculate pairiwse percent identity scores
+	    # Store percent identity values in a matrix
+	    # If pairs exceed $duplicate_threshold, retain the sequence on the longer contig
+	    # Will need a hash with cds_name => contig and contig => contig_length
+	    # Add keep/remove to the tsv
+
+	    # maybe iterate through each query, be greedy, always keep the longer sequence in pair ..
+	    # Do this until you have a status hash (which can be overwritten with each query pair)
+	    # CDS_ID => status
+	    # Then output the 'keeps' to '_filtered_X_percent_id.fa' files (protein and nucleotide).
 	    
+	    #my @pid_matrix =&get_matrix();
+	    my $matrix_db = "matrix_db.db";
+	    my $blast_out = "matrix_blast.out";
+	    my $output_format = "6 qseqid qlen sseqid slen qstart qend sstart send evalue length nident qcovhsp pident";
+	   
+	    `makeblastdb -in $cds_final_prot -dbtype="prot" -out $matrix_db`; 
+	    `blastp -db $matrix_db -query $cds_final_prot -out $blast_out -outfmt \"$output_format\"`;
+
+	    my @pid_matrix =&get_matrix($blast_out, \@protein_names, \@protein_names, $matrix_out);
 	    
+	    `rm $matrix_db*`;
+	    `rm $blast_out`;
+
+	    #################
+	    # Parse matrix  #
+	    #################
+	    my $row_no = 0;
+	    my $filter_threshold = $duplicate_threshold * 100;
+	    foreach my $row(@pid_matrix){
+		my $row_name = $protein_names[$row_no];
+		#print "searching row $row_no \n";
+		$row_no ++;
+		my @cluster = ();
+		my @row_values = @$row;
+		#print "Scalar row: ".scalar(@row_values)." \n";
+		#print join ("\t", @row_values), "\n";
+		my $indx = -1;
+		foreach my $entry(@row_values){
+		    $indx ++;
+		    #print "searching column number $indx \n";
+		    unless($entry =~ m/\*/ || $entry =~ m/NA/){
+			if($entry > $filter_threshold){
+			    push(@cluster, $protein_names[$indx]);
+			    #print "Column no: $indx."."\n";
+			}
+		    }
+		}
+		if(@cluster){
+		    #print "$row_name\t"; 
+		    #print join("\t", @cluster), "\n\n";
+		}
+	    }
+
+	    print "removing duplicates which share over $filter_threshold"."% identity...\n\n";
+	
+	    
+	    #my @column_names = @protein_names;
+	    #my @row_names = = @protein_names;
+	    
+	    #for(my $col = 0; $col <= $#column_names; $col ++){
+	#	my $column_name = $column_names[$col];
+	#	my @column_values = (map { $_->[$col] } @matrix); #get column values for column number $first_idx
+	#	my $max_column_value = max(@column_values);
+	#	if($max_column_value ne "NA"){
+	#	    my @max_row_indices = grep {$column_values[$_] == $max_column_value} 0 .. $#column_values;
+	#	    my @reference_names = map { $row_names[$_] } @max_row_indices;
+	#	    foreach my $max_row_indx(@max_row_indices){
+	#		my $row_name = $row_names[$max_row_indx];
+	#		my @row_values = @{ $matrix[$max_row_indx] }; #get row values for row number $row (note curly brackets are to dereference array).
+	#		my $max_row_value = max(@row_values);
+	#		my @max_column_indices = grep {$row_values[$_] == $max_row_value} 0 .. $#row_values;
+	#		my @query_names = map { $column_names[$_] } @max_column_indices;
+	#		foreach my $max_column_indx(@max_column_indices){
+	#		    if($column_names[$max_column_indx] eq $column_name){
+	#			if($max_column_value == $max_row_value && $max_column_value >= 80){
+	#			    push(@mutuals, $row_name);
+	#			    @{$overwrite_matrix[$max_row_indx]}[$max_column_indx] = "NA";
+	#			    $return_pid_scores{$column_name} = $max_row_value;
+	#			}
+	#		    }
+	#		}
+	#	    }
+	#	}
+	 #   }
+
+	    
+	   	    
 
 	    ################################
 	    # 4.9. Sort output directories #
 	    ################################
 	    
 	    if(-e $nhmmer_nucleotide_sequences){
-		my $subdir4 = $outdir."/unnanotated_hits";
-		`mkdir $subdir4`;
-		`mv $nhmmer_nucleotide_sequences $subdir4`;
+		#my $subdir4 = $outdir."/unnanotated_hits";
+		#`mkdir $subdir4`;
+		#`mv $nhmmer_nucleotide_sequences $subdir4`;
+		`rm $nhmmer_nucleotide_sequences`;
 	    }
 	    `mv $cds_final_nuc $cds_final_prot $outdir`;
 	    if ($annotation_available eq "Yes" || $annotation_available eq "yes"){
-		my $subdir3 = $outdir."/mined_annotation_files";
-		`mkdir $subdir3`;
-		`mv $cds_nuc $cds_prot $subdir3`;
-		`mv $unique_longest_transcripts_out $subdir3`;
-		`mv $subdir2 $subdir3`;
+		#my $subdir3 = $outdir."/mined_annotation_files";
+		#`mkdir $subdir3`;
+		`mv $cds_nuc $cds_prot $subdir2`;
+		`mv $unique_longest_transcripts_out $subdir2`;
+		#`mv $subdir2 $subdir3`;
 	    }
 	    if($predict_new_hits eq "Yes" || $predict_new_hits eq "yes"){
-		`mv predictions_log.gff $outdir`;
+		if(-e $augustus_prediction_log){
+		    `mkdir $subdir3`;
+		    `mv $augustus_prediction_log $subdir3`;
+		}
 	    }
 	    if(-e $nhmmer_nucleotide_sequences){
 		`mv $nhmmer_nucleotide_sequences $outdir`;
+	    }
+	    if(-e $matrix_out){
+		`mkdir $subdir4`;
+		`mv $matrix_out $subdir4`;
+	    }
+	    if(-e $tsv_summary){
+		`mv $tsv_summary $outdir`;
 	    }
 	}
     }
@@ -2498,13 +2626,13 @@ foreach my $genome(@genomes){
 ##################################
 
 if ($annotation_available eq "yes" || $annotation_available eq "Yes"){
-    `for dir in *outfiles; do cp $phmm_profile \$dir/hmmer_files;done`;
-    `for dir in *outfiles; do cp $nhmm_profile \$dir/hmmer_files;done`;
+    `for dir in *outfiles; do cp $phmm_profile \$dir/Hmmer-output-files;done`;
+    `for dir in *outfiles; do cp $nhmm_profile \$dir/Hmmer-output-files;done`;
     `rm $phmm_profile`;
     `rm $nhmm_profile`;
 }
 else{
-    `for dir in *outfiles; do cp $nhmm_profile \$dir/hmmer_files;done`;
+    `for dir in *outfiles; do cp $nhmm_profile \$dir/Hmmer-output-files;done`;
     `rm $nhmm_profile`;
 }
 
@@ -2581,7 +2709,7 @@ sub checkframe{
 
 sub downloadGenomes {
     my $splist = $_[0];
-    print "\nAutomatically downloading genome files from ncbi for your query species ... \n\n";
+    print "\ndownloading genome assembly and annotation files for each query species ... \n\n";
     open(SPECIESFILE, $splist);
     my @species = <SPECIESFILE>;
     close SPECIESFILE;
@@ -3046,3 +3174,88 @@ sub get_contig_lengths{
 }
 	
 
+sub get_matrix{
+    my ($blast_file, $row_array1, $query_array2, $matrix_outfile) = @_;
+    my @reference_ID_names = @{$row_array1}; #dereference
+    my @query_ID_names = @{$query_array2}; #dereference
+    my @r_names = map {$_} @reference_ID_names;
+    my @q_names = map {$_} @query_ID_names; 
+    my @top_row = ();
+    my @ordered_references = ();
+    my @matrix_already = ();
+    my %matrix_key = ();
+
+    #print "Begin to parse blast\n";
+    open(BLSTP, $blast_file);
+    while (<BLSTP>) {
+        chomp;
+        my @details = split(/\t/, $_);
+	#print "here ... ";
+	#print join("\t", @details),"\n";
+	my $reference_id = $details[2]; #human ID
+	#print $reference_id."\n";
+	my $query_id = $details[0]; #query ID
+	#print $query_id."\n";
+	
+	#PID : number identical / mean pairise length
+	my $nid = $details[10]; #number identical aa
+	my $qlen = $details[1]; #query length
+	my $hlen = $details[3]; #reference length
+	my $mean_length = ($qlen + $hlen) /2; #mean length
+	my $pid = $nid / $mean_length; #number of identical amino acids divided by mean pairwise sequence length
+	$pid = $pid * 100; #convert to percent
+	$pid =  sprintf("%.2f", $pid); #round to 2 decimals
+
+	if($query_id eq $reference_id){
+	    $pid = "*";
+	}
+	
+	unless (exists $matrix_key{$query_id}{$reference_id}) {
+            $matrix_key{$query_id}{$reference_id} = $pid;
+	}
+    }
+    close BLSTP;
+    
+    #print "Populate the matrix \n";
+    my @populate_matrix = ();
+
+    #Populate and print matrix
+    if(-e $matrix_outfile){
+	`rm $matrix_outfile`;
+    }
+    open(MATRIX, ">>$matrix_outfile");
+    print MATRIX "\t";
+    print MATRIX join("\t", @q_names), "\n";
+    my $h_count = -1;
+    foreach my $r(@r_names){ #foreach ordered reference OR
+	my @matrix_row = ();
+	my $print_row = "";
+	$h_count +=1;
+	print MATRIX $r_names[$h_count]."\t";
+	foreach my $q(@q_names){ #foreach ordered query OR
+	    my $ijscore = "NA";
+	    if(exists $matrix_key{$q}{$r}){
+		$ijscore = $matrix_key{$q}{$r}; #get the pid value for query and reference pair
+		if($ijscore =~ m/[0-9]+/){
+		    push(@matrix_row, $ijscore);
+		}
+		elsif($ijscore =~m/\*/){
+		    push(@matrix_row, $ijscore);
+		}
+		else{
+		    push(@matrix_row, "NA");
+		    $ijscore = "NA";
+		}
+	    }
+	    else{
+		$ijscore = "NA";
+		push(@matrix_row, "NA");
+	    }
+	    print MATRIX $ijscore."\t";
+	}
+	print MATRIX "\n";
+	push(@populate_matrix, [@matrix_row]);
+    }
+    close MATRIX;
+    return @populate_matrix;
+}
