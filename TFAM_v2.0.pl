@@ -3,19 +3,26 @@ use strict;
 use warnings;
 use Cwd;
 use Scalar::Util qw(looks_like_number);
+use List::Util qw( min max );
 
 ###########################################################################
 #USER PARAMETERS:                                                         #
 ###########################################################################
 #Annotation files available?
 my $annotation_available = "yes"; #If NCBI annotations are available for your genome set below variable to "yes". Set as "no" if no annotations are available, and you wish to mine the assembly only.
+# Augustus
 my $predict_new_hits = "yes"; #If you want to predict any new, unannotated, hits with augutus, set this to "yes". If augustus is not installed, keep this as "no".
 my $augustus_species = "arabidopsis"; #If using augustus, set your closely related species here. This is the species that augustus is trained on.
 my $minidentity = 60; #If using augutsus, this is the minimum identity required for alignment with a reference receptor to be used to generate prediction hints.
+my $number_hints = "all"; # all: uses all sequences in the reference file to generate hints, # If you want to use the top 5 blast hits in the reference file, for example, set this variable to "5". Any number > 0 is acceptable.
+# Psudogene check
 my $pseudogene_check = "yes"; #If yes, all cds seqs with in frame stop codons, or below threshold length, will be annotated as pseudogenes.
 my $pseudogene_length = 300; #coding sequences below this length are considered pesuogenes (nucloetide length).
+# Remove duplicates
 my $remove_duplicates = "no";
-my $duplicate_threshold = "0.9"; #Percentage identity which pairs must share to be considered 'duplicates'. 
+my $duplicate_threshold = "0.9"; #Percentage identity which pairs must share to be considered 'duplicates'.
+my $duplicate_type = "cluster"; #pairwise or cluster
+
 
 ############################################################################
 #Input Files
@@ -30,6 +37,7 @@ my $cds_suffix = "cds_from_genomic.fna"; #cds file (default for ncbi) #automatic
 my $gff_suffix = "genomic.gff";
 #Augustus reference file:
 my $reference_file = "MADS_reference_file.fa"; #if augustus option is on, enter reference file name here.
+my $append_query = "no"; # if yes, the mined sequences from the query species will be added to the reference file to guide augustus gene prediction
 #Automate ncbi download?
 #FOR REFSEQ GENOMES ONLY!#
 #If yes, script will use a list of species to download assembly and annotation files
@@ -343,6 +351,7 @@ foreach my $genome(@genomes){
     my @nhmmer_evalues = ();
     my %cds_functional_hash;
     my @protein_names = ();
+    my %contig_lengths;
     
     ####################################################
     # 4.1. Prepare output directories and  file names:
@@ -406,7 +415,7 @@ foreach my $genome(@genomes){
 	    $tsv_details.="NCBI Annotation (Yes/No)\t";
 	    $tsv_details.="Augustus Prediction (Yes/No)\t";
 	    $tsv_details.="HMM Filter (Pass/Fail)\t";
-	    $tsv_details.="Remove as duplicate (Yes/No)\t";
+	    $tsv_details.="Remove as duplicate (Keep/Remove)\t";
 	    $tsv_details.="Contig\t";
 	    $tsv_details.="Contig Length\t";
 	    $tsv_details.="Strand\t";
@@ -430,7 +439,7 @@ foreach my $genome(@genomes){
 	    $tsv_details.="nhmmer End (CDS)\t";
 	    $tsv_details.="nhmmer Start (Genomic)\t";
 	    $tsv_details.="nhmmer End (Genomic)\n";
-
+	    
 	    open(TSV_FILE, ">$tsv_summary");
 	    print TSV_FILE $tsv_details;
 	    close TSV_FILE;
@@ -981,7 +990,7 @@ foreach my $genome(@genomes){
 		######################
 
 		my $contig_hash_ref =&get_contig_lengths($genome);
-		my %contig_lengths = %$contig_hash_ref;
+	        %contig_lengths = %$contig_hash_ref;
 		
 		#foreach my $contig_key(keys %contig_lengths){
 		#    print $contig_key.":".$contig_lengths{$contig_key}."\n";
@@ -1380,7 +1389,7 @@ foreach my $genome(@genomes){
 		    ######################
 		    
 		    my $contig_hash_ref =&get_contig_lengths($genome);
-		    my %contig_lengths = %$contig_hash_ref;
+		    %contig_lengths = %$contig_hash_ref;
 		    
 		    #foreach my $contig_key(keys %contig_lengths){
 		    #    print $contig_key.":".$contig_lengths{$contig_key}."\n";
@@ -1481,6 +1490,20 @@ foreach my $genome(@genomes){
 	    if ($predict_new_hits eq "Yes" || $predict_new_hits eq "yes"){
 		print "running augustus to predict new hits ...\n\n";
 
+		##################################################################################
+		# If specified, append mined NCBI sequences from query species to reference file #
+		##################################################################################
+
+		my $copy_reference_file = "backup_reference_file.fa";
+		`cp $reference_file $copy_reference_file`;
+		
+		if($append_query =~ m/^yes$/){
+		    if(-e  $cds_final_nuc){
+			`cat $cds_final_nuc >> $reference_file`;
+		    }
+		}
+		
+		
 		###################################################################
 		# Index the reference file, this is used to guide gene prediction #
 		###################################################################
@@ -1630,9 +1653,30 @@ foreach my $genome(@genomes){
 			##########################################################################
 			# Use blat and blat2hints to generate hints for augustus gene prediction #
 			##########################################################################
+
+			# Get blat output 
+
+			# If using entire reference file for hints
+			if($number_hints =~ m/^all$/){
+			    `blat -minIdentity=$minidentity $tmp_out $reference_file $psl`;
+			}
+			# If using select number of top blat hits in reference file to generate hints
+			else{
+			    my $n = 5 + $number_hints;
+			    my $psl_prior = "psl_prior.psl";
+			    if( -e $psl_prior){
+				`rm $psl_prior`;
+			    }
+			    `blat -minIdentity=$minidentity $tmp_out $reference_file $psl_prior`;
+			    `head -n $n $psl_prior >> $psl`;
+			    if( -e $psl_prior){
+				`rm $psl_prior`;
+			    }
+			}
 			
-			`blat -minIdentity=$minidentity $tmp_out $reference_file $psl`;
+			# convert blat output to hints
 			`perl blat2hints.pl --in=$psl --out=$hints`;
+	
 
 			#################
 			# Run AUGUSTUS  #
@@ -2354,7 +2398,7 @@ foreach my $genome(@genomes){
 			    my $cds_copy = $verified_cds_seq;
 			    $cds_copy =~ s/\n//g;
 			    my $cds_length = length($cds_copy);
-			    $tsv_details[12] = $cds_length;
+			    #$tsv_details[15] = $cds_length;
 			    
 			    # Print to CDS nucleotide
 			    open(CDS_NT, ">>$cds_final_nuc");
@@ -2393,6 +2437,12 @@ foreach my $genome(@genomes){
 		`rm *ssi`;
 		my @domain_seqs = "";
 		
+		
+		if(-e $copy_reference_file){
+		    my $append_reference_file = $genome_ID."_".$reference_file; 
+		    `cp $reference_file $append_reference_file`;
+		    `mv $copy_reference_file $reference_file`;
+		}
 	    }
 
 	    ###############################################################
@@ -2488,100 +2538,365 @@ foreach my $genome(@genomes){
 		}
 		`mv $out $cds_final_file`;
 	    }
+
+	    close OUTTSV;
+
+	    # Sort by order of TSV
+	    my $tmp_cds_nuc = "tmp_cds_nuc.fa";
+	    my $tmp_cds_prot = "tmp_cds_prot.fa";
+
+	    if(-e $tmp_cds_nuc && -e $tmp_cds_prot){
+		`rm $tmp_cds_nuc`;
+		`rm $tmp_cds_nuc`;
+	    }
+
+	    `esl-sfetch --index $cds_final_nuc`;
+	    `esl-sfetch --index $cds_final_prot`;
+
+
+	    open(TSV_IN, $tsv_summary);
+	    my @tsv_entries = (<TSV_IN>);
+	    close TSV_IN;
+	    shift(@tsv_entries); # remove header
+	    foreach my $tsv_line(@tsv_entries){
+		$tsv_line =~ s/\n//g;
+		my @tsvals = split(/\t/, $tsv_line);
+		my $target = $tsvals[12];
+		unless($tsvals[1] eq "No" && $tsvals[2] eq "No"){
+		    unless($tsvals[3] eq "Fail"){
+			`esl-sfetch $cds_final_nuc $target >> $tmp_cds_nuc`;
+			`esl-sfetch $cds_final_prot $target >> $tmp_cds_prot`;
+		    }
+		}
+	    }
+	    
+	    if(-e $tmp_cds_nuc && -e $tmp_cds_prot){
+		`mv $tmp_cds_nuc $cds_final_nuc`;
+		`mv $tmp_cds_prot $cds_final_prot`;
+	    }
+	    
+	    `rm *ssi`;
  	    
 	    ###############################
 	    # Remove duplicates option    #
 	    ###############################
 
-	    print "generating percent identity matrix ...\n\n";
-	    # Blast protein file against itself to calculate pairiwse percent identity scores
-	    # Store percent identity values in a matrix
-	    # If pairs exceed $duplicate_threshold, retain the sequence on the longer contig
-	    # Will need a hash with cds_name => contig and contig => contig_length
-	    # Add keep/remove to the tsv
+	    if($remove_duplicates =~ m/^yes$/i){
+		my $filter_threshold = $duplicate_threshold * 100;
+		my $filtered_nuc = $genome_ID."_cds_nuc_remove_duplicates_".$filter_threshold.".fa";
+		my $filtered_prot = $genome_ID."_cds_prot_remove_duplicates_".$filter_threshold.".fa";
 
-	    # maybe iterate through each query, be greedy, always keep the longer sequence in pair ..
-	    # Do this until you have a status hash (which can be overwritten with each query pair)
-	    # CDS_ID => status
-	    # Then output the 'keeps' to '_filtered_X_percent_id.fa' files (protein and nucleotide).
-	    
-	    #my @pid_matrix =&get_matrix();
-	    my $matrix_db = "matrix_db.db";
-	    my $blast_out = "matrix_blast.out";
-	    my $output_format = "6 qseqid qlen sseqid slen qstart qend sstart send evalue length nident qcovhsp pident";
-	   
-	    `makeblastdb -in $cds_final_prot -dbtype="prot" -out $matrix_db`; 
-	    `blastp -db $matrix_db -query $cds_final_prot -out $blast_out -outfmt \"$output_format\"`;
+		# Index cds files
+		`esl-sfetch --index $cds_final_nuc`;
+		`esl-sfetch --index $cds_final_prot`;
+		
+		print "generating percent identity matrix ...\n\n";
 
-	    my @pid_matrix =&get_matrix($blast_out, \@protein_names, \@protein_names, $matrix_out);
-	    
-	    `rm $matrix_db*`;
-	    `rm $blast_out`;
+		open(TSV_IN, $tsv_summary);
+		my @tsv_entries = (<TSV_IN>);
+		close TSV_IN;
+		
+		# Blast protein file against itself to calculate pairiwse percent identity scores
+		# Store percent identity values in a matrix
+		# If pairs exceed $duplicate_threshold, retain the sequence on the longer contig
+		# Will need a hash with cds_name => contig and contig => contig_length
+		# Add keep/remove to the tsv
 
-	    #################
-	    # Parse matrix  #
-	    #################
-	    my $row_no = 0;
-	    my $filter_threshold = $duplicate_threshold * 100;
-	    foreach my $row(@pid_matrix){
-		my $row_name = $protein_names[$row_no];
-		#print "searching row $row_no \n";
-		$row_no ++;
-		my @cluster = ();
-		my @row_values = @$row;
-		#print "Scalar row: ".scalar(@row_values)." \n";
-		#print join ("\t", @row_values), "\n";
-		my $indx = -1;
-		foreach my $entry(@row_values){
-		    $indx ++;
-		    #print "searching column number $indx \n";
-		    unless($entry =~ m/\*/ || $entry =~ m/NA/){
-			if($entry > $filter_threshold){
-			    push(@cluster, $protein_names[$indx]);
-			    #print "Column no: $indx."."\n";
+		# maybe iterate through each query, be greedy, always keep the longer sequence in pair ..
+		# Do this until you have a status hash (which can be overwritten with each query pair)
+		# CDS_ID => status
+		# Then output the 'keeps' to '_filtered_X_percent_id.fa' files (protein and nucleotide).
+
+		# If best has already been SEEN and removed, check the next best ... so on, until you have a BEST in the pair that has not been seen?
+		
+		#my @pid_matrix =&get_matrix();
+		my $matrix_db = "matrix_db.db";
+		my $blast_out = "matrix_blast.out";
+		my $output_format = "6 qseqid qlen sseqid slen qstart qend sstart send evalue length nident qcovhsp pident";
+		
+		`makeblastdb -in $cds_final_prot -dbtype="prot" -out $matrix_db`; 
+		`blastp -db $matrix_db -query $cds_final_prot -out $blast_out -outfmt \"$output_format\"`;
+
+		my @pid_matrix =&get_matrix($blast_out, \@protein_names, \@protein_names, $matrix_out);
+		
+		`rm $matrix_db*`;
+		`rm $blast_out`;
+
+		#################
+		# Parse matrix  #
+		#################
+
+		
+		print "removing duplicates which share over $filter_threshold"."% identity...\n\n";
+
+		my $duplicate_log = $genome_ID."_remove_duplicates_".$filter_threshold.".log";
+		open(DLOG, ">$duplicate_log");
+
+		my %keep_discard_hash;
+		
+		###################
+		# Cluster remove  #
+		###################
+		
+		if($duplicate_type =~m/^cluster$/){
+		    my $row_no = 0;
+		    foreach my $row(@pid_matrix){
+			my $row_name = $protein_names[$row_no];
+			my @cluster = ();
+			push(@cluster, $row_name);
+			#print "searching row $row_no \n";
+			$row_no ++;
+			#print DLOG "=" x 20;
+			#print DLOG "Cluster".$row_no;
+			#print DLOG "=" x 20, "\n\n";
+			print DLOG "=" x 50;
+			print DLOG "\n\nCluster".$row_no."\n";
+			my @row_values = @$row;
+			my $indx = -1;
+			foreach my $entry(@row_values){
+			    $indx ++;
+			    #print "searching column number $indx \n";
+			    unless($entry =~ m/\*/ || $entry =~ m/NA/){
+				if($entry > $filter_threshold){
+				    push(@cluster, $protein_names[$indx]);
+				    #print "Column no: $indx."."\n";
+				}
+			    }
+			}
+
+			print DLOG "Cluster size: ", scalar(@cluster), "\n";
+			print DLOG "$row_name: ";
+
+			my %cluster_contig_lengths;
+			if(scalar(@cluster >= 2)){
+			    #print "cluster for row $row_name :\t";
+			    print DLOG join("\, ", @cluster), "\n";
+			    foreach my $member(@cluster){
+				my $contig_cluster = "";
+				my $contig_cluster_length = "";
+				foreach my $tsv_line(@tsv_entries){
+				    my @tsvals = split(/\t/, $tsv_line);
+				    if($tsvals[12] eq $member){
+					$contig_cluster = $tsvals[5];
+					$contig_cluster_length = $tsvals[6];
+					$cluster_contig_lengths{$member} = $contig_cluster_length;
+				    }
+				}
+			    }
+			    my @sorted_members = sort { $cluster_contig_lengths{$a} <=> $cluster_contig_lengths{$b} or $a cmp $b } keys %cluster_contig_lengths;
+			    my $retained_dup = shift(@sorted_members);
+			    if(exists $keep_discard_hash{$retained_dup}){
+				if($keep_discard_hash{$retained_dup} ne "Remove"){
+				    print DLOG "Keep $retained_dup !\n\n";
+				    $keep_discard_hash{$retained_dup} = "Keep";
+				    foreach my $sorted_member(@sorted_members){
+					$keep_discard_hash{$sorted_member} = "Remove";
+				    }
+				}
+				else{
+				    my $found = 0;
+				    foreach my $sorted_member(@sorted_members){
+					if($found ==0){
+					    if($keep_discard_hash{$retained_dup} ne "Remove"){
+						print "keep $retained_dup \n";
+						$keep_discard_hash{$retained_dup} = "Keep";
+						print DLOG "Keep $retained_dup !\n\n";
+						$found = 1;
+					    }
+					}
+					else{
+					    $keep_discard_hash{$sorted_member} = "Remove";
+					}
+				    }	    
+				}
+			    }
+			    else{
+				print "keep $retained_dup \n";
+				$keep_discard_hash{$retained_dup} = "Keep";
+				print DLOG "Keep $retained_dup !\n\n";
+				foreach my $sorted_member(@sorted_members){
+				    $keep_discard_hash{$sorted_member} = "Remove";
+				}
+			    }
+			}
+			else{
+			    $keep_discard_hash{$row_name} = "Keep";
+			    print DLOG join(", ", @cluster), "\n";
+			    print DLOG "Keep $row_name !\n\n";
+			    #keep row_name
 			}
 		    }
+		    print DLOG "=" x 50, "\n\n";
+		    close DLOG;
+		    foreach my $keyy( keys %keep_discard_hash){
+			print $keyy.": ".$keep_discard_hash{$keyy}."\n";
+		    }
+		    open(OUTTSV, ">$tsv_summary");
+		    my $tsv_header = shift(@tsv_entries);
+		    print OUTTSV $tsv_header;
+		    foreach my $tsv_line(@tsv_entries){
+			$tsv_line =~ s/\n//g;
+			my @tsvals = split(/\t/, $tsv_line);
+			my $keep_remove = "";
+			if(exists $keep_discard_hash{$tsvals[12]}){
+			    $keep_remove = $keep_discard_hash{$tsvals[12]};
+			}
+			else{
+			    $keep_remove = "NA";
+			}
+			$tsvals[4] = $keep_remove;
+			if($keep_remove eq "Keep"){
+			    `esl-sfetch $cds_final_nuc $tsvals[12] >> $filtered_nuc`;
+			    `esl-sfetch $cds_final_prot $tsvals[12] >> $filtered_prot`;
+			}
+			print OUTTSV join("\t", @tsvals), "\n";
+		    }
+		    close OUTTSV;
 		}
-		if(@cluster){
-		    #print "$row_name\t"; 
-		    #print join("\t", @cluster), "\n\n";
+
+		
+		###################
+		# Pairwise-remove #
+		###################
+
+		elsif($duplicate_type =~m/^pairwise$/i){
+		    my %pair_key;
+		    my $row_no = 0;
+		    foreach my $row(@pid_matrix){
+			my @pair = (); #note that the 'pair' can have more than 2 values
+			my $row_name = $protein_names[$row_no];
+			print DLOG "=" x 50, "\n";
+			print DLOG "\nPair".$row_no."\n";
+			push(@pair, $row_name);
+			$row_no ++;
+			my @cluster = ();
+			my @row_values = @$row;
+			my $max_row_value = max(@row_values);
+			if($max_row_value ne "NA" && $max_row_value ne "\*"){
+			    if($max_row_value >= $filter_threshold){
+				my @max_column_indices = grep {$row_values[$_] == $max_row_value} 0 .. $#row_values;
+				my @column_names = map { $protein_names[$_] } @max_column_indices;
+
+				foreach my $max_column_indx(@max_column_indices){
+				    my $column_name = $protein_names[$max_column_indx];
+				    my @column_values = (map { $_->[$max_column_indx] } @pid_matrix); #get column values for column number $first_idx
+				    my $max_column_value = max(@column_values);
+				    my @max_row_indices = grep {$column_values[$_] == $max_column_value} 0 .. $#column_values;
+				    my @row_names = map { $protein_names[$_] } @max_row_indices;
+				    foreach my $max_row_indx(@max_row_indices){
+					if($protein_names[$max_row_indx] eq $row_name){
+					    if($max_row_value == $max_column_value && $max_row_value >= $filter_threshold){
+						print "$row_name and $column_name are pairs with $max_row_value % identity ..\n";
+						push(@pair, $column_name);
+					    }
+					}
+				    }
+				}
+			    }
+			}
+			
+			my %pair_contig_lengths;
+			if(scalar(@pair >= 2)){
+			    print DLOG "Pair size: ", scalar(@pair), "\n";
+			    print DLOG "Members in pair share $max_row_value","% identity\n";
+			    print DLOG "$row_name: ";
+			    print "Pair for row $row_name :\t";
+			    print join("\t", @pair), "\n";
+			    print DLOG join(", ", @pair), "\n";
+			    foreach my $member(@pair){
+				my $contig_pair = "";
+				my $contig_pair_length = "";
+				foreach my $tsv_line(@tsv_entries){
+				    my @tsvals = split(/\t/, $tsv_line);
+				    if($tsvals[12] eq $member){
+					$contig_pair = $tsvals[5];
+					$contig_pair_length = $tsvals[6];
+					$pair_contig_lengths{$member} = $contig_pair_length;
+				    }
+				}
+			    }
+			    my @sorted_members = sort { $pair_contig_lengths{$a} <=> $pair_contig_lengths{$b} or $a cmp $b } keys %pair_contig_lengths;
+			    my $retained_dup = shift(@sorted_members);
+			    if(exists $keep_discard_hash{$retained_dup}){
+				if($keep_discard_hash{$retained_dup} ne "Remove"){
+				    print "keep $retained_dup \n";
+				    $keep_discard_hash{$retained_dup} = "Keep";
+				    print DLOG "Keep $retained_dup !\n\n";
+				    foreach my $sorted_member(@sorted_members){
+					$keep_discard_hash{$sorted_member} = "Remove";
+				    }
+				}
+				else{
+				    my $found = 0;
+				    foreach my $sorted_member(@sorted_members){
+					if($found ==0){
+					    if($keep_discard_hash{$retained_dup} ne "Remove"){
+						print "keep $retained_dup \n";
+						print DLOG "Keep $retained_dup !\n\n";
+						$keep_discard_hash{$retained_dup} = "Keep";
+						$found = 1;
+					    }
+					}
+					else{
+					    $keep_discard_hash{$sorted_member} = "Remove";
+					}
+				    }	    
+				}
+			    }
+			    else{
+				print "keep $retained_dup \n";
+				$keep_discard_hash{$retained_dup} = "Keep";
+				print DLOG "Keep $retained_dup !\n\n";
+				foreach my $sorted_member(@sorted_members){
+				    $keep_discard_hash{$sorted_member} = "Remove";
+				}
+			    }
+			}
+			else{
+			    print DLOG "Pair size: ", scalar(@pair), "\n";
+			    print DLOG "$row_name: ";
+			    $keep_discard_hash{$row_name} = "Keep";
+			    print DLOG join(", ", @pair), "\n";
+			    print DLOG "Keep $row_name !\n\n";
+			    #keep row_name
+			}
+		    }
+		    foreach my $keyy( keys %keep_discard_hash){
+			print $keyy.": ".$keep_discard_hash{$keyy}."\n";
+		    }
+		    print DLOG "=" x 50, "\n\n";
+		    close DLOG;
+		    open(OUTTSV, ">$tsv_summary");
+		    my $tsv_header = shift(@tsv_entries);
+		    print OUTTSV $tsv_header;
+		    foreach my $tsv_line(@tsv_entries){
+			$tsv_line =~ s/\n//g;
+			my @tsvals = split(/\t/, $tsv_line);
+			my $keep_remove = "";
+			if(exists $keep_discard_hash{$tsvals[12]}){
+			    $keep_remove = $keep_discard_hash{$tsvals[12]};
+			}
+			else{
+			    $keep_remove = "NA";
+			}
+			if($keep_remove eq "Keep"){
+			    `esl-sfetch $cds_final_nuc $tsvals[12] >> $filtered_nuc`;
+			    `esl-sfetch $cds_final_prot $tsvals[12] >> $filtered_prot`;
+			}
+			$tsvals[4] = $keep_remove;
+			print OUTTSV join("\t", @tsvals), "\n";
+		    }
+		    close OUTTSV;
+		}
+		`rm *ssi`;
+		
+		if(-e $matrix_out){
+		    `mkdir $subdir4`;
+		    `mv $matrix_out $subdir4`;
+		    `mv $duplicate_log $subdir4`;
+		    `mv $filtered_nuc $filtered_prot $outdir`;
 		}
 	    }
-
-	    print "removing duplicates which share over $filter_threshold"."% identity...\n\n";
-	
-	    
-	    #my @column_names = @protein_names;
-	    #my @row_names = = @protein_names;
-	    
-	    #for(my $col = 0; $col <= $#column_names; $col ++){
-	#	my $column_name = $column_names[$col];
-	#	my @column_values = (map { $_->[$col] } @matrix); #get column values for column number $first_idx
-	#	my $max_column_value = max(@column_values);
-	#	if($max_column_value ne "NA"){
-	#	    my @max_row_indices = grep {$column_values[$_] == $max_column_value} 0 .. $#column_values;
-	#	    my @reference_names = map { $row_names[$_] } @max_row_indices;
-	#	    foreach my $max_row_indx(@max_row_indices){
-	#		my $row_name = $row_names[$max_row_indx];
-	#		my @row_values = @{ $matrix[$max_row_indx] }; #get row values for row number $row (note curly brackets are to dereference array).
-	#		my $max_row_value = max(@row_values);
-	#		my @max_column_indices = grep {$row_values[$_] == $max_row_value} 0 .. $#row_values;
-	#		my @query_names = map { $column_names[$_] } @max_column_indices;
-	#		foreach my $max_column_indx(@max_column_indices){
-	#		    if($column_names[$max_column_indx] eq $column_name){
-	#			if($max_column_value == $max_row_value && $max_column_value >= 80){
-	#			    push(@mutuals, $row_name);
-	#			    @{$overwrite_matrix[$max_row_indx]}[$max_column_indx] = "NA";
-	#			    $return_pid_scores{$column_name} = $max_row_value;
-	#			}
-	#		    }
-	#		}
-	#	    }
-	#	}
-	 #   }
-
-	    
-	   	    
 
 	    ################################
 	    # 4.9. Sort output directories #
@@ -2609,10 +2924,6 @@ foreach my $genome(@genomes){
 	    }
 	    if(-e $nhmmer_nucleotide_sequences){
 		`mv $nhmmer_nucleotide_sequences $outdir`;
-	    }
-	    if(-e $matrix_out){
-		`mkdir $subdir4`;
-		`mv $matrix_out $subdir4`;
 	    }
 	    if(-e $tsv_summary){
 		`mv $tsv_summary $outdir`;
@@ -3240,16 +3551,19 @@ sub get_matrix{
 		    push(@matrix_row, $ijscore);
 		}
 		elsif($ijscore =~m/\*/){
-		    push(@matrix_row, $ijscore);
+		    my $ijval = 0;
+		    push(@matrix_row, $ijval);
 		}
 		else{
-		    push(@matrix_row, "NA");
+		    my $ijval = 0;
+		    push(@matrix_row, $ijval);
 		    $ijscore = "NA";
 		}
 	    }
 	    else{
 		$ijscore = "NA";
-		push(@matrix_row, "NA");
+		my $ijval = 0;
+		push(@matrix_row, $ijval);
 	    }
 	    print MATRIX $ijscore."\t";
 	}
