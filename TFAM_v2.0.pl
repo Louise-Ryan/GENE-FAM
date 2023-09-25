@@ -57,6 +57,8 @@ my $nhmmer_plus = 20000; #Add X nucleotides to end of sequence (3' end) #cant ex
 my $nhmmer_minus = 5000; #Add X nucleotides to start of sequence (5' end) #cant exceed 990,000
 # Threshold for domain cover in augustus predictions
 my $domain_cover_threshold = 0.9; #Augustus predictions which fail to cover this percentage of the hmmer identified region will be discarded
+# HMM filter for augustus predictions, nucleotide or protein
+my $hmm_filter_type = "protein"; #nucleotide or protein
 
 ###########################################################################
 #output files
@@ -2222,9 +2224,18 @@ foreach my $genome(@genomes){
 					$protein_details =~ s/\n//g;
 					$cds_details =~ s/\n//g;
 
+					# Add mRNA coords to tsv
 					
+					$tsv_details[10] = $genomic_gene_start;
+					$tsv_details[11] = $genomic_gene_end;
+					
+					$tsv_details[22] = $zero_gene_domain_start;
+					$tsv_details[23] = $zero_gene_domain_end;
+
+					# Prepare header
 					my $hit_header = ">Hit".$hit_no."_new_augustus_prediction\n";
 
+					# Populate TSV (augustus prediction (yes/no)
 					$tsv_details[2] = "Yes";
 
 					
@@ -2256,57 +2267,95 @@ foreach my $genome(@genomes){
 					    $protein_seq =~ s/\s//g;
 					    $protein_seq =~ s/.{80}\K/\n/g;
 					}
-					
 
-					#print $cds_seq."\n";
-					#######################################################
-					# Prep temporary file with protein sequence for hmmer #
-					#######################################################
 					
-					my $tmp_prot_out = "tmp_prot_out.fa"; 
-					open(TPO, ">$tmp_prot_out");
-					print TPO $hit_header.$protein_seq."\n";
-					close TPO;
-					
-					######################################
-					# Prepare input files for subroutine #
-					######################################
-					
+					##################
+					#   HMM FILTER   #
+					##################
+
+					my $hmm_status = "";
 					my @prediction_details = ();
-					push(@prediction_details, $phmm_profile);
-					push(@prediction_details, $tmp_prot_out);
 					
-					####################################
-					# Push evaule for hmmer subroutine #
-					####################################
-					
-					if($default_phmmer_evalue =~ m/^yes$/i){
-					    my $default = "default";
-					    push(@prediction_details, $default);
+					# If HMM filter using protein 
+					if($hmm_filter_type =~ m/^protein$/i){
+
+					    #######################################################
+					    # Prep temporary file with protein sequence for hmmer #
+					    #######################################################
+
+					    my $tmp_prot_out = "tmp_prot_out.fa"; 
+					    open(TPO, ">$tmp_prot_out");
+					    print TPO $hit_header.$protein_seq."\n";
+					    close TPO;
+					    
+					    ######################################
+					    # Prepare input files for subroutine #
+					    ######################################
+					    
+					    @prediction_details = ();
+					    push(@prediction_details, $phmm_profile);
+					    push(@prediction_details, $tmp_prot_out);
+					    
+					    ####################################
+					    # Push evaule for hmmer subroutine #
+					    ####################################
+					    
+					    if($default_phmmer_evalue =~ m/^yes$/i){
+						my $default = "default";
+						push(@prediction_details, $default);
+					    }
+					    else{
+						push(@prediction_details, $phmmer_evalue);
+					    }
+					    					    
+					    ##############
+					    # HMM filter #
+					    ##############
+					    
+					    $hmm_status =&hmm_filter(@prediction_details);
+					    `rm $tmp_prot_out`;
+					    `rm *hmmfilter.out`;
 					}
-					else{
-					    push(@prediction_details, $phmmer_evalue);
-					}
-
-
-					# Add mRNA coords to tsv
-				
-					$tsv_details[10] = $genomic_gene_start;
-					$tsv_details[11] = $genomic_gene_end;
-				
-					$tsv_details[22] = $zero_gene_domain_start;
-					$tsv_details[23] = $zero_gene_domain_end;
 					
-					##############
-					# HMM filter #
-					##############
-					
-					my $hmm_status =&hmm_filter(@prediction_details);
+					elsif($hmm_filter_type =~ m/^nucleotide$/i){
+					      
+					    ##########################################################
+					    # Prep temporary file with nucleotide sequence for hmmer #
+					    ##########################################################
+					    my $tmp_nuc_out = "tmp_nuc_out.fa"; 
+					    open(TNO, ">$tmp_nuc_out");
+					    print TNO $hit_header.$cds_seq."\n";
+					    close TNO;
+					    
+					    ######################################
+					    # Prepare input files for subroutine #
+					    ######################################
+					    @prediction_details = ();
+					    push(@prediction_details, $nhmm_profile);
+					    push(@prediction_details, $tmp_nuc_out);
 
-					`rm $tmp_prot_out`;
-					`rm *hmmfilter.out`;
-					
-					#print "This is hmm status: $hmm_status \n";
+					    ####################################
+					    # Push evaule for hmmer subroutine #
+					    ####################################
+					    if($default_nhmmer_evalue =~ m/^yes$/i){
+						my $default = "default";
+						push(@prediction_details, $default);
+					    }
+					    else{
+						push(@prediction_details, $nhmmer_evalue);
+					    }
+
+					    ##############
+					    # HMM filter #
+					    ##############
+					    $hmm_status =&hmm_filter_nucleotide(@prediction_details);
+					    `rm $tmp_nuc_out`;
+					    `rm *hmmfilter.out`;
+					}			
+
+					#####################################
+					# Check that sequence passed filter #
+					#####################################
 					
 					if($hmm_status == 1){
 					    $prediction_found = 1;
@@ -2698,7 +2747,7 @@ foreach my $genome(@genomes){
 				    foreach my $sorted_member(@sorted_members){
 					if($found ==0){
 					    if($keep_discard_hash{$retained_dup} ne "Remove"){
-						print "keep $retained_dup \n";
+						#print "keep $retained_dup \n";
 						$keep_discard_hash{$retained_dup} = "Keep";
 						print DLOG "Keep $retained_dup !\n\n";
 						$found = 1;
@@ -2711,7 +2760,7 @@ foreach my $genome(@genomes){
 				}
 			    }
 			    else{
-				print "keep $retained_dup \n";
+				#print "keep $retained_dup \n";
 				$keep_discard_hash{$retained_dup} = "Keep";
 				print DLOG "Keep $retained_dup !\n\n";
 				foreach my $sorted_member(@sorted_members){
@@ -2728,9 +2777,9 @@ foreach my $genome(@genomes){
 		    }
 		    print DLOG "=" x 50, "\n\n";
 		    close DLOG;
-		    foreach my $keyy( keys %keep_discard_hash){
-			print $keyy.": ".$keep_discard_hash{$keyy}."\n";
-		    }
+		    #foreach my $keyy( keys %keep_discard_hash){
+			#print $keyy.": ".$keep_discard_hash{$keyy}."\n";
+		    #}
 		    open(OUTTSV, ">$tsv_summary");
 		    my $tsv_header = shift(@tsv_entries);
 		    print OUTTSV $tsv_header;
@@ -2786,7 +2835,7 @@ foreach my $genome(@genomes){
 				    foreach my $max_row_indx(@max_row_indices){
 					if($protein_names[$max_row_indx] eq $row_name){
 					    if($max_row_value == $max_column_value && $max_row_value >= $filter_threshold){
-						print "$row_name and $column_name are pairs with $max_row_value % identity ..\n";
+						#print "$row_name and $column_name are pairs with $max_row_value % identity ..\n";
 						push(@pair, $column_name);
 					    }
 					}
@@ -2800,8 +2849,8 @@ foreach my $genome(@genomes){
 			    print DLOG "Pair size: ", scalar(@pair), "\n";
 			    print DLOG "Members in pair share $max_row_value","% identity\n";
 			    print DLOG "$row_name: ";
-			    print "Pair for row $row_name :\t";
-			    print join("\t", @pair), "\n";
+			    #print "Pair for row $row_name :\t";
+			    #print join("\t", @pair), "\n";
 			    print DLOG join(", ", @pair), "\n";
 			    foreach my $member(@pair){
 				my $contig_pair = "";
@@ -2819,7 +2868,7 @@ foreach my $genome(@genomes){
 			    my $retained_dup = shift(@sorted_members);
 			    if(exists $keep_discard_hash{$retained_dup}){
 				if($keep_discard_hash{$retained_dup} ne "Remove"){
-				    print "keep $retained_dup \n";
+				    #print "keep $retained_dup \n";
 				    $keep_discard_hash{$retained_dup} = "Keep";
 				    print DLOG "Keep $retained_dup !\n\n";
 				    foreach my $sorted_member(@sorted_members){
@@ -2831,7 +2880,7 @@ foreach my $genome(@genomes){
 				    foreach my $sorted_member(@sorted_members){
 					if($found ==0){
 					    if($keep_discard_hash{$retained_dup} ne "Remove"){
-						print "keep $retained_dup \n";
+						#print "keep $retained_dup \n";
 						print DLOG "Keep $retained_dup !\n\n";
 						$keep_discard_hash{$retained_dup} = "Keep";
 						$found = 1;
@@ -2844,7 +2893,7 @@ foreach my $genome(@genomes){
 				}
 			    }
 			    else{
-				print "keep $retained_dup \n";
+				#print "keep $retained_dup \n";
 				$keep_discard_hash{$retained_dup} = "Keep";
 				print DLOG "Keep $retained_dup !\n\n";
 				foreach my $sorted_member(@sorted_members){
@@ -2861,9 +2910,9 @@ foreach my $genome(@genomes){
 			    #keep row_name
 			}
 		    }
-		    foreach my $keyy( keys %keep_discard_hash){
-			print $keyy.": ".$keep_discard_hash{$keyy}."\n";
-		    }
+		    #foreach my $keyy( keys %keep_discard_hash){
+		    #		print $keyy.": ".$keep_discard_hash{$keyy}."\n";
+		    #	    }
 		    print DLOG "=" x 50, "\n\n";
 		    close DLOG;
 		    open(OUTTSV, ">$tsv_summary");
@@ -3173,8 +3222,72 @@ sub hmm_filter{
     }
     my $hmm_status = 0;
     if($targets){
-	if($targets == 1){
-	    if ($hits ==1){
+	if($targets >= 1){
+	    if ($hits >=1){
+		$hmm_status = 1;
+		return $hmm_status;
+	    }
+	    else{
+		$hmm_status = 0;
+		return $hmm_status;
+	    }
+	}
+	else{
+	    $hmm_status = 0;
+	    return $hmm_status;
+	}
+    }
+    else{
+	$hmm_status = 0;
+	return $hmm_status;   
+    }
+}
+
+sub hmm_filter_nucleotide{
+    my @hmminputs = @_;
+    my $hmm_file = $hmminputs[0];
+    my $prediction_file = $hmminputs[1];
+    my $evalue_threshold = $hmminputs[2];
+    my $hmm_out = "tmp_hmmfilter.out";
+    
+    if($evalue_threshold =~ m/^default$/i){
+	`nhmmer $hmm_file $prediction_file > $hmm_out`;
+    }
+    else{
+	`nhmmer --incE $evalue_threshold $hmm_file $prediction_file > $hmm_out`;
+    }	
+    
+    my $results_file;
+    open(IN, $hmm_out);
+    {
+        local $/;
+        $results_file = <IN>;
+    }
+    close IN;
+    
+    my $regex = "\-";
+    my $expression = $regex x 37;
+    my @hmmhits = split(/$expression/, $results_file);
+    my $summary = $hmmhits[1];
+    my @stats = split(/\n/, $summary);
+    my $target_seqs = $stats[2];
+    my $passed_hits = $stats[7];
+    my $targets = "";
+    my $hits = "";
+    if($target_seqs){
+	if ($target_seqs =~ m/\:[\s]+([0-9]+)\s/){
+	    $targets = $1;
+	}
+    }
+    if($passed_hits){
+	if ($passed_hits =~ m/\:[\s]+([0-9]+)\s/){
+	    $hits = $1;
+	}
+    }
+    my $hmm_status = 0;
+    if($targets){
+	if($targets >= 1){
+	    if ($hits >=1){
 		$hmm_status = 1;
 		return $hmm_status;
 	    }
