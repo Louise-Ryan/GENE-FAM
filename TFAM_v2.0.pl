@@ -13,14 +13,14 @@ use List::Util qw( min max );
 # Essential file names
 ########################
 
-#phmmer and nhmmer alignments for transcription factor domain
+# phmmer and nhmmer alignments for transcription factor domain
 my $pfam_seed = "PF00319_seed.txt"; #protein alignment (E.g PFAM seed alignment)
 my $nuc_alignment = "MADS_nhmmer_alignment.fa"; #Nucleotide alignment
 
-#Augustus reference file:
+# Augustus reference file:
 my $reference_file = "MADS_reference_file.fa"; #if augustus option is on, enter reference file name here.
 
-#hmm profile names - these files will be created automatically using your alignment files.
+# HMM profile names - these files will be created automatically using your alignment files.
 my $phmm_profile = "MADSp.hmm"; #nhmmer profile name: use hmmer to build hmm profile from $pfam_seed. Please note that these must end in ".hmm".
 my $nhmm_profile = "MADSn.hmm"; #phmmer profile name: use hmmer to build hmm profile from $nuc_alignment. Please note that these must end in ".hmm".
 
@@ -29,18 +29,18 @@ my $nhmm_profile = "MADSn.hmm"; #phmmer profile name: use hmmer to build hmm pro
 # Options
 ############
 
-#Annotation files available?
+# Annotation files available?
 my $annotation_available = "yes"; #If NCBI annotations are available for your genome set below variable to "yes". Set as "no" if no annotations are available, and you wish to mine the assembly only.
 
-#Automate download of annotation files? #FOR NCBI REFSEQ GENOMES ONLY!#
+# Automate download of annotation files? #FOR NCBI REFSEQ GENOMES ONLY!#
 my $automate_download = "no";
 my $species_list = "species.txt"; #list species names in species.txt file to download files for each species
 
-#phmmer evalue threshold:
+# hmmsearch evalue threshold (protein):
 my $default_phmmer_evalue = "yes"; #yes: default; no: Use custom evalue (set $phmmer_evalue variable below)
 my $phmmer_evalue = "1e-5"; #If $default_phmmer_evalue is "no", use this custom evalue
 
-#nhmmer evalue threshold:
+# nhmmer evalue threshold (nucleotide):
 my $default_nhmmer_evalue = "yes"; #yes: default #no: user specified (use $nhmmer_evalue variable below)
 my $nhmmer_evalue = "1e-5"; #If $default_nhmmer_evalue is "no", use this custom evalue
 
@@ -53,10 +53,13 @@ my $append_query = "no"; # if yes, the mined sequences from each query species w
 my $hit_prefix = "Hit"; # New hits will be labelled with this prefix, e.g Hit1, Hit2 ....etc.
 my $domain_cover_threshold = 0.9; #Augustus predictions which fail to cover this percentage of the hmmer identified region will be discarded.
 my $hmm_filter_type = "protein"; # HMM filter to validate augustus predictions. Set as either nucleotide or protein.
-
-#Range for unannotated hits - this controlls the length of the region around the hmmer hit fed into augustus for gene prediction
+ 
+# Range for unannotated hits - this controlls the length of the region around the hmmer hit fed into augustus for gene prediction
 my $nhmmer_plus = 20000; # Nucleotides added to the end of the sequence (3' end) 
 my $nhmmer_minus = 5000; # Nucleotides added to the start of the sequence (5' end)
+
+# Create genome databse for nhmmer on genome assembly - increases speed but decreases sensitivity. Reccomended if script is timing out on large genome.
+my $nhmmer_genome_database = "no"; #yes: builds genome database, No: uses raw genome as database
 
 # Psudogene check
 my $pseudogene_check = "yes"; #If yes, all cds seqs with in frame stop codons, or below threshold length, will be annotated as pseudogenes.
@@ -233,7 +236,12 @@ unless($automate_download =~ m/^no$/){
 	$die_signal ++;
     }
 }
-       
+unless($predict_new_hits =~ m/^yes$/i){
+    unless($nhmmer_genome_database =~ m/^yes$/i || $nhmmer_genome_database =~ m/^no$/i){
+	print "The \$index_genome_nhmmer variable has not been assigned correctly. Please set as \"yes\" or \"no\" and retry. \n\n";
+	$die_signal ++;
+    }
+}
 
 
 #1.1.2. Output files and augustus variable
@@ -1210,20 +1218,37 @@ foreach my $genome(@genomes){
 		    ##########################
 		    # Run nhmmer on assembly #
 		    ##########################
-
-		    #print "Building genome database for nhmmer ...\n";
-		    #my $genome_db = $genome_ID."genome.db";
-		    #`makehmmerdb $genome $genome_db`;
-
-		    print "running nhmmer on whole genome assembly to pull new hits ...\n\n";
-		    `esl-sfetch --index $genome`; #index genomefile
 		    my @nhmmer_coordinates = ();
-		    if($default_nhmmer_evalue eq "yes"){
-			`nhmmer $nhmm_profile $genome >> $nhmmer_file`;
-		    }else{
-			`nhmmer --incE $nhmmer_evalue $nhmm_profile $genome >> $nhmmer_file`;
+		    
+		    # If create genome database for nhmmer
+		    if($nhmmer_genome_database =~ m/^yes$/){
+			print "Building genome database for nhmmer ...\n\n";
+			my $genome_db = $genome_ID."_genome.db";
+			`makehmmerdb $genome $genome_db > /dev/null 2>&1`; # make database and silence output
+			
+			print "running nhmmer on whole genome assembly to pull new hits ...\n\n";
+			`esl-sfetch --index $genome`; #index genomefile
+			
+			if($default_nhmmer_evalue =~ m/^yes$/i){
+			    `nhmmer $nhmm_profile $genome_db >> $nhmmer_file`;
+			}else{
+			    `nhmmer --incE $nhmmer_evalue $nhmm_profile $genome_db >> $nhmmer_file`;
+			}
+			# remove files
+			`rm $genome_db`;
 		    }
 
+		    # Else run nhmmer on raw genome as database
+		    else{
+			print "running nhmmer on whole genome assembly to pull new hits ...\n\n";
+			`esl-sfetch --index $genome`; #index genomefile
+			if($default_nhmmer_evalue =~ m/^yes$/i){
+			    `nhmmer $nhmm_profile $genome >> $nhmmer_file`;
+			}else{
+			    `nhmmer --incE $nhmmer_evalue $nhmm_profile $genome >> $nhmmer_file`;
+			}
+		    }
+		    
 		    ########################
 		    # Parse nhmmer results #
 		    ########################
@@ -1388,16 +1413,37 @@ foreach my $genome(@genomes){
 		    # Run NHMMER on assembly #
 		    ##########################
 		    
-		    print "running nhmmer on whole genome assembly to pull hits ...\n\n";
-		    `esl-sfetch --index $genome`;
 		    my @nhmmer_coordinates = ();
-		    if($default_nhmmer_evalue =~ m/^yes$/i){
-			`nhmmer $nhmm_profile $genome >> $nhmmer_file`;
-		    }
-		    else{
-			`nhmmer --incE $nhmmer_evalue $nhmm_profile $genome >> $nhmmer_file`;
+
+		    # If create genome database for nhmmer
+		    if($nhmmer_genome_database =~ m/^yes$/){
+			print "Building genome database for nhmmer ...\n\n";
+			my $genome_db = $genome_ID."_genome.db";
+			`makehmmerdb $genome $genome_db > /dev/null 2>&1`; # make database and silence output
+			
+			print "running nhmmer on whole genome assembly to pull new hits ...\n\n";
+			`esl-sfetch --index $genome`; #index genomefile
+			
+			if($default_nhmmer_evalue =~ m/^yes$/i){
+			    `nhmmer $nhmm_profile $genome_db >> $nhmmer_file`;
+			}else{
+			    `nhmmer --incE $nhmmer_evalue $nhmm_profile $genome_db >> $nhmmer_file`;
+			}
+			# remove files
+			`rm $genome_db`;
 		    }
 
+		    # Else use raw genome as database
+		    else{
+			print "running nhmmer on whole genome assembly to pull new hits ...\n\n";
+			`esl-sfetch --index $genome`; #index genomefile
+			if($default_nhmmer_evalue =~ m/^yes$/i){
+			    `nhmmer $nhmm_profile $genome >> $nhmmer_file`;
+			}else{
+			    `nhmmer --incE $nhmmer_evalue $nhmm_profile $genome >> $nhmmer_file`;
+			}
+		    }
+		    
 		    ########################
 		    # Parse NHMMER results #
 		    ########################
