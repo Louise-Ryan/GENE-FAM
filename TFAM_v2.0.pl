@@ -641,7 +641,6 @@ foreach my $genome(@genomes){
 		my @protein_key_seen = ();
 		my @protein_identifiers = ();
 		foreach my $phit(@phmmer_hits){
-		    #print "This is a phit: $phit \n";
 		    $phit =~ s/[\s]+/\|/g;
 		    my @phmmdetails = split(/\|/, $phit);
 		    shift @phmmdetails;
@@ -657,9 +656,7 @@ foreach my $genome(@genomes){
 		    my $prot_ID = $phmmdetails[8];
 
 		    #Populate protein phmmer hash
-		    #unless($prot_ID ~~ @protein_key_seen){
 		    unless(grep { $_ eq $prot_ID } @protein_key_seen) {
-			#push(@protein_key_seen, $prot_ID);
 			$protein_hmm_key{$prot_ID} = \@protein_phmm_details;
 		    }
 
@@ -688,13 +685,10 @@ foreach my $genome(@genomes){
 		my %info_hash = map { $_ => $returned_hash{$_} } keys %returned_hash;
 		
 		foreach my $key(keys %info_hash){
-		    #print "Values for $key: \n";
 		    my @info = split(/\|/, $info_hash{$key});
 		    push(@locus_IDs, $info[6]);
 		    push(@mRNA_IDs, $info[7]);
 		    push(@CDS_IDs, $info[8]);
-		    #print join("\n", @info), "\n";
-		    #print "=" x 50, "\n";
 		}
 
 		
@@ -725,10 +719,7 @@ foreach my $genome(@genomes){
 		my @mrna_key_seen = ();
 		my @new_mRNAs = ();
 		my @mRNA_gff_IDs = ();
-		foreach my $trans_hit(@nhmmer_t_hits){
-
-		    #print "This is trans hit: $trans_hit \n";
-		    
+		foreach my $trans_hit(@nhmmer_t_hits){    
 		    $trans_hit =~ s/[\s]+/\|/g;
 		    my @nhmmtdetails = split(/\|/, $trans_hit);
 		    shift(@nhmmtdetails);
@@ -752,19 +743,16 @@ foreach my $genome(@genomes){
 		    my $transcript_ID = $nhmmtdetails[3];
 
 		    #Populate mrna nhmmer hash
-		    #unless($transcript_ID ~~ @mrna_key_seen){
 		    unless(grep { $_ eq $transcript_ID } @mrna_key_seen) {
 			$mrna_hmm_key{$transcript_ID} = \@mrna_nhmm_details;
 		    }
 
 		    #Pull mRNA IDs
-		    #unless($transcript_ID ~~ @mRNA_IDs){
 		    unless(grep { $_ eq $transcript_ID } @mRNA_IDs) {
-			#print "new transcript: $transcript_ID \n";
 			push(@new_mRNAs, $transcript_ID);
 			my $gff_ID = "rna-".$transcript_ID;
 			push(@mRNA_gff_IDs, $gff_ID);
-		   }
+		    }
 		}
 
 		
@@ -783,13 +771,10 @@ foreach my $genome(@genomes){
 		    my %mRNA_info_hash = %$mRNA_details;
 		    foreach my $key(keys %mRNA_info_hash){
 			$info_hash{$key} = $mRNA_info_hash{$key}; #merge hashes
-			#print "Values for $key: \n";
 			my @mRNA_info = split(/\|/, $mRNA_info_hash{$key});
 			push(@locus_IDs, $mRNA_info[6]);
 			push(@mRNA_IDs, $mRNA_info[7]);
 			push(@CDS_IDs, $mRNA_info[8]);
-			#print join("\n", @mRNA_info), "\n";
-			#print "=" x 50, "\n";
 		    }
 		}
 		
@@ -818,7 +803,6 @@ foreach my $genome(@genomes){
 		my @cds_key_seen = ();
 		my @new_CDS_IDs = ();
 		foreach my $nCDS_hit(@nhmmer_cds_hits){
-		    #print "This is a cds hit: \n$nCDS_hit\n";
 		    $nCDS_hit =~ s/[\s]+/\|/g;
 		    my @nhmm_cds_details = split(/\|/, $nCDS_hit);
 		    shift(@nhmm_cds_details);
@@ -849,15 +833,12 @@ foreach my $genome(@genomes){
 		    }
 
 		    #Populate nucleotide CDS nhmmer hash
-		    #unless($new_CDS_ID ~~ @cds_key_seen){
 		    unless(grep { $_ eq $new_CDS_ID } @cds_key_seen) {
 			$cds_hmm_key{$new_CDS_ID} = \@cds_nhmm_details;
 		    }
 
 		    #Pull CDS Identifiers
-		    #unless($new_CDS_ID ~~ @CDS_IDs){
 		    unless(grep { $_ eq $new_CDS_ID } @CDS_IDs) {
-			#print "new CDS: $new_CDS_ID \n";
 			push(@new_CDS_IDs, $new_CDS_ID);
 		    }
 		}
@@ -874,16 +855,13 @@ foreach my $genome(@genomes){
 		    my %nCDS_info_hash = %$nCDS_details;
 		    foreach my $key(keys %nCDS_info_hash){
 			$info_hash{$key} = $nCDS_info_hash{$key}; #merge hashes
-			#print "Values for $key: \n";
 			my @nCDS_info = split(/\|/, $nCDS_info_hash{$key});
 			push(@locus_IDs, $nCDS_info[6]);
 			push(@mRNA_IDs, $nCDS_info[7]);
 			push(@CDS_IDs, $nCDS_info[8]);
-			#print join("\n", @nCDS_info), "\n";
-			#print "=" x 50, "\n";
 		    }
 		}
-
+		
 		
 		################################################################
 		# Write out to files:                                          #
@@ -912,7 +890,7 @@ foreach my $genome(@genomes){
 		
 		#############################################
 		# 4.5. Pull longest isoform per locus       #
-		# CDS nucleotide, CDS protein               #
+		# CDS nucleotide, CDS protein, mRNA         #
 		#############################################
 
 		#################################
@@ -921,7 +899,6 @@ foreach my $genome(@genomes){
 		#################################
 		
 		my %cds_length_hash;
-		#my %cds_functional_hash;
 		my %ncbi_cds_coords;
 		
 		my %cds_seqs =&parse_fasta_hash($cds_all_isoforms);
@@ -941,9 +918,6 @@ foreach my $genome(@genomes){
 		    if($cds_header =~ m/\[protein\_id\=([^\]]+)/){
 			$cdsID = $1;
 		    }
-		    else{
-			#print $cds_header." ...no id\n";
-		    }
 		    $cds_length_hash{$cdsID} = $cds_length;
 
 		    ###################
@@ -960,12 +934,10 @@ foreach my $genome(@genomes){
 		    my $cds_genomic_start = shift(@cds_ncbi_coordinates);
 		    my $cds_genomic_end = pop(@cds_ncbi_coordinates);
 		    my $ncbi_genomic_locus = $cds_genomic_start."|".$cds_genomic_end;
-		    #print "This is locus: $ncbi_genomic_locus \n";
 		    
 		    # Store coords in array:
 		    $ncbi_cds_coords{$cdsID} = $ncbi_genomic_locus;
 
-		    
 		    #Get functional status
 		    if($pseudogene_check =~ m/^yes$/i){
 			my @status=&checkframe($cds_seq);
@@ -996,12 +968,6 @@ foreach my $genome(@genomes){
 		    }
 		}
 
-		# Print out lengths and status
-		#foreach my $x(keys %cds_length_hash){
-		#    print $x.":".$cds_length_hash{$x}."\n";
-		#    print $x.":".$cds_functional_hash{$x}."\n";
-		#}
-
 		
 		###################################
 		# Get longest isoforms per locus  #
@@ -1014,24 +980,16 @@ foreach my $genome(@genomes){
 		    my @information = split(/\|/, $info_hash{$rnaid});
 		    my $locus = $information[6];
 		    my %locus_lengths;
-		    #unless($locus ~~ @locus_seen){
 		    unless(grep { $_ eq $locus } @locus_seen) {
 			push(@locus_seen, $locus);
-			#print "========================================\n";
-			#print "Looking for longest isoform for $locus ..\n";
 			foreach my $mrnaid(keys %info_hash){
 			    my @information2 = split(/\|/, $info_hash{$mrnaid});
 			    my $locus2 = $information2[6];
 			    my $cds_name = $information2[8];
 			    if($cds_name){ 
 				if($locus eq $locus2){
-				    #print $mrnaid."\n";
-				    #print $cds_name."\n";
-				    #print "CDS name: $cds_name\n";
 				    my $cds_length = $cds_length_hash{$cds_name};
-				    #print "CDS length: $cds_length\n";
 				    $locus_lengths{$mrnaid} = $cds_length;
-				    #print $mrnaid.":".$cds_length."\n";
 				}
 			    }
 			}
@@ -1042,10 +1000,9 @@ foreach my $genome(@genomes){
 			my $longest_cds = $longest_details[8];
 			push(@longest_mrnas, $longest_id);
 			push(@longest_isoforms, $longest_cds);
-			#print "Longest id is $longest_id with length of $longest_length\n";
 		    }
 		}
-
+		
 		push (@protein_names, @longest_isoforms);
 
 		#########################################
@@ -1079,14 +1036,12 @@ foreach my $genome(@genomes){
 		foreach my $mrnaid(@longest_mrnas){
 		    my @details = split(/\|/, $info_hash{$mrnaid});
 		    my $contig = $details[0];
-		    #unless($contig ~~ @contig_IDs){
 		    unless(grep { $_ eq $contig } @contig_IDs) {
 			push(@contig_IDs, $contig);
 		    }
 		    my $mrna_start = $details[2];
 		    my $mrna_end = $details[3];
 		    my $coordinates = $contig."|".$mrna_start."|".$mrna_end;
-		    #print $coordinates."\n";
 		    push (@block_coordinates, $coordinates);
 		}
 		
@@ -1098,11 +1053,7 @@ foreach my $genome(@genomes){
 		my $contig_hash_ref =&get_contig_lengths($genome);
 	        %contig_lengths = %$contig_hash_ref;
 		
-		#foreach my $contig_key(keys %contig_lengths){
-		#    print $contig_key.":".$contig_lengths{$contig_key}."\n";
-		#}
-
-
+		
 		###################################
 		# PRINT ANNOTATION SUMMARY TO TSV #
 		###################################
@@ -1114,9 +1065,7 @@ foreach my $genome(@genomes){
 		
 		# Iterate through the sorted keys
 		foreach my $ncbi_hit (@sorted_ncbi_keys) {
-		
-	
-		#foreach my $ncbi_hit(keys %info_hash){
+
 		    my $tsv_entry;
 		    my @ncbi_hit_info = split(/\|/, $info_hash{$ncbi_hit});
 
@@ -1130,9 +1079,7 @@ foreach my $genome(@genomes){
 		    my $ncbi_CDS_ID = $ncbi_hit_info[8];
 
 		    # Only print to file if longest isoform
-		    #if($ncbi_mRNA_ID ~~ @longest_mrnas || $ncbi_CDS_ID ~~ @longest_isoforms){
 		    if((grep { $_ eq $ncbi_mRNA_ID } @longest_mrnas) || (grep { $_ eq $ncbi_CDS_ID } @longest_isoforms)) {
-			
 			
 			# Contig length
 			my $contig_length_value = $contig_lengths{$contig_ID};
@@ -1198,7 +1145,6 @@ foreach my $genome(@genomes){
 			}
 
 			# Prepare line for TSV:
-
 			$tsv_entry.= $ncbi_locus_name."\t";
 			$tsv_entry.= "Yes"."\t";
 			$tsv_entry.= "No"."\t";
@@ -1227,6 +1173,7 @@ foreach my $genome(@genomes){
 			$tsv_entry.= $nhmmer_cds_end."\t";
 			
 
+			# Get genomic domain start and end positions from mRNA coords
 			my $genomic_Ds = "NA";
 			my $genomic_De = "NA";
 
@@ -1239,25 +1186,17 @@ foreach my $genome(@genomes){
 				$genomic_De = $mRNA_end - $nhmmer_mrna_start;
 				$genomic_Ds = $mRNA_end - $nhmmer_mrna_end;
 			    }
-			    #print "Genomic domain coords ncbi: \n";
-			    #print $genomic_Ds."\n";
-			    #print $genomic_De."\n";
-			    #if($genomic_Ds < $genomic_De){
-				#print "TRUE \n";
-			    #}
-			    #else{
-				#print "FALSE \n";
-			    #}
 			}
-			#print "I am here \n";
+			
 			$tsv_entry.=  $genomic_Ds."\t";
 			$tsv_entry.=  $genomic_De."\n";
-		    
+			
 			# Print line to TSV
 			print TSV $tsv_entry;
+			
 		    }
-		    
 		}	
+
 		
 		####################################################################
 		# 4.6. NHMMER on genome assembly to predict novel unannotated hits #
@@ -1265,7 +1204,7 @@ foreach my $genome(@genomes){
 		
 		#nhmmer on assembly to discover new hits
 		#nhmmer then discount anything which overlaps with existing coordinates
-
+		
 		if ($predict_new_hits eq "Yes" || $predict_new_hits eq "yes"){
 
 		    ##########################
@@ -1276,7 +1215,6 @@ foreach my $genome(@genomes){
 		    #my $genome_db = $genome_ID."genome.db";
 		    #`makehmmerdb $genome $genome_db`;
 
-		    
 		    print "running nhmmer on whole genome assembly to pull new hits ...\n\n";
 		    `esl-sfetch --index $genome`; #index genomefile
 		    my @nhmmer_coordinates = ();
@@ -1320,8 +1258,8 @@ foreach my $genome(@genomes){
 			my $ntmp = "";
 			my $strand = "";
 			my @details = split(/\|/, $nhmm_locus);
-			my $contig_n = $details[0]; #need to add Xnts 
-			my $start_n = $details[1]; #need to add Xnts
+			my $contig_n = $details[0]; 
+			my $start_n = $details[1];
 			my $end_n = $details[2];
 			if($start_n > $end_n){
 			    $ntmp = $start_n;
@@ -1366,14 +1304,12 @@ foreach my $genome(@genomes){
 				$total_length = $nhit_length + $stored_hit_length;
 				if($max_span<$total_length){
 				    $overlap = "Y";
-				}else{ #push coordinates to stored and use esl-sfetch to pull hit +- X nts
 				}
 			    }
 			}
 			
 			####################################################################
 			# If novel hit (not overlapping), print nucleotide range to file   #
-			# Also print domain range to file                                  #
 			####################################################################
 			
 			if($overlap ne "Y"){
@@ -1394,7 +1330,6 @@ foreach my $genome(@genomes){
 				if($end_n > $contig_length){
 				    $end_n = $contig_length;
 				}
-				# print "reverse strand\n";
 				my $range = $start_n."\.\.".$end_n;
 				my $cmd = "esl-sfetch -c $range -r $genome $contig_n >> $nhmmer_nucleotide_sequences";
 				`$cmd`;
@@ -1413,7 +1348,6 @@ foreach my $genome(@genomes){
 				if($end_n > $contig_length){
 				    $end_n = $contig_length;
 				}
-				#print "positive strand\n";
 				my $range = $start_n."\.\.".$end_n;
 				my $cmd = "esl-sfetch -c $range $genome $contig_n >> $nhmmer_nucleotide_sequences";
 				`$cmd`;
@@ -1497,16 +1431,12 @@ foreach my $genome(@genomes){
 		    my $contig_hash_ref =&get_contig_lengths($genome);
 		    %contig_lengths = %$contig_hash_ref;
 		    
-		    #foreach my $contig_key(keys %contig_lengths){
-		    #    print $contig_key.":".$contig_lengths{$contig_key}."\n";
-		    #}
-		    
+
 		    #####################################################
 		    # Infer forward/reverse strand based on coordinates #
 		    #####################################################
 		    
 		    foreach my $nhmm_locus(@nhmmer_coordinates){
-			#print OUT $nhmm_locus."\n";
 			my $ntmp = "";
 			my $strand = "";
 			my @details = split(/\|/, $nhmm_locus);
@@ -1543,7 +1473,6 @@ foreach my $genome(@genomes){
 				$start_n = 1;
 			    }
 			    if ($end_n > $contig_length){
-				#print "exceeds contig range, reverting to max contig bounds!\n";
 				$end_n = $contig_length;
 			    }
 			    my $range = $start_n."\.\.".$end_n;
@@ -1562,7 +1491,6 @@ foreach my $genome(@genomes){
 				$start_n = 1;
 			    }
 			    if ($end_n > $contig_length){
-				# print "exceeds contig range, reverting to max contig bounds!\n";
 				$end_n = $contig_length;
 			    }
 			    my $range = $start_n."\.\.".$end_n;
@@ -1575,7 +1503,6 @@ foreach my $genome(@genomes){
 		    # Make outout directories and tidy existing files #
 		    ###################################################
 		    
-		    #my $subdir = $outdir."/hmmer_files";
 		    `mkdir $subdir`;
 		    `mv $nhmmer_file $subdir`;
 		    `rm *ssi`;
@@ -1632,7 +1559,7 @@ foreach my $genome(@genomes){
 		######################################################################
 		
 		foreach my $seq(@seqs){
-
+		    
 		    #Declare coord variables
 		    my $genomic_gene_start;
 		    my $genomic_gene_end;
@@ -1642,7 +1569,7 @@ foreach my $genome(@genomes){
 		    # Name novel hit
 		    $hit_no +=1;
 		    my $hit_annotation = $hit_prefix.$hit_no;
-
+		    
 		    #Begin TSV append
 		    my @tsv_details = ("NA") x 28;
 		    $tsv_details[0] = $hit_annotation;
@@ -1650,8 +1577,8 @@ foreach my $genome(@genomes){
 		    $tsv_details[9] = $hit_annotation;
 		    $tsv_details[12] = $hit_annotation;
 		    $tsv_details[1] = "No";	    
-		    
-			
+
+		    # get sequence header and cds
 		    if($seq =~ m/\>(.*)\n([\S\n]+)/){
 			my $seq_header = $1;
 			my $seq_nt = $2;
@@ -1667,7 +1594,6 @@ foreach my $genome(@genomes){
 
 			# coordinates
 			my $domain_info = $domain_details[0];
-			#print "These are domain details for $hit_no : $domain_details[0]\n";
 			my @info = split(/\|/, $domain_info);
 			my $contig_name = $info[0];
 			my $domain_info_start = $info[1];
@@ -1694,7 +1620,7 @@ foreach my $genome(@genomes){
 			$tsv_details[26] = $domain_info_start;
 			$tsv_details[27] = $domain_info_end;
 		     
-
+			# Get domain coords and length
 			push(@hit_log, $hit_annotation);
 			my $contig = "";
 			my $start = "";
@@ -1708,18 +1634,13 @@ foreach my $genome(@genomes){
 			    $contig = $1; $start = $2; $end = $3;
 			}
 			my $a1 = $domain_info_start - $nhmmer_minus; #position a
-			#print "This is a: $a \n";
 			if($a1 < 1){
 			    my $x = 1 - $a1;
-			   # print "This is x: $x \n";
 			    my $y = $nhmmer_minus - $x;
-			   # print "This is y $y \n";
 			    $domain_scoord = 1 + $y;
-			   # print "this is domain scoord \n";
 			}
 			elsif($a1 >= 1){
 			    $domain_scoord = 1 + $nhmmer_minus;
-			    #print "This is domain scoord: $domain_scoord \n";
 			}
 			$domain_length = ($domain_info_end - $domain_info_start) +1;
 			$domain_ecoord = $domain_scoord + $domain_length;
@@ -1727,7 +1648,6 @@ foreach my $genome(@genomes){
 			$domain_end = $domain_ecoord;
 
 			
-
 			########################### 
 			# Prepare sequence header #
 			###########################
@@ -1756,16 +1676,18 @@ foreach my $genome(@genomes){
 			my $reference_outseq = $hit_prefix.$hit_no."_ref.fa";
 			my $prediction_gff = $hit_prefix.$hit_no."prediction_out.gff";
 
+
 			##########################################################################
 			# Use blat and blat2hints to generate hints for augustus gene prediction #
 			##########################################################################
 
-			# Get blat output 
-
+			# Get blat output
+			
 			# If using entire reference file for hints
 			if($number_hints =~ m/^all$/){
 			    `blat -minIdentity=$minidentity $tmp_out $reference_file $psl`;
 			}
+
 			# If using select number of top blat hits in reference file to generate hints
 			else{
 			    my $n = 5 + $number_hints;
@@ -1790,6 +1712,7 @@ foreach my $genome(@genomes){
 			
 			system("augustus --species=$augustus_species --strand=forward --codingseq=on --softmasking=0 --hintsfile=$hints --extrinsicCfgFile=extrinsic.ME.cfg $tmp_out > $prediction_gff");
 
+			
 			##############################
 			# Parse AUGUSTUS predictions #
 			##############################
@@ -1853,6 +1776,7 @@ foreach my $genome(@genomes){
 				    }
 				}
 				@cds_coords = sort { $a <=> $b } @cds_coords;
+
 				# Get the minimum and maximum values
 				$cds_start = shift(@cds_coords);
 				$cds_end  = pop(@cds_coords);    
@@ -1874,7 +1798,6 @@ foreach my $genome(@genomes){
 				else{
 				    $cds_end = "NA";
 				}
-				
 
 				
 				#####################################################################
@@ -1884,18 +1807,15 @@ foreach my $genome(@genomes){
 				if($cds_start ne "NA" && $cds_end ne "NA"){
 				    if($cds_start > $domain_end){
 					$maximum_end = $cds_end;
-					# print "Maximum end is pred end: $pred_end \n";
-				    }else{
+				    }
+				    else{
 					$maximum_end = $domain_end;
-					# print "Maximum end is domain end: $domain_end \n";
 				    }
 				    if($cds_start < $domain_start){
 					$minimum_start = $cds_start;
-					# print "Minimum start is pred start: $pred_start \n";
 				    }
 				    else{
 					$minimum_start = $domain_start;
-					# print "Minimum start is domain start: $domain_start \n";
 				    }
 				    $prediction_length = ($cds_end - $cds_start) +1;
 				    $total_length3 = $prediction_length + $domain_length;
@@ -1909,18 +1829,14 @@ foreach my $genome(@genomes){
 				else{
 				    if($pred_start > $domain_end){
 					$maximum_end = $pred_end;
-					# print "Maximum end is pred end: $pred_end \n";
 				    }else{
 					$maximum_end = $domain_end;
-					# print "Maximum end is domain end: $domain_end \n";
 				    }
 				    if($pred_start < $domain_start){
 					$minimum_start = $pred_start;
-					# print "Minimum start is pred start: $pred_start \n";
 				    }
 				    else{
 					$minimum_start = $domain_start;
-					# print "Minimum start is domain start: $domain_start \n";
 				    }
 				    $prediction_length = ($pred_end - $pred_start) +1;
 				    $total_length3 = $prediction_length + $domain_length;
@@ -1932,36 +1848,18 @@ foreach my $genome(@genomes){
 				#############################
 				
 				if ($max_span3 < $total_length3){ 
-				    ### NEW:
 				    my $domain_not_covered = $max_span3 - $prediction_length;
 				    my $percentage_domain_not_covered = $domain_not_covered / $domain_length;
 				    my $percentage_domain_cover = 1 - $percentage_domain_not_covered;
-				    #print "This is percentage-domain-cover: $percentage_domain_cover \n";
-
 
 				    #######################################################
 				    # Ensure overlap is greater than percentage threshold #
 				    #######################################################
 				    
 				    if($percentage_domain_cover >= $domain_cover_threshold){
-
-
-					# Test somthing
-					#print "========================================================\n";
-					#print "Coords for $hit_annotation \n";
-					#print "This is prediction start: $pred_start \n";
-					#print "This is prediction end: $pred_end \n";
-					#print "This is CDS start: $cds_start \n";
-					#print "This is CDS end: $cds_end \n";
-					#print "This is domain start: $domain_start \n";
-					#print "This is domain end: $domain_end \n";
-					#print "This is genomic domain start: $domain_info_start \n";
-					#print "This is genomic domain end: $domain_info_end \n";
-
-
-
+					
 					# Convert to TSV info coords:
-
+					
 					#################
 					#1) mRNA coords #
 					#################
@@ -1970,10 +1868,8 @@ foreach my $genome(@genomes){
 
 					my $zero_gene_domain_start;
 					my $zero_gene_domain_end;
-					#my $genomic_gene_start;
-					#my $genomic_gene_end;
 					my $zero_gene_end = $pred_end - $pred_start;
-
+					
 			
 					#######################
 					# FORWARD mRNA COORDS #
@@ -1981,12 +1877,10 @@ foreach my $genome(@genomes){
 					
 					if($strand_direction eq "Forward"){
 					    
-					#Domain is fully captured within mRNA at 5' end
+					    #Domain is fully captured within mRNA at 5' end
 					    if($pred_start <= $domain_start){
 						$zero_gene_domain_start = $domain_start - $pred_start;
 						$genomic_gene_start = $domain_info_start - $zero_gene_domain_start;
-						#print "mRNA Forward: Condition 1 \n";
-						#print "mRNA Condition 1 start: $genomic_gene_start \n";
 					    }
 					    
 					    #Domain is cut off at the 5' end
@@ -1994,25 +1888,18 @@ foreach my $genome(@genomes){
 						$zero_gene_domain_start = 0;
 						my $diff = $pred_start - $domain_start;
 						$genomic_gene_start = $domain_info_start + $diff;
-						#print "mRNA Forward: Condition 2 \n";
-						#print "mRNA Condition 2 start: $genomic_gene_start \n";
 					    }
 					    
 					    #Domain is fully captured within mRNA at 3' end
 					    if($pred_end <= $pred_end){
 						$zero_gene_domain_end = $domain_end - $pred_start;
 						$genomic_gene_end = $genomic_gene_start + $zero_gene_end;
-						#print "mRNA Forward: Condition 3 \n";
-						#print "mRNA Condition 3 end: $genomic_gene_end \n";
 					    }
 					    
 					    #Domain is cut off at the 3' end
 					    if($pred_end > $pred_end){
 						$zero_gene_domain_end = $zero_gene_end;
-						#$zero_gene_domain_end = $pred_end;
 						$genomic_gene_end = $genomic_gene_start + $zero_gene_end;
-						#print "mRNA Forward: Condition 4 \n";
-						#print "mRNA Condition 4 end: $genomic_gene_end \n";
 					    }
 					    
 					    #Domain does not occur in mRNA
@@ -2043,14 +1930,11 @@ foreach my $genome(@genomes){
 					#######################
 
 					if($strand_direction eq "Reverse"){
-					    #print "Reverse strand\n";
-					    
+
 					    #Domain is fully captured within mRNA at 5' end
 					    if($pred_start <= $domain_start){
 						$zero_gene_domain_start = $domain_start - $pred_start;
 						$genomic_gene_end = $domain_info_end + $zero_gene_domain_start;
-						#print "Reverse mRNA, condition 1 \n";
-						#print "This is condition 1 end: $genomic_gene_end \n";
 					    }
 
 					    #Domain is cut off at the 5' end
@@ -2058,9 +1942,6 @@ foreach my $genome(@genomes){
 						$zero_gene_domain_start = 0;
 						my $diff = $pred_start - $domain_start;
 						$genomic_gene_end = $domain_info_end - $diff;
-						#print "Reverse mRNA, condition 2 \n";
-						#print "This is condition 2 end: $genomic_gene_end \n";
-						#print "I am here \n";
 					    }
 					    
 					    #Domain is fully captured within mRNA at 3' end
@@ -2068,19 +1949,13 @@ foreach my $genome(@genomes){
 						$zero_gene_domain_end = $domain_end - $pred_start;
 						my $x2 = $zero_gene_end - $zero_gene_domain_end;
 						$genomic_gene_start = $domain_info_start - $x2;
-						$genomic_gene_start -=1;
-						#print "Reverse mRNA, condition 3 \n";
-						#print "This is condition 3 start: $genomic_gene_start \n";
-						
+						$genomic_gene_start -=1;	
 					    }
 					    
 					    #Domain is cut off at the 3' end
 					    if($domain_end > $pred_end){
-						#$zero_gene_domain_end = $pred_end;
 						$zero_gene_domain_end = $zero_gene_end;
 						$genomic_gene_start = $genomic_gene_end - $zero_gene_end;
-						#print "Reverse mRNA, condition 4 \n";
-						#print "This is condition 4 start: $genomic_gene_start \n";
 					    }
 					    
 					    # Domain does not occur in mRNA
@@ -2109,17 +1984,13 @@ foreach my $genome(@genomes){
 						$genomic_gene_start = $domain_info_start - $x2;
 						$genomic_gene_start -=1;
 
-						# zer domain as 0 as not in mRNA
+						# zero domain as 0 as not in mRNA
 						$zero_gene_domain_end = 0;
 						$zero_gene_domain_start = 0;
 					    }
 					    
 					}
-				
-					#print "This is zero domain mRNA start: $zero_gene_domain_start \n";
-					#print "This is zero domain mRNA end: $zero_gene_domain_end \n";					
-					#print "This is genomic GENE start: $genomic_gene_start \n";
-					#print "This is genomic GENE end: $genomic_gene_end \n";
+					
 
 					#################
 					#2) CDS coords: #
@@ -2129,8 +2000,6 @@ foreach my $genome(@genomes){
 
 					my $zero_cds_domain_start;
 					my $zero_cds_domain_end;
-					#my $genomic_cds_start;
-					#my $genomic_cds_end;
 					my $zero_cds_end = $cds_end - $cds_start;
 
 
@@ -2139,17 +2008,13 @@ foreach my $genome(@genomes){
 					######################
 					
 					if($strand_direction eq "Forward"){
-					    #Domain is fully captured within CDS at 5' end
 					    if($cds_start <= $domain_start){
-						#print "CDS Forward: Condition 1\n";
 						$zero_cds_domain_start = $domain_start - $cds_start;
-						#print "zero domain start: $zero_cds_domain_start \n";
 						$genomic_cds_start = $domain_info_start - $zero_cds_domain_start;
 					    }
 					    
 					    #Domain is cut off at the 5' end
 					    if($cds_start > $domain_start){
-						#print "CDS Forward: Condition 2\n";
 						$zero_cds_domain_start = 0;
 						my $diff = $cds_start - $domain_start;
 						$genomic_cds_start = $domain_info_start + $diff;
@@ -2157,18 +2022,14 @@ foreach my $genome(@genomes){
 					    
 					    #Domain is fully captured within CDS at 3' end
 					    if($domain_end <= $cds_end){
-						#print "CDS Forward: Condition 3 \n";
 						$zero_cds_domain_end = $domain_end - $cds_start;
 						$genomic_cds_end = $genomic_cds_start + $zero_cds_end;
-						#print "CDS Condition 3, end: $genomic_cds_end \n";
 					    }
 					    
 					    #Domain is cut off at the 3' end
 					    if($domain_end > $cds_end){
-						#print "CDS Forward: Condition 4 \n";
 						$zero_cds_domain_end = $zero_cds_end;
 						$genomic_cds_end = $genomic_cds_start + $zero_cds_end;
-						#print "CDS Condition 4, end: $genomic_cds_end \n";
 					    }
 					    
 					    #Domain does not occur in CDS
@@ -2179,9 +2040,6 @@ foreach my $genome(@genomes){
 						$genomic_cds_end = $domain_info_start - $x1;
 						my $x2 = $cds_end - $cds_start;
 						$genomic_cds_start = $genomic_cds_end - $x2;
-						#print "CDS Forward: Condition 5 \n";
-						#print "CDS Condition 5 start: $genomic_cds_start \n";
-						#print "CDS Condition 5 end: $genomic_cds_end \n";
 					    }
 					    
 					    #Domain does not occur in CDS
@@ -2194,32 +2052,7 @@ foreach my $genome(@genomes){
 						$genomic_cds_end = $genomic_cds_start + $x2;
 						$genomic_cds_start +=1;
 						$genomic_cds_end +=1;
-						#print "CDS Forward: Condition 6 \n";
-						#print "CDS Condition 6 start: $genomic_cds_start \n";
-						#print "CDS Condition 6 end: $genomic_cds_end \n";
 					    }
-					
-					    #################
-					    # check mRNA
-					    #################
-					    #my $checker = $cds_start - $pred_start;
-					    #if($genomic_cds_start - $checker == $genomic_gene_start){
-					    #print "Good start!\n";
-					    #}
-					    #else{
-					    #	print "BAD start\n";
-					    #   }
-					    #  
-					    # #check mRNA
-					    #my $checker = $pred_end - $cds_end;
-					    #if($genomic_gene_end - $checker == $genomic_cds_end){
-					    #	print "Good end!\n";
-					    #   }
-					    #  else{
-					    #	print "BAD end\n";
-					    #   }
-					    #}
-					    
 					}
 					
 					######################
@@ -2227,14 +2060,11 @@ foreach my $genome(@genomes){
 					######################
 					
 					if($strand_direction eq "Reverse"){
-					    #print "Reverse strand\n";
 					    
 					    #Domain is fully captured within CDS at 5' end
 					    if($cds_start <= $domain_start){
 						$zero_cds_domain_start = $domain_start - $cds_start;
 						$genomic_cds_end = $domain_info_end + $zero_cds_domain_start;
-						#print "Reverse CDS, condition 1 \n";
-						#print "This is condition 1 end: $genomic_cds_end \n";
 					    }
 					    
 					    #Domain is cut off at the 5' end
@@ -2242,8 +2072,6 @@ foreach my $genome(@genomes){
 						$zero_cds_domain_start = 0;
 						my $diff = $cds_start - $domain_start;
 						$genomic_cds_end = $domain_info_end - $diff;
-						#print "Reverse CDS, condition 2 \n";
-						#print "This is condition 2 end: $genomic_cds_end \n";
 					    }
 					    
 					    #Domain is fully captured within CDS at 3' end
@@ -2252,16 +2080,12 @@ foreach my $genome(@genomes){
 						my $x2 = $zero_cds_end - $zero_cds_domain_end;
 						$genomic_cds_start = $domain_info_start - $x2;
 						$genomic_cds_start -=1;
-						#print "Reverse CDS, condition 3 \n";
-						#print "This is condition 3 start: $genomic_cds_start \n";
 					    }
 					    
 					    #Domain is cut off at the 3' end
 					    if($domain_end > $cds_end){
 						$zero_cds_domain_end = $zero_cds_end;
 						$genomic_cds_start = $genomic_cds_end - $zero_cds_end;
-						#print "Reverse CDS, condition 4 \n";
-						#print "This is condition 4 start: $genomic_cds_start \n";
 					    }
 					    
 					    #Domain does not occur in CDS
@@ -2275,8 +2099,6 @@ foreach my $genome(@genomes){
 						# zero domain as 0 as not in CDS
 						$zero_cds_domain_start = 0;
 						$zero_cds_domain_end = 0;
-						#print "This is condition 5 start: $genomic_cds_start \n";
-						#print "This is condition 5 end: $genomic_cds_end \n";
 					    }
 					    
 					    #Domain does not occur in CDS
@@ -2294,45 +2116,16 @@ foreach my $genome(@genomes){
 						$zero_cds_domain_end = 0;
 						$zero_cds_domain_start = 0;
 						
-						#print "This is condition 6 start: $genomic_cds_start \n";
-						#print "This is condition 6 end: $genomic_cds_end \n";
 					    }
-					 
-					    #check mRNA
-
-					    #my $checker = $pred_end - $cds_end;
-					    #if($genomic_cds_start - $checker == $genomic_gene_start){
-					    #    print "Good start!\n";
-					    #}
-					    #else{
-					    #    print "BAD start\n";
-					    #}
-					   # 
-					    #my $checker = $cds_start - $pred_start;
-					    #if($genomic_gene_end - $checker == $genomic_cds_end){
-					    #    print "Good end!\n";
-					    #}
-					    #else{
-					    #    print "BAD end\n";
-					    #}
-
 					}
-					
-					#print "This is zero domain cds start: $zero_cds_domain_start \n";
-					#print "This is zero domain cds end: $zero_cds_domain_end \n";
-					#print "This is genomic cds start: $genomic_cds_start \n";
-					#print "This is genomic cds end: $genomic_cds_end \n";
-					
 					
 					# Prepare CDS header and seq
 					$protein_details =~ s/\n//g;
 					$cds_details =~ s/\n//g;
 
 					# Add mRNA coords to tsv
-					
 					$tsv_details[10] = $genomic_gene_start;
 					$tsv_details[11] = $genomic_gene_end;
-					
 					$tsv_details[22] = $zero_gene_domain_start;
 					$tsv_details[23] = $zero_gene_domain_end;
 
@@ -2426,6 +2219,7 @@ foreach my $genome(@genomes){
 					    ##########################################################
 					    # Prep temporary file with nucleotide sequence for hmmer #
 					    ##########################################################
+
 					    my $tmp_nuc_out = "tmp_nuc_out.fa"; 
 					    open(TNO, ">$tmp_nuc_out");
 					    print TNO $hit_header.$cds_seq."\n";
@@ -2434,6 +2228,7 @@ foreach my $genome(@genomes){
 					    ######################################
 					    # Prepare input files for subroutine #
 					    ######################################
+
 					    @prediction_details = ();
 					    push(@prediction_details, $nhmm_profile);
 					    push(@prediction_details, $tmp_nuc_out);
@@ -2441,6 +2236,7 @@ foreach my $genome(@genomes){
 					    ####################################
 					    # Push evaule for hmmer subroutine #
 					    ####################################
+
 					    if($default_nhmmer_evalue =~ m/^yes$/i){
 						my $default = "default";
 						push(@prediction_details, $default);
@@ -2469,23 +2265,18 @@ foreach my $genome(@genomes){
 					    `echo \"-----------------------------\n\" >> $augustus_prediction_log`;
 					    `echo \"$hit_details\" >> $augustus_prediction_log`;
 					    `echo \"$pred\" >> $augustus_prediction_log`;
+
+					    # Add to TSV details
 					    $tsv_details[2] = "Yes";
 					    $tsv_details[3] = "Pass";
-
-
-					    # Update these (HERE HERE HERE)
 					    $tsv_details[24] = $zero_cds_domain_start;
 					    $tsv_details[25] = $zero_cds_domain_end;
-
-					    #Update these
 					    $tsv_details[13] = $genomic_cds_start;
 					    $tsv_details[14] = $genomic_cds_end;
-
-					    # length
 					    $tsv_details[15] = $augustus_cds_length;
 					    
 					    # Functional or Pseudogene status
-					    #Get functional status
+					    # Get functional status
 					    if($pseudogene_check =~ m/^yes$/i){
 						my $copy_seq = $cds_seq;
 						$copy_seq =~ s/\n//g;
@@ -2528,7 +2319,6 @@ foreach my $genome(@genomes){
 				}
 				else{
 				    $prediction_found = 0;
-				  
 				}
 			    }
 	
@@ -2542,16 +2332,12 @@ foreach my $genome(@genomes){
 			    my $locus_flag = " [Coordinates=$contig:$genomic_cds_start-$genomic_cds_end]";
 			    my $prediction_flag =" [Augustus prediction]";
 			    my $cds_header = ">".$hit_prefix.$hit_no.$locus_flag.$prediction_flag."\n";
-			    #print $cds_header."\n";
-			    #my $cds_header = ">".$hit_prefix.$hit_no."_new_augustus_prediction\n";
-			    #$cds_header = ">".$hit_prefix.$hit_no."_new_augustus_prediction\n";
 			    my $hit_annotation = $hit_prefix.$hit_no;
 			    push(@protein_names, $hit_annotation);
 
 			    my $cds_copy = $verified_cds_seq;
 			    $cds_copy =~ s/\n//g;
 			    my $cds_length = length($cds_copy);
-			    #$tsv_details[15] = $cds_length;
 			    
 			    # Print to CDS nucleotide
 			    open(CDS_NT, ">>$cds_final_nuc");
@@ -2598,12 +2384,10 @@ foreach my $genome(@genomes){
 		}
 	    }
 
-	    ###############################################################
-	    # 4.8. Assign pseudogene/functional status to all predictions #
-	    ###############################################################
+	    ######################################################################################
+	    # 4.8. Tidy and assign pseudogene/functional status to all predictions (if specified)
+	    ######################################################################################
 	    
-	    
-	    #open(CDS, $cds_final_nuc);
 	    my $out = "tmp_cds.fa";
 	    my @cds_final_files = ();
 	    my %prot_headers;
@@ -2615,15 +2399,12 @@ foreach my $genome(@genomes){
 		my @ncbi_seqs_final = ();
 		my @augustus_seqs_final = ();
 		$counter ++;
-		
-		#print "This is cds final file: $cds_final_file\n";
-		
+	                	
 		if(-e $out){
 		    `rm $out`;
 		}
 		
 		my @finalseqs =&parse_fasta($cds_final_file);
-		#my @finalseqs = split (/\>/, $final_seqs);
 		
 		foreach my $cds(@finalseqs){
 		    if($cds =~ m/(.*)\n([\S\n]+)/){
@@ -2643,7 +2424,6 @@ foreach my $genome(@genomes){
 			elsif($cds_header =~ m/\>([\S]+)/){
 			    $cds_ID_name = $1;
 			}
-
 			my $functional_flag = "";
 			if ($pseudogene_check eq "yes" || $pseudogene_check eq "Yes"){
 			    #print "Annotating hits with functional or pseudogene status ...\n\n";
@@ -2705,8 +2485,7 @@ foreach my $genome(@genomes){
 
 	    `esl-sfetch --index $cds_final_nuc`;
 	    `esl-sfetch --index $cds_final_prot`;
-
-
+	    
 	    open(TSV_IN, $tsv_summary);
 	    my @tsv_entries = (<TSV_IN>);
 	    close TSV_IN;
@@ -2730,9 +2509,10 @@ foreach my $genome(@genomes){
 	    
 	    `rm *ssi`;
  	    
-	    ###############################
-	    # Remove duplicates option    #
-	    ###############################
+
+	    ###################################################
+	    # 4.9. Remove duplicates - if option is selected  #
+	    ###################################################
 
 	    if($remove_duplicates =~ m/^yes$/i){
 		my $filter_threshold = $duplicate_threshold * 100;
@@ -2779,7 +2559,6 @@ foreach my $genome(@genomes){
 		# Parse matrix  #
 		#################
 
-		
 		print "removing duplicates which share over $filter_threshold"."% identity...\n\n";
 
 		my $duplicate_log = $genome_ID."_remove_duplicates_".$filter_threshold.".log";
@@ -3052,22 +2831,16 @@ foreach my $genome(@genomes){
 	    }
 
 	    ################################
-	    # 4.9. Sort output directories #
+	    # 4.10. Sort output directories #
 	    ################################
 	    
 	    if(-e $nhmmer_nucleotide_sequences){
-		#my $subdir4 = $outdir."/unnanotated_hits";
-		#`mkdir $subdir4`;
-		#`mv $nhmmer_nucleotide_sequences $subdir4`;
 		`rm $nhmmer_nucleotide_sequences`;
 	    }
 	    `mv $cds_final_nuc $cds_final_prot $outdir`;
 	    if ($annotation_available eq "Yes" || $annotation_available eq "yes"){
-		#my $subdir3 = $outdir."/mined_annotation_files";
-		#`mkdir $subdir3`;
 		`mv $cds_nuc $cds_prot $subdir2`;
 		`mv $unique_longest_transcripts_out $subdir2`;
-		#`mv $subdir2 $subdir3`;
 	    }
 	    if($predict_new_hits eq "Yes" || $predict_new_hits eq "yes"){
 		if(-e $augustus_prediction_log){
@@ -3283,7 +3056,6 @@ sub parse_hmmer{
 }
 
 
-
 sub hmm_filter{
     my @hmminputs = @_;
     my $hmm_file = $hmminputs[0];
@@ -3346,6 +3118,7 @@ sub hmm_filter{
 	return $hmm_status;   
     }
 }
+
 
 sub hmm_filter_nucleotide{
     my @hmminputs = @_;
@@ -3468,12 +3241,10 @@ sub parse_gff{
 			}
 
 			#Check that ID is target
-			#if($attribute_hash{$identifier_type} ~~ @identifiers){
 			if(grep { $_ eq $attribute_hash{$identifier_type} } @identifiers) {
 			    
 
 			    $gene_details[0] = $seqname; #contig name
-			    #$gene_details[1] = $type;
 			    
 			    #Account for reverse strand
 			    if($end < $start){
@@ -3490,8 +3261,6 @@ sub parse_gff{
 			    }
 			    
 			    $gene_details[1] = $strand; #Forward or Reverse
-			    #$gene_details[4] = $start;	#CDS start		    
-			    #$gene_details[5] = $end; #CDS end
 			    
 			    #Gather attributes
 			    foreach my $key (keys %attribute_hash) {
@@ -3554,7 +3323,6 @@ sub parse_gff{
 			    $attribute_hash{$key} = $value;
 			}
 			my $id = "ID";
-			#if($attribute_hash{$id} ~~ @rna_IDs){
 			if(grep { $_ eq $attribute_hash{$id} } @rna_IDs) {
 			    my $gene_id = $attribute_hash{"Parent"};
 			    $gene_id =~ s/gene-//g;
@@ -3576,6 +3344,7 @@ sub parse_gff{
 	return(\%gene_info);
     }
 }
+
 
 sub parse_fasta_hash{ #returns sequences stored in an array
     my $seqfile = $_[0];
@@ -3602,6 +3371,7 @@ sub parse_fasta_hash{ #returns sequences stored in an array
     close SEQS;
     return %seqs;
 }
+
 
 sub parse_fasta{ #returns sequences stored in an array
     my $seqfile = $_[0];
@@ -3656,10 +3426,7 @@ sub mine_seqs{
 		$seqID = $1;
 	    }
 	}
-	#if($seqID ~~ @ID_array){
 	if(grep { $_ eq $seqID } @ID_array) {
-	    
-	    #print "SEQID: $seqID \n";
 	    unless($header =~ m/\Q$ncbi_flag\E/){
 		$header.=$ncbi_flag;
 	    }
@@ -3670,6 +3437,7 @@ sub mine_seqs{
     close FILEOUT;
     return @headers;
 }
+
 
 sub get_contig_lengths{
     my $genome_file = $_[0];
@@ -3718,12 +3486,8 @@ sub get_matrix{
     while (<BLSTP>) {
         chomp;
         my @details = split(/\t/, $_);
-	#print "here ... ";
-	#print join("\t", @details),"\n";
 	my $reference_id = $details[2]; #human ID
-	#print $reference_id."\n";
 	my $query_id = $details[0]; #query ID
-	#print $query_id."\n";
 	
 	#PID : number identical / mean pairise length
 	my $nid = $details[10]; #number identical aa
@@ -3744,7 +3508,6 @@ sub get_matrix{
     }
     close BLSTP;
     
-    #print "Populate the matrix \n";
     my @populate_matrix = ();
 
     #Populate and print matrix
