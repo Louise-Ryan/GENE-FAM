@@ -70,7 +70,8 @@ my $remove_duplicates = "no"; # If you wish to filter out potential duplicates, 
 my $duplicate_threshold = 0.9; #Percentage identity which pairs or clusters must share to be considered 'duplicates'.
 my $duplicate_type = "cluster"; #pairwise or cluster. 
 
-
+#Threads
+my $threads = 8;
 
 
 
@@ -631,10 +632,10 @@ foreach my $genome(@genomes){
 		
 		print "\nrunning hmmsearch on protein CDS annotations...\n\n";
 		if($default_phmmer_evalue =~ m/^yes$/i){
-		    `hmmsearch $phmm_profile $protein >> $phmmer_file`;
+		    `hmmsearch --cpu $threads $phmm_profile $protein >> $phmmer_file`;
 		}
 		else{
-		    `hmmsearch --incE $phmmer_evalue $phmm_profile $protein >> $phmmer_file`;
+		    `hmmsearch --cpu $threads --incE $phmmer_evalue $phmm_profile $protein >> $phmmer_file`;
 		}
 		
 		
@@ -710,10 +711,10 @@ foreach my $genome(@genomes){
 
      		print "running nhmmer on mRNA annotations ...\n\n";
 		if($default_nhmmer_evalue =~ m/^yes$/i){
-		    `nhmmer $nhmm_profile $nucleotide >> $nhmmer_transcript_file`;
+		    `nhmmer --cpu $threads $nhmm_profile $nucleotide >> $nhmmer_transcript_file`;
 		}
 		else{
-		    `nhmmer --incE $nhmmer_evalue $nhmm_profile $nucleotide >> $nhmmer_transcript_file`;
+		    `nhmmer --cpu $threads --incE $nhmmer_evalue $nhmm_profile $nucleotide >> $nhmmer_transcript_file`;
 		}
 
 		########################
@@ -793,10 +794,10 @@ foreach my $genome(@genomes){
 
 		print "running nhmmer on nucleotide CDS annotations  ...\n\n";
 		if($default_nhmmer_evalue =~ m/^yes$/i){
-		    `nhmmer $nhmm_profile $cds >> $nhmmer_cds_file`;
+		    `nhmmer --cpu $threads $nhmm_profile $cds >> $nhmmer_cds_file`;
 		}
 		else{
-		    `nhmmer --incE $nhmmer_evalue $nhmm_profile $cds >> $nhmmer_cds_file`;
+		    `nhmmer --cpu $threads --incE $nhmmer_evalue $nhmm_profile $cds >> $nhmmer_cds_file`;
 		}
 
 		
@@ -1230,9 +1231,9 @@ foreach my $genome(@genomes){
 			`esl-sfetch --index $genome`; #index genomefile
 			
 			if($default_nhmmer_evalue =~ m/^yes$/i){
-			    `nhmmer $nhmm_profile $genome_db >> $nhmmer_file`;
+			    `nhmmer --cpu $threads $nhmm_profile $genome_db >> $nhmmer_file`;
 			}else{
-			    `nhmmer --incE $nhmmer_evalue $nhmm_profile $genome_db >> $nhmmer_file`;
+			    `nhmmer --cpu $threads --incE $nhmmer_evalue $nhmm_profile $genome_db >> $nhmmer_file`;
 			}
 			# remove files
 			`rm $genome_db`;
@@ -1243,9 +1244,9 @@ foreach my $genome(@genomes){
 			print "running nhmmer on whole genome assembly to pull new hits ...\n\n";
 			`esl-sfetch --index $genome`; #index genomefile
 			if($default_nhmmer_evalue =~ m/^yes$/i){
-			    `nhmmer $nhmm_profile $genome >> $nhmmer_file`;
+			    `nhmmer --cpu $threads $nhmm_profile $genome >> $nhmmer_file`;
 			}else{
-			    `nhmmer --incE $nhmmer_evalue $nhmm_profile $genome >> $nhmmer_file`;
+			    `nhmmer --cpu $threads --incE $nhmmer_evalue $nhmm_profile $genome >> $nhmmer_file`;
 			}
 		    }
 		    
@@ -1425,9 +1426,9 @@ foreach my $genome(@genomes){
 			`esl-sfetch --index $genome`; #index genomefile
 			
 			if($default_nhmmer_evalue =~ m/^yes$/i){
-			    `nhmmer $nhmm_profile $genome_db >> $nhmmer_file`;
+			    `nhmmer --cpu $threads $nhmm_profile $genome_db >> $nhmmer_file`;
 			}else{
-			    `nhmmer --incE $nhmmer_evalue $nhmm_profile $genome_db >> $nhmmer_file`;
+			    `nhmmer --cpu $threads --incE $nhmmer_evalue $nhmm_profile $genome_db >> $nhmmer_file`;
 			}
 			# remove files
 			`rm $genome_db`;
@@ -1438,9 +1439,9 @@ foreach my $genome(@genomes){
 			print "running nhmmer on whole genome assembly to pull new hits ...\n\n";
 			`esl-sfetch --index $genome`; #index genomefile
 			if($default_nhmmer_evalue =~ m/^yes$/i){
-			    `nhmmer $nhmm_profile $genome >> $nhmmer_file`;
+			    `nhmmer --cpu $threads $nhmm_profile $genome >> $nhmmer_file`;
 			}else{
-			    `nhmmer --incE $nhmmer_evalue $nhmm_profile $genome >> $nhmmer_file`;
+			    `nhmmer --cpu $threads --incE $nhmmer_evalue $nhmm_profile $genome >> $nhmmer_file`;
 			}
 		    }
 		    
@@ -2594,7 +2595,7 @@ foreach my $genome(@genomes){
 		my $output_format = "6 qseqid qlen sseqid slen qstart qend sstart send evalue length nident qcovhsp pident";
 		
 		`makeblastdb -in $cds_final_prot -dbtype="prot" -out $matrix_db`; 
-		`blastp -db $matrix_db -query $cds_final_prot -out $blast_out -outfmt \"$output_format\"`;
+		`blastp -db $matrix_db -query $cds_final_prot -out $blast_out -num_threads $threads -outfmt \"$output_format\"`;
 
 		my @pid_matrix =&get_matrix($blast_out, \@protein_names, \@protein_names, $matrix_out);
 		
