@@ -20,7 +20,7 @@ my $pseudogene_check = "yes"; #If yes, all cds seqs with in frame stop codons, o
 my $pseudogene_length = 300; #coding sequences below this length are considered pesuogenes (nucloetide length).
 # Remove duplicates
 my $remove_duplicates = "no";
-my $duplicate_threshold = "0.9"; #Percentage identity which pairs must share to be considered 'duplicates'.
+my $duplicate_threshold = 0.9; #Percentage identity which pairs must share to be considered 'duplicates'.
 my $duplicate_type = "cluster"; #pairwise or cluster
 
 
@@ -72,7 +72,7 @@ my $nucleotide_longest_transcripts="_longest_isoforms_rna.fa"; #Longest rna tran
 my $cds_nucleotide_seqfile="_longest_isoforms_cds_nucleotide.fa"; #Longest cds transcripts (nucleotide)
 my $cds_protein_seqfile = "_longest_isoforms_cds_protein.fa"; #Longest cds transcripts (protein)
 my $nhmmer_unnanotated_seqfile = "_unannotated_newhits_from_assembly.fa"; #Unannotated hits from nhmmer on assembly
-my $hit_prefix = "Ath";
+my $hit_prefix = "Hit";
 
 ###########################################################################
 #Annotations: Functional vs Pseudogene
@@ -115,134 +115,214 @@ print "\n", "\=" x 80, "\n\n";
 #######################################
 # 1. Check input files and parameters:
 #######################################
-
+my $die_signal = 0;
 ######################################
 # 1.1. Check variables are specified:
 ######################################
 
 #1.1.1. yes/no options
-my @yes_no_scalar = ();
-unless($annotation_available =~ m/^yes$/i || $annotation_available =~ m/^no$/i){
-    print "The \$annotation_available parameter is not set correctly. Please specify as \"Yes\" or \"No\" and retry. Aborting job!\n";
-    push(@yes_no_scalar, $annotation_available);
-}
 
+unless($annotation_available =~ m/^yes$/i || $annotation_available =~ m/^no$/i){
+    print "The \$annotation_available parameter is not set correctly. Please specify as \"Yes\" or \"No\" and retry.\n\n";
+    $die_signal ++;
+}
 if($annotation_available !~ m/^yes$/i && $predict_new_hits !~ m/^yes$/i){
     print "The \$annotation_available and \$predict_new_hits variables cannot both be set to \"no\".\n";
     print "If you want to predict new hits in an assembly, where no annotations are available, please set \$annotation_available to \"no\" and \$predict_new_hits to \"yes\".\n";
     print "If you want to predict new hits in an assembly, where annotations are available, please set both \$annotation_available and \$predict_new_hits to \"yes\".\n";
     print "If you do not want to predict new hits, and annotations are available, please set \$annotation_available to \"yes\" and \$predict_new_hits to \"no\".\n";
-    print "Please retry once variables have been correctly assigned. Aborting job!\n";
-    die;
+    print "Please retry once variables have been correctly assigned!\n\n";
+    $die_signal ++;
 }
-
 unless($predict_new_hits =~ m/^yes$/i || $predict_new_hits =~ m/^no$/i){
-    print "The \$predict_new_hits parameter is not set correctly. Please specify as \"yes\" or \"no\" and retry. Aborting job!\n";
-    push(@yes_no_scalar, $predict_new_hits);
+    print "The \$predict_new_hits parameter is not set correctly. Please specify as \"yes\" or \"no\" and retry.\n\n";
+    $die_signal ++;
 }
 unless($pseudogene_check =~ m/^yes$/i || $pseudogene_check =~ m/^no$/i){
-    print "The \$pseudogene_check parameter is not set correctly. Please specify as \"yes\" or \"no\" and retry. Aborting job!\n";
-    push(@yes_no_scalar, $pseudogene_check);
+    print "The \$pseudogene_check parameter is not set correctly. Please specify as \"yes\" or \"no\" and retry.\n\n";
+    $die_signal ++;
 }
 unless($default_nhmmer_evalue =~ m/^yes$/i || $default_nhmmer_evalue =~ m/^no$/i){
-    print "The \$default_nhmmer_evalue parameter is not set correctly. Please specify as \"yes\" or \"no\" and retry. Aborting job!\n";
-    push(@yes_no_scalar, $default_nhmmer_evalue);
+    print "The \$default_nhmmer_evalue parameter is not set correctly. Please specify as \"yes\" or \"no\" and retry.\n\n";
+    $die_signal ++;
 }
 unless($default_phmmer_evalue =~ m/^yes$/i || $default_phmmer_evalue =~ m/^no$/i){
-    print "The \$default_phmmer_evalue parameter is not set correctly. Please specify as \"yes\" or \"no\" and retry. Aborting job!\n";
-    push(@yes_no_scalar, $default_phmmer_evalue);
+    print "The \$default_phmmer_evalue parameter is not set correctly. Please specify as \"yes\" or \"no\" and retry. \n\n";
+    $die_signal ++;
 }
-if(scalar(@yes_no_scalar) > 0){
-    die;
+unless($predict_new_hits =~ m/^no$/i){
+    unless($append_query =~ m/^yes$/i || $append_query =~ m/^no$/i){
+	print "The \$append_query parameter is not set correctly. Please specify as \"yes\" or \"no\" and retry.\n\n";
+	$die_signal ++;
+    }
 }
+unless($predict_new_hits =~ m/^no$/i){
+    unless($hit_prefix =~ m/[\S]+/){
+	print "The \$hit_prefix variable has not been assigned. Please assign a prefix to label new hits.\n\n";
+	$die_signal ++;
+    }
+}
+unless($predict_new_hits =~ m/^no$/i){
+    unless($hmm_filter_type =~ m/^protein$/i || $hmm_filter_type =~ m/^nucleotide$/i){
+	print "The \$hmm_filter_type variable has not been assigned correctly. Please set this variable as \"protein\" or \"nucleotide\" and retry.\n\n";
+	$die_signal ++;
+    }
+}
+unless($remove_duplicates =~ m/^yes$/i || $remove_duplicates =~ m/^no$/i){
+    print "The \$remove_duplicates variable has not been assigned correctly. Please set this variable as \"yes\" or \"no\" and retry. \n\n";
+    $die_signal ++;
+}
+unless($remove_duplicates =~ m/^no$/i){
+    unless($duplicate_type =~ m/^cluster$/i || $duplicate_type =~ m/^pairwise$/i){
+	print "The \$duplicate_type variable has not been assigned correctly. Please set this variable as \"cluster\" or \"pairwise\" and retry.\n\n";
+	$die_signal ++;
+    }
+    if(looks_like_number($duplicate_threshold)){
+	unless($duplicate_threshold >= 0 && $duplicate_threshold <= 1){
+	    print "The \$duplicate_threshold variable should be set to a number between 0 and 1. Please adjust this variable accordingly and retry.\n\n";
+	    $die_signal ++;
+	}   
+    }
+    else{
+	print "The \$duplicate_threshold variable should be numeric. Please set this variable as a number between 0 and 1 and retry.\n\n";
+	$die_signal ++;
+    }
+}
+unless($predict_new_hits =~ m/^no$/i){
+    unless($number_hints =~ m/^all$/i){
+	if(looks_like_number($number_hints)){
+	    if($number_hints < 0){
+		print "The \$number_hints variable should not be less than 0. Please adjust this variable accordingly and retry.\n\n";
+		$die_signal ++;
+	    }
+	}
+	else{
+	    print "The \$number_hints variable has not been assigned correctly. Please set this variable to \"all\" if you wish to use the entire reference file to generate hints to guide augustus gene predictions. Otherwise, please set this varibale to a number greater than 0, corresponding to the amount of genes in the reference file which will be used to generate hints.\n\n";
+	    $die_signal ++;
+	}
+    }
+}
+unless($automate_download =~m/^yes$/i || $automate_download =~ m/^no$/i){
+    print "The \$automate_download variable has not be assigned correctly. Please set this variable to \"yes\" or \"no\" and retry. \n\n";
+    $die_signal ++;
+}
+unless($automate_download =~ m/^no$/){
+    unless(-e $species_list){
+	print "The $species_list file specified in the \$species_list variable does not exist. Please retry with the correct file name.\n\n";
+	$die_signal ++;
+    }
+}
+       
 
 
 #1.1.2. Output files and augustus variable
 my @check_output_vars = ();
 unless($phmm_profile){
-    print "Did you forget to specify the \$phmm_profile variable? Aborting job!\n";
-    push(@check_output_vars, $phmm_profile);
+    print "Did you forget to specify the \$phmm_profile variable? \n\n";
+    $die_signal ++;
 }
 unless($nhmm_profile){
-      print "Did you forget to specify the \$nhmm_profile variable? Aborting job!\n";
-      push(@check_output_vars, $nhmm_profile);
+      print "Did you forget to specify the \$nhmm_profile variable? \n\n";
+      $die_signal ++;
 }
 unless($final_cds_nuc){
-    print "Did you forget to specify the \$final_cds_nuc variable? Aborting job!\n";
-    push(@check_output_vars, $final_cds_nuc);
+    print "Did you forget to specify the \$final_cds_nuc variable? \n\n";
+    $die_signal ++;
 }
 unless($final_cds_prot){
-    print "Did you forget to specify the \$final_cds_prot variable? Aborting job!\n";
-    push(@check_output_vars, $final_cds_prot);
+    print "Did you forget to specify the \$final_cds_prot variable? \n\n";
+    $die_signal ++;
 }
 unless($nucleotide_longest_transcripts){
-    print "Did you forget to specify the \$phmm_profile variable? Aborting job!\n";
-    push(@check_output_vars, $phmm_profile);
+    print "Did you forget to specify the \$phmm_profile variable? \n\n";
+    $die_signal ++;
 }
 unless($cds_nucleotide_seqfile){
-    print "Did you forget to specify the \$nucleotide_longest_transcripts variable? Aborting job!\n";
-    push(@check_output_vars, $nucleotide_longest_transcripts);
+    print "Did you forget to specify the \$nucleotide_longest_transcripts variable? \n\n";
+    $die_signal ++;
 }
 unless($cds_protein_seqfile){
-    print "Did you forget to specify the \$cds_protein_seqfile variable? Aborting job!\n";
-    push(@check_output_vars, $cds_protein_seqfile);
+    print "Did you forget to specify the \$cds_protein_seqfile variable? \n\n";
+    $die_signal ++;
 }
 unless($nhmmer_unnanotated_seqfile){
-    print "Did you forget to specify the \$nhmmer_unnanotated_seqfile variable? Aborting job!\n";
-    push(@check_output_vars, $nhmmer_unnanotated_seqfile);
+    print "Did you forget to specify the \$nhmmer_unnanotated_seqfile variable? \n\n";
+    $die_signal ++;
 }
-unless($augustus_species){
-    print "Did you forget to specify the \$augustus_species variable? Aborting job!\n";
-    push(@check_output_vars, $augustus_species);
-}
-if(scalar(@check_output_vars) > 0){
-    die;
+unless($predict_new_hits =~ m/^no$/i){
+    unless($augustus_species){
+	print "Did you forget to specify the \$augustus_species variable? \n\n";
+	$die_signal ++;
+    }
 }
 if($phmm_profile eq $nhmm_profile){
-    print "\$phmm_profile cannot be assigned the same name as \$nhmm_profile. Please rename variables and try again. Abort job!\n";
-    die;
+    print "\$phmm_profile cannot be assigned the same name as \$nhmm_profile. Please rename variables and try again.\n\n";
+    $die_signal ++;
 }
 
 #1.1.3. Numeric values
 my @numeric_check = ();
 unless(looks_like_number($minidentity)){
-    print "The \$minidentity variable is not numeric. Please ensure a numeric value is set for this variable and try again. Abort job!\n";
-    push(@numeric_check, $minidentity);
+    print "The \$minidentity variable is not numeric. Please ensure a numeric value is set for this variable and try again.\n\n";
+    $die_signal ++;
 }
-unless(looks_like_number($pseudogene_length)){
-    print "The \$pseudogene_length variable is not numeric. Please ensure a numeric value is set for this variable and try again. Abort job!\n";
-    push(@numeric_check, $pseudogene_length);
+unless($pseudogene_check =~ m/^no$/i){
+    unless(looks_like_number($pseudogene_length)){
+	print "The \$pseudogene_length variable is not numeric. Please ensure a numeric value is set for this variable and try again. \n\n";
+	$die_signal ++;
+    }
 }
-unless(looks_like_number($nhmmer_plus)){
-    print "The \$nhmmer_plus variable is not numeric. Please ensure a numeric value is set for this variable and try again. Abort job!\n";
-    push(@numeric_check, $nhmmer_plus);
-}
-unless(looks_like_number($nhmmer_minus)){
-    print "The \$nhmmer_minus variable is not numeric. Please ensure a numeric value is set for this variable and try again. Abort job!\n";
-    push(@numeric_check, $nhmmer_minus);
+unless($predict_new_hits =~ m/^no$/i){
+    unless(looks_like_number($nhmmer_plus)){
+	print "The \$nhmmer_plus variable is not numeric. Please ensure a numeric value is set for this variable and try again. \n\n";
+	$die_signal ++;
+    }
+    unless(looks_like_number($nhmmer_minus)){
+	print "The \$nhmmer_minus variable is not numeric. Please ensure a numeric value is set for this variable and try again. \n\n";
+	$die_signal ++;
+    }
 }
 if($default_phmmer_evalue =~ m/^no$/i){
     unless(looks_like_number($phmmer_evalue)){
-	print "The \$phmmer_evalue variable is not numeric. Please ensure a numeric value is set for this variable and try again. Abort job!\n";
-	push(@numeric_check, $phmmer_evalue);
+	print "The \$phmmer_evalue variable is not numeric. Please ensure a numeric value is set for this variable and try again. \n\n";
+	$die_signal ++;
     }
 }
 if($default_nhmmer_evalue =~ m/^no$/i){
     unless(looks_like_number($nhmmer_evalue)){
-	print "The \$nhmmer_evalue variable is not numeric. Please ensure a numeric value is set for this variable and try again. Abort job!\n";
-	push(@numeric_check, $nhmmer_evalue);
+	print "The \$nhmmer_evalue variable is not numeric. Please ensure a numeric value is set for this variable and try again. \n\n";
+	$die_signal ++;
     }
 }
-
-if(scalar(@numeric_check > 0)){
-    die;
+unless($predict_new_hits =~ m/^no$/){
+    if(looks_like_number($minidentity)){
+	if($minidentity < 0 || $minidentity > 100){
+	    print "The \$minidentity variable should be set to a number between 0 and 100. Please adjust this variable accordingly and try again. \n\n";
+	    $die_signal ++;
+	}
+    }
+    else{
+	print "The \$minidentity variable should be numeric. Please set this variable as a number between 0 and 100 and retry. \n\n";
+	$die_signal ++;
+    }
+    if(looks_like_number($domain_cover_threshold)){
+	if($domain_cover_threshold < 0 || $domain_cover_threshold > 1){
+	    print "The \$domain_cover_threshold should be set to a number between 0 and 1. Please adjust this variable accordingly and retry. \n\n";
+	    $die_signal ++;
+	}
+    }
+    else{
+	print "The \$domain_cover_threshold variable should be numeric. Please set this variable as a number between 0 and 1 and retry. \n\n";
+	$die_signal ++;
+    }       
 }
+
 
 #1.1.4. Pseudogene names
 if($pseudogene_check =~ m/^yes$/i){
     unless($annotation_short && $annotation_1 && $annotation_2 && $annotation_3 && $annotation_4 && $annotation_5 && $annotation_6){
-	print "The annotation variables are not set correctly. Please ensure all \$annotation variables are specified and try again. Abort job!\n";
-	die;
+	print "The annotation variables are not set correctly. Please ensure all \$annotation variables are specified and try again. \n\n";
+	$die_signal ++;
     }
 }
 
@@ -252,26 +332,25 @@ if($pseudogene_check =~ m/^yes$/i){
 ################################
 
 unless(-e $pfam_seed){
-    print "$pfam_seed does not exist! Did you specify the \$pfam_seed variable? Aborting job!\n";
-    die;
+    print "$pfam_seed does not exist! Did you specify the \$pfam_seed variable? \n\n";
+    $die_signal ++;
 }
 unless( -e $nuc_alignment){
-    print "$nuc_alignment does not exist! Did you specify the \$nuc_alignment variable? Aborting job!\n";
-    die;
+    print "$nuc_alignment does not exist! Did you specify the \$nuc_alignment variable? \n\n";
+    $die_signal ++;
 }
 unless(-e $reference_file){
-    print "$reference_file does not exist! Did you specify the \$reference_file variable? Aborting job!\n";
-    die;
+    print "$reference_file does not exist! Did you specify the \$reference_file variable? \n\n";
+    $die_signal ++;
 }
 if($automate_download eq "Yes" || $automate_download eq "yes"){
     unless(-e $species_list){
-	print "$species_list does not exist! Did you specify the \$species_list variable? Aborting job!\n";
-	die;
+	print "$species_list does not exist! Did you specify the \$species_list variable? \n\n";
+	$die_signal ++;
     }
 }
 else{
     my @check_suffix = ();
-    my @suffix_scalar = ();
     push(@check_suffix, $genome_suffix);
     unless($annotation_available =~ m/^no$/i){
 	push(@check_suffix, $nt_transcript_suffix);
@@ -281,19 +360,16 @@ else{
     foreach my $suffix_value(@check_suffix){
 	my @matching_files = glob("*$suffix_value");
 	unless(@matching_files) {
-	    print "No files ending in $suffix_value exist in working directory. Please check file names and ensure suffix values are correctly assigned in the script. Aborting job!\n";
-	    push (@suffix_scalar, $suffix_value);
+	    print "No files ending in $suffix_value exist in working directory. Please check file names and ensure suffix values are correctly assigned in the script.\n\n";
+	    $die_signal ++;
 	}
-    }
-    if(scalar(@suffix_scalar) > 0){
-	die;
     }
 }
 my $blat2hints_file = "blat2hints.pl";
 if($predict_new_hits =~ m/^yes$/i){
     unless(-e $blat2hints_file){
-	print "blat2hints.pl is not in current working directory. Please copy this file to your working directory and try again. Aborting job!\n";
-	die;
+	print "blat2hints.pl is not in current working directory. Please copy this file to your working directory and try again.\n\n";
+	$die_signal ++;
     }
 }
 
@@ -307,17 +383,24 @@ if ($automate_download eq "Yes" || $automate_download eq "yes"){
     my @status =&downloadGenomes($species_list);
     print "\n";
     if(scalar(@status) > 0){
-	print "ERROR: Failed to download files automatically. Please manually download the files listed below and set the \$automate_download variable to \"no\". Aborting job!\n";
+	print "ERROR: Failed to download files automatically. Please manually download the files listed below and set the \$automate_download variable to \"no\". \n\n";
 	foreach my $f(@status){
 	    print "Failed to download $f\n";
 	}
-	die;
+	$die_signal ++;
     }
     else{
 	print "Files downloaded successfully! \n";
     }
 }
 
+#############################
+# Die if die signal > 0     #
+#############################
+if($die_signal > 0){
+    print "Please fix the above errors and retry. Aborting job!\n";
+    die;
+}
 
 ##############################
 # 3.0 Prepare files
