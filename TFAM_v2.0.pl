@@ -346,8 +346,11 @@ unless($predict_new_hits =~ m/^no$/){
 	$die_signal ++;
     }       
 }
-
-
+unless(looks_like_number($threads)){
+    print "The \$threads variable must be numeric. Please adjust this variable accordingly and retry.\n\n";
+    $die_signal ++;
+}
+	
 #1.1.4. Pseudogene names
 if($pseudogene_check =~ m/^yes$/i){
     unless($annotation_short && $annotation_1 && $annotation_2 && $annotation_3 && $annotation_4 && $annotation_5 && $annotation_6){
