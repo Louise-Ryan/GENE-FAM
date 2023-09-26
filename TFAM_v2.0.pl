@@ -8,81 +8,69 @@ use List::Util qw( min max );
 ###########################################################################
 #USER PARAMETERS:                                                         #
 ###########################################################################
+
+########################
+# Essential file names
+########################
+
+#phmmer and nhmmer alignments for transcription factor domain
+my $pfam_seed = "PF00319_seed.txt"; #protein alignment (E.g PFAM seed alignment)
+my $nuc_alignment = "MADS_nhmmer_alignment.fa"; #Nucleotide alignment
+
+#Augustus reference file:
+my $reference_file = "MADS_reference_file.fa"; #if augustus option is on, enter reference file name here.
+
+#hmm profile names - these files will be created automatically using your alignment files.
+my $phmm_profile = "MADSp.hmm"; #nhmmer profile name: use hmmer to build hmm profile from $pfam_seed. Please note that these must end in ".hmm".
+my $nhmm_profile = "MADSn.hmm"; #phmmer profile name: use hmmer to build hmm profile from $nuc_alignment. Please note that these must end in ".hmm".
+
+
+############ 
+# Options
+############
+
 #Annotation files available?
 my $annotation_available = "yes"; #If NCBI annotations are available for your genome set below variable to "yes". Set as "no" if no annotations are available, and you wish to mine the assembly only.
-# Augustus
+
+#Automate download of annotation files? #FOR NCBI REFSEQ GENOMES ONLY!#
+my $automate_download = "no";
+my $species_list = "species.txt"; #list species names in species.txt file to download files for each species
+
+#phmmer evalue threshold:
+my $default_phmmer_evalue = "yes"; #yes: default; no: Use custom evalue (set $phmmer_evalue variable below)
+my $phmmer_evalue = "1e-5"; #If $default_phmmer_evalue is "no", use this custom evalue
+
+#nhmmer evalue threshold:
+my $default_nhmmer_evalue = "yes"; #yes: default #no: user specified (use $nhmmer_evalue variable below)
+my $nhmmer_evalue = "1e-5"; #If $default_nhmmer_evalue is "no", use this custom evalue
+
+# Augustus options
 my $predict_new_hits = "yes"; #If you want to predict any new, unannotated, hits with augutus, set this to "yes". If augustus is not installed, keep this as "no".
 my $augustus_species = "arabidopsis"; #If using augustus, set your closely related species here. This is the species that augustus is trained on.
 my $minidentity = 60; #If using augutsus, this is the minimum identity required for alignment with a reference receptor to be used to generate prediction hints.
 my $number_hints = "all"; # all: uses all sequences in the reference file to generate hints, # If you want to use the top 5 blast hits in the reference file, for example, set this variable to "5". Any number > 0 is acceptable.
+my $append_query = "no"; # if yes, the mined sequences from each query species will be added to the reference file to guide augustus gene prediction.
+my $hit_prefix = "Hit"; # New hits will be labelled with this prefix, e.g Hit1, Hit2 ....etc.
+my $domain_cover_threshold = 0.9; #Augustus predictions which fail to cover this percentage of the hmmer identified region will be discarded.
+my $hmm_filter_type = "protein"; # HMM filter to validate augustus predictions. Set as either nucleotide or protein.
+
+#Range for unannotated hits - this controlls the length of the region around the hmmer hit fed into augustus for gene prediction
+my $nhmmer_plus = 20000; # Nucleotides added to the end of the sequence (3' end) 
+my $nhmmer_minus = 5000; # Nucleotides added to the start of the sequence (5' end)
+
 # Psudogene check
 my $pseudogene_check = "yes"; #If yes, all cds seqs with in frame stop codons, or below threshold length, will be annotated as pseudogenes.
 my $pseudogene_length = 300; #coding sequences below this length are considered pesuogenes (nucloetide length).
+
 # Remove duplicates
-my $remove_duplicates = "no";
-my $duplicate_threshold = 0.9; #Percentage identity which pairs must share to be considered 'duplicates'.
-my $duplicate_type = "cluster"; #pairwise or cluster
+my $remove_duplicates = "no"; # If you wish to filter out potential duplicates, set this to "yes", otherwise set this to "no". Duplicate on longest contig will be retained.
+my $duplicate_threshold = 0.9; #Percentage identity which pairs or clusters must share to be considered 'duplicates'.
+my $duplicate_type = "cluster"; #pairwise or cluster. 
 
 
-############################################################################
-#Input Files
-#phmmer and nhmmer alignments for transcription factor domain
-my $pfam_seed = "PF00319_seed.txt"; #protein PFAM seed alignment
-my $nuc_alignment = "MADS_nhmmer_alignment.fa"; #Nucleotide alignment
-#Genome, Nucleotide and Protein file extension names:
-my $genome_suffix = "genomic.fna"; #genome file (default for ncbi) #automatically downloaded if $automate_download is "yes".
-my $nt_transcript_suffix = "rna.fna"; #nucleotide file (default for ncbi) #automatically downloaded if $automate_download is "yes".
-my $prot_transcript_suffix = "protein.faa"; #protein file (default for ncbi) #automatically downloaded if $automate_download is "yes".
-my $cds_suffix = "cds_from_genomic.fna"; #cds file (default for ncbi) #automatically downloaded if $automate_download is "yes".
-my $gff_suffix = "genomic.gff";
-#Augustus reference file:
-my $reference_file = "MADS_reference_file.fa"; #if augustus option is on, enter reference file name here.
-my $append_query = "no"; # if yes, the mined sequences from the query species will be added to the reference file to guide augustus gene prediction
-#Automate ncbi download?
-#FOR REFSEQ GENOMES ONLY!#
-#If yes, script will use a list of species to download assembly and annotation files
-my $automate_download = "no";
-my $species_list = "species.txt"; #list species in species.txt file to download files for each species
 
-###########################################################################
-#User parameters and options:
-#phmmer evalue threshold:
-my $default_phmmer_evalue = "yes"; #yes: default; no: Use custom evalue (set $phmmer_evalue variable below)
-my $phmmer_evalue = "1e-5"; #If $default_phmmer_evalue is "no", use this custom evalue
-#nhmmer evalue threshold:
-my $default_nhmmer_evalue = "yes"; #yes: default #no: user specified (use $nhmmer_evalue variable below)
-my $nhmmer_evalue = "1e-5"; #If $default_nhmmer_evalue is "no", use this custom evalue
-#Range for unannotated hits - plus or minus X nucleotides
-my $nhmmer_plus = 20000; #Add X nucleotides to end of sequence (3' end) #cant exceed 990,000
-my $nhmmer_minus = 5000; #Add X nucleotides to start of sequence (5' end) #cant exceed 990,000
-# Threshold for domain cover in augustus predictions
-my $domain_cover_threshold = 0.9; #Augustus predictions which fail to cover this percentage of the hmmer identified region will be discarded
-# HMM filter for augustus predictions, nucleotide or protein
-my $hmm_filter_type = "protein"; #nucleotide or protein
 
-###########################################################################
-#output files
-#hmm profile names
-my $phmm_profile = "MADSp.hmm"; #nhmmer profile: use hmmer to build hmm profile from $pfam_seed
-my $nhmm_profile = "MADSn.hmm"; #phmmer profile: use hmmer to build hmm profile from $nuc_alignment
-#Output sequence file names
-my $final_cds_nuc = "_cds_nuc.fa"; #final cds seq file - includes augustus predictions if turned on
-my $final_cds_prot = "_cds_prot.fa"; #final cds seq file - includes augustus predictions if turned on
-my $nucleotide_longest_transcripts="_longest_isoforms_rna.fa"; #Longest rna transcripts 
-my $cds_nucleotide_seqfile="_longest_isoforms_cds_nucleotide.fa"; #Longest cds transcripts (nucleotide)
-my $cds_protein_seqfile = "_longest_isoforms_cds_protein.fa"; #Longest cds transcripts (protein)
-my $nhmmer_unnanotated_seqfile = "_unannotated_newhits_from_assembly.fa"; #Unannotated hits from nhmmer on assembly
-my $hit_prefix = "Hit";
 
-###########################################################################
-#Annotations: Functional vs Pseudogene
-my $annotation_short = "pseudogene_short"; #If prediction is shorter than $pseudogene_length, gene will be annotated as pseudogene regardless of conditions (1-6).
-my $annotation_1 = "functional"; #START codon && no in frame stop codons.........: ATG -----------
-my $annotation_2 = "functional"; #no START codon && no stop codons in any frame..: ---------------
-my $annotation_3 = "functional"; #no START codon && no in frame stop codons......: ---------------
-my $annotation_4 = "pseudogene"; #START codon && in frame stop codon.............: ATG------TGA---
-my $annotation_5 = "pseudogene"; #no START codon && stop codons in all frames....: ---------TGA---
-my $annotation_6 = "pseudogene"; #no START codon && in frame stop codon..........: ---------TGA---
 
 #############################################################################
 #MAIN CODE                                                                  #
@@ -112,10 +100,43 @@ foreach my $line (@lines) {
 print "\n", "\=" x 80, "\n\n";
 
 
+########################################
+# Declare input and output file names
+########################################
+
+#Input Files
+#Genome, Nucleotide and Protein file extension names:
+my $genome_suffix = "genomic.fna"; #genome file (default for ncbi) #automatically downloaded if $automate_download is "yes".
+my $nt_transcript_suffix = "rna.fna"; #nucleotide file (default for ncbi) #automatically downloaded if $automate_download is "yes".
+my $prot_transcript_suffix = "protein.faa"; #protein file (default for ncbi) #automatically downloaded if $automate_download is "yes".
+my $cds_suffix = "cds_from_genomic.fna"; #cds file (default for ncbi) #automatically downloaded if $automate_download is "yes".
+my $gff_suffix = "genomic.gff";
+
+#output files
+#Output sequence file names
+my $final_cds_nuc = "_cds_nuc.fa"; #final cds seq file - includes augustus predictions if turned on
+my $final_cds_prot = "_cds_prot.fa"; #final cds seq file - includes augustus predictions if turned on
+my $nucleotide_longest_transcripts="_longest_isoforms_rna.fa"; #Longest rna transcripts 
+my $cds_nucleotide_seqfile="_longest_isoforms_cds_nucleotide.fa"; #Longest cds transcripts (nucleotide)
+my $cds_protein_seqfile = "_longest_isoforms_cds_protein.fa"; #Longest cds transcripts (protein)
+my $nhmmer_unnanotated_seqfile = "_unannotated_newhits_from_assembly.fa"; #Unannotated hits from nhmmer on assembly
+
+
+###########################################################################
+#Annotations: Functional vs Pseudogene
+my $annotation_short = "pseudogene_short"; #If prediction is shorter than $pseudogene_length, gene will be annotated as pseudogene regardless of conditions (1-6).
+my $annotation_1 = "functional"; #START codon && no in frame stop codons.........: ATG -----------
+my $annotation_2 = "functional"; #no START codon && no stop codons in any frame..: ---------------
+my $annotation_3 = "functional"; #no START codon && no in frame stop codons......: ---------------
+my $annotation_4 = "pseudogene"; #START codon && in frame stop codon.............: ATG------TGA---
+my $annotation_5 = "pseudogene"; #no START codon && stop codons in all frames....: ---------TGA---
+my $annotation_6 = "pseudogene"; #no START codon && in frame stop codon..........: ---------TGA---
+
 #######################################
 # 1. Check input files and parameters:
 #######################################
 my $die_signal = 0;
+
 ######################################
 # 1.1. Check variables are specified:
 ######################################
