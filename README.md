@@ -51,7 +51,7 @@ https://bioinformaticsreview.com/20200822/installing-blat-a-pairwise-alignment-t
 
 ### <ins>Pipeline:</ins>
 <p align="center">
-<img src = "pipeline_image/GENE-FAM (draft).png" max-width=80%>
+<img src = "pipeline_image/GENE-FAM (draft).png" width="600">
 </p>
 
 <br>
