@@ -1697,7 +1697,7 @@ foreach my $genome(@genomes){
 		    ######################################################################
 		    
 		    foreach my $seq(@seqs){
-			
+
 			#Declare coord variables
 			my $genomic_gene_start;
 			my $genomic_gene_end;
@@ -2548,6 +2548,7 @@ foreach my $genome(@genomes){
 		    my @finalseqs =&parse_fasta($cds_final_file);
 		    
 		    foreach my $cds(@finalseqs){
+			
 			if($cds =~ m/(.*)\n([\S\n]+)/){
 			    my $cds_header = $1;
 			    my $cds_seq = $2;
@@ -2562,7 +2563,7 @@ foreach my $genome(@genomes){
 			    if($cds_header =~ m/\[protein\_id\=([^\]]+)/){
 				$cds_ID_name = $1;
 			    }
-			    elsif($cds_header =~ m/\>([\S]+)/){
+			    elsif($cds_header =~ m/^\>([\S]+)/){
 				$cds_ID_name = $1;
 			    }
 			    my $functional_flag = "";
@@ -2625,7 +2626,7 @@ foreach my $genome(@genomes){
 		    `rm $tmp_cds_nuc`;
 		    `rm $tmp_cds_nuc`;
 		}
-		
+
 		`esl-sfetch --index $cds_final_nuc`;
 		`esl-sfetch --index $cds_final_prot`;
 		
@@ -3549,28 +3550,32 @@ sub parse_fasta_hash{ #returns sequences stored in an array
     return %seqs;
 }
 
-
-sub parse_fasta{ #returns sequences stored in an array
+sub parse_fasta {
     my $seqfile = $_[0];
-    my @seqs = ();
-    open(SEQFILE, "$seqfile");
-    {
-	local $/ = ">";
-	while(<SEQFILE>){
-	    my $seq = $_;
-	    if($seq =~ m/\>/){
-		$seq =~ s/\>//g;
-		$seq = ">".$seq;
-	    }
-	    else{
-		$seq = ">".$seq;
-	    }
-	    push (@seqs, $seq);
-	}
+    open(SEQS, "$seqfile");
+    my $header;
+    my $final_sequence = "";
+    my @seqs_array = ();
+    while(<SEQS>) {
+	my $line = $_;
+        if($line =~ m/^>/){
+            if($final_sequence){
+                push(@seqs_array, $final_sequence);
+                $final_sequence = "";
+            }
+            $header = $_;
+            chomp $header;
+            $final_sequence .= $header."\n";
+        }
+	elsif($line =~ m/[\S]+/) {
+            $final_sequence .= $_;
+        }
     }
-    close SEQFILE;
-    shift @seqs;
-    return @seqs;
+    close SEQS;
+    if ($final_sequence) {
+        push(@seqs_array, $final_sequence);
+    }
+    return @seqs_array;
 }
 
 
