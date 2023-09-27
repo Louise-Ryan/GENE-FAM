@@ -621,13 +621,9 @@ foreach my $genome(@genomes){
 		
 		my $nucleotide = $genome_files[0];
 		my $protein = $genome_files[1];
-		#print $nucleotide."\n";
-		#print $protein."\n";
 		$cds = $genome_files[2];
-		#print $cds."\n";   
 		my $gff = $genome_files[3];
-		#print $gff."\n";
-	
+		
 		
 		##############
 		# Run phmmer #
@@ -650,32 +646,37 @@ foreach my $genome(@genomes){
 
 		my @phmmer_hits =&parse_hmmer($phmmer_file);
 
-		my @protein_key_seen = ();
+   		my @protein_key_seen = ();
 		my @protein_identifiers = ();
-		foreach my $phit(@phmmer_hits){
-		    $phit =~ s/[\s]+/\|/g;
-		    my @phmmdetails = split(/\|/, $phit);
-		    shift @phmmdetails;
 
-		    #PHMMER details
-		    my @protein_phmm_details = ();
-		    my $full_seq_evalue = $phmmdetails[0];
-		    my $domain_evalue = $phmmdetails[3];
-		    push(@protein_phmm_details, $full_seq_evalue);
-		    push(@protein_phmm_details, $domain_evalue);
+		if(@phmmer_hits){		    
+		    foreach my $phit(@phmmer_hits){
+			$phit =~ s/[\s]+/\|/g;
+			my @phmmdetails = split(/\|/, $phit);
+			shift @phmmdetails;
 
-		    #PHMMER ID
-		    my $prot_ID = $phmmdetails[8];
-
-		    #Populate protein phmmer hash
-		    unless(grep { $_ eq $prot_ID } @protein_key_seen) {
-			$protein_hmm_key{$prot_ID} = \@protein_phmm_details;
+			#PHMMER details
+			my @protein_phmm_details = ();
+			my $full_seq_evalue = $phmmdetails[0];
+			my $domain_evalue = $phmmdetails[3];
+			push(@protein_phmm_details, $full_seq_evalue);
+			push(@protein_phmm_details, $domain_evalue);
+			
+			#PHMMER ID
+			my $prot_ID = $phmmdetails[8];
+			
+			#Populate protein phmmer hash
+			unless(grep { $_ eq $prot_ID } @protein_key_seen) {
+			    $protein_hmm_key{$prot_ID} = \@protein_phmm_details;
+			}
+			
+			#Pull protein IDs
+			push(@protein_identifiers, $prot_ID);
 		    }
-
-		    #Pull protein IDs
-		    push(@protein_identifiers, $prot_ID);
 		}
-		
+		else{
+		    print "No hits detected with hmmsearch on protein annotations ...\n\n";
+		}
 		
 		
 		####################################################
@@ -685,23 +686,30 @@ foreach my $genome(@genomes){
 		################################
 		# Parse GFF and pull gene info #
 		################################
-		
-		my $id_type = "protein_id";
-		my $details =&parse_gff($gff, $id_type, \@protein_identifiers);
 
 		my @locus_IDs = ();
 		my @mRNA_IDs = ();
 		my @CDS_IDs = ();
 		
-		my %returned_hash = %$details;
-		my %info_hash = map { $_ => $returned_hash{$_} } keys %returned_hash;
-		
-		foreach my $key(keys %info_hash){
-		    my @info = split(/\|/, $info_hash{$key});
-		    push(@locus_IDs, $info[6]);
-		    push(@mRNA_IDs, $info[7]);
-		    push(@CDS_IDs, $info[8]);
+		my %returned_hash;
+		my %info_hash;
+
+
+		if(@protein_identifiers){
+		    my $id_type = "protein_id";
+		    my $details =&parse_gff($gff, $id_type, \@protein_identifiers);
+		    
+		    %returned_hash = %$details;
+		    %info_hash = map { $_ => $returned_hash{$_} } keys %returned_hash;
+		    
+		    foreach my $key(keys %info_hash){
+			my @info = split(/\|/, $info_hash{$key});
+			push(@locus_IDs, $info[6]);
+			push(@mRNA_IDs, $info[7]);
+			push(@CDS_IDs, $info[8]);
+		    }
 		}
+
 
 		
 		###################################
@@ -727,46 +735,53 @@ foreach my $genome(@genomes){
 		my %mrna_hmm_key;
 		
 		my @nhmmer_t_hits =&parse_hmmer($nhmmer_transcript_file);
-
+		
 		my @mrna_key_seen = ();
 		my @new_mRNAs = ();
 		my @mRNA_gff_IDs = ();
-		foreach my $trans_hit(@nhmmer_t_hits){    
-		    $trans_hit =~ s/[\s]+/\|/g;
-		    my @nhmmtdetails = split(/\|/, $trans_hit);
-		    shift(@nhmmtdetails);
 
-		    #mRNA nhmmer details
-		    my @mrna_nhmm_details = ();
-		    my $nmrna_evalue = $nhmmtdetails[0];
-		    my $nmrna_start = $nhmmtdetails[4];
-		    my $nmrna_stop = $nhmmtdetails[5];
-
-		    push(@mrna_nhmm_details, $nmrna_evalue);
-		    if($nmrna_stop < $nmrna_start){
-			my $tmp = $nmrna_start;
-			$nmrna_start = $nmrna_stop;
-			$nmrna_stop = $tmp;
-		    }
-		    push(@mrna_nhmm_details, $nmrna_start);
-		    push(@mrna_nhmm_details, $nmrna_stop);
-
-		    #mRNA ID
-		    my $transcript_ID = $nhmmtdetails[3];
-
-		    #Populate mrna nhmmer hash
-		    unless(grep { $_ eq $transcript_ID } @mrna_key_seen) {
-			$mrna_hmm_key{$transcript_ID} = \@mrna_nhmm_details;
-		    }
-
-		    #Pull mRNA IDs
-		    unless(grep { $_ eq $transcript_ID } @mRNA_IDs) {
-			push(@new_mRNAs, $transcript_ID);
-			my $gff_ID = "rna-".$transcript_ID;
-			push(@mRNA_gff_IDs, $gff_ID);
+		if(@nhmmer_t_hits){
+		    foreach my $trans_hit(@nhmmer_t_hits){
+			$trans_hit =~ s/[\s]+/\|/g;			
+			my @nhmmtdetails = split(/\|/, $trans_hit);
+			shift(@nhmmtdetails);
+		
+			#mRNA nhmmer details
+			my @mrna_nhmm_details = ();
+			my $nmrna_evalue = $nhmmtdetails[0];
+			my $nmrna_start = $nhmmtdetails[4];
+			my $nmrna_stop = $nhmmtdetails[5];
+			
+			push(@mrna_nhmm_details, $nmrna_evalue);
+			if($nmrna_stop < $nmrna_start){
+			    my $tmp = $nmrna_start;
+			    $nmrna_start = $nmrna_stop;
+			    $nmrna_stop = $tmp;
+			}
+			push(@mrna_nhmm_details, $nmrna_start);
+			push(@mrna_nhmm_details, $nmrna_stop);
+			
+			#mRNA ID
+			my $transcript_ID = $nhmmtdetails[3];
+			
+			#Populate mrna nhmmer hash
+			unless(grep { $_ eq $transcript_ID } @mrna_key_seen) {
+			    $mrna_hmm_key{$transcript_ID} = \@mrna_nhmm_details;
+			}
+			
+			#Pull mRNA IDs
+			unless(grep { $_ eq $transcript_ID } @mRNA_IDs) {
+			    push(@new_mRNAs, $transcript_ID);
+			    my $gff_ID = "rna-".$transcript_ID;
+			    push(@mRNA_gff_IDs, $gff_ID);
+			}
 		    }
 		}
+		else{
+		    print "No hits detected with nhmmer on mRNA annotations ...\n\n";
+		}
 
+		
 		
 		###################################################
 		# new mRNA hits --> CDS protein + CDS nucleotide  #
@@ -814,47 +829,53 @@ foreach my $genome(@genomes){
 
 		my @cds_key_seen = ();
 		my @new_CDS_IDs = ();
-		foreach my $nCDS_hit(@nhmmer_cds_hits){
-		    $nCDS_hit =~ s/[\s]+/\|/g;
-		    my @nhmm_cds_details = split(/\|/, $nCDS_hit);
-		    shift(@nhmm_cds_details);
 
-		    #CDS nhmmer details
-		    my @cds_nhmm_details = ();
-		    my $ncds_evalue = $nhmm_cds_details[0];
-		    my $ncds_start = $nhmm_cds_details[5];
-		    my $ncds_stop = $nhmm_cds_details[6];
-		    
-		    if($ncds_stop < $ncds_start){
-			my $tmp = $ncds_start;
-			$ncds_start = $ncds_stop;
-			$ncds_stop = $tmp;
-		    }
-		    
-		    push(@cds_nhmm_details, $ncds_evalue);
-		    push(@cds_nhmm_details, $ncds_start);
-		    push(@cds_nhmm_details, $ncds_stop);
-
-		    #CDS Identifier
-		    my $new_CDS_ID = $nhmm_cds_details[4];
-		    if($new_CDS_ID =~ m/cds\_([\S]+)/){
-			$new_CDS_ID = $1;
-			if($new_CDS_ID =~ m/(\_[0-9]+$)/){
-			    $new_CDS_ID =~ s/$1//g;
+		if(@nhmmer_cds_hits){
+		    foreach my $nCDS_hit(@nhmmer_cds_hits){
+			$nCDS_hit =~ s/[\s]+/\|/g;
+			my @nhmm_cds_details = split(/\|/, $nCDS_hit);
+			shift(@nhmm_cds_details);
+			
+			#CDS nhmmer details
+			my @cds_nhmm_details = ();
+			my $ncds_evalue = $nhmm_cds_details[0];
+			my $ncds_start = $nhmm_cds_details[5];
+			my $ncds_stop = $nhmm_cds_details[6];
+			
+			if($ncds_stop < $ncds_start){
+			    my $tmp = $ncds_start;
+			    $ncds_start = $ncds_stop;
+			    $ncds_stop = $tmp;
+			}
+			
+			push(@cds_nhmm_details, $ncds_evalue);
+			push(@cds_nhmm_details, $ncds_start);
+			push(@cds_nhmm_details, $ncds_stop);
+			
+			#CDS Identifier
+			my $new_CDS_ID = $nhmm_cds_details[4];
+			if($new_CDS_ID =~ m/cds\_([\S]+)/){
+			    $new_CDS_ID = $1;
+			    if($new_CDS_ID =~ m/(\_[0-9]+$)/){
+				$new_CDS_ID =~ s/$1//g;
+			    }
+			}
+			
+			#Populate nucleotide CDS nhmmer hash
+			unless(grep { $_ eq $new_CDS_ID } @cds_key_seen) {
+			    $cds_hmm_key{$new_CDS_ID} = \@cds_nhmm_details;
+			}
+			
+			#Pull CDS Identifiers
+			unless(grep { $_ eq $new_CDS_ID } @CDS_IDs) {
+			    push(@new_CDS_IDs, $new_CDS_ID);
 			}
 		    }
-
-		    #Populate nucleotide CDS nhmmer hash
-		    unless(grep { $_ eq $new_CDS_ID } @cds_key_seen) {
-			$cds_hmm_key{$new_CDS_ID} = \@cds_nhmm_details;
-		    }
-
-		    #Pull CDS Identifiers
-		    unless(grep { $_ eq $new_CDS_ID } @CDS_IDs) {
-			push(@new_CDS_IDs, $new_CDS_ID);
-		    }
 		}
-
+		else{
+		    print "No hits detected with hmmsearch on nucleotide CDS annotations ...\n\n";
+		}
+		
 		
 		################################
 		# Parse GFF and pull gene info #
@@ -873,7 +894,7 @@ foreach my $genome(@genomes){
 			push(@CDS_IDs, $nCDS_info[8]);
 		    }
 		}
-		
+
 		
 		################################################################
 		# Write out to files:                                          #
@@ -886,19 +907,22 @@ foreach my $genome(@genomes){
 
 		# Parse mRNA
 		$parse_type = "mRNA";
-		my @mRNA_all_headers =&mine_seqs($nucleotide, $transcript_nucleotide_isoforms, \@mRNA_IDs, $parse_type);
-	
+		if(@mRNA_IDs){
+		    my @mRNA_all_headers =&mine_seqs($nucleotide, $transcript_nucleotide_isoforms, \@mRNA_IDs, $parse_type);
+		}
 
 		# Parse protein
 		$parse_type = "prot_CDS";
-		my @CDS_protein_all_headers =&mine_seqs($protein, $phmmer_prot_isoforms, \@CDS_IDs, $parse_type);
-		
+		if(@CDS_IDs){
+		    my @CDS_protein_all_headers =&mine_seqs($protein, $phmmer_prot_isoforms, \@CDS_IDs, $parse_type);
+		}
 		
 		# Parse nucleotide
 		$parse_type = "nuc_CDS";
-		my @CDS_nuc_all_headers =&mine_seqs($cds, $cds_all_isoforms, \@CDS_IDs, $parse_type);
-
-
+		if(@CDS_IDs){
+		    my @CDS_nuc_all_headers =&mine_seqs($cds, $cds_all_isoforms, \@CDS_IDs, $parse_type);
+		}
+		
 		
 		#############################################
 		# 4.5. Pull longest isoform per locus       #
@@ -912,74 +936,79 @@ foreach my $genome(@genomes){
 		
 		my %cds_length_hash;
 		my %ncbi_cds_coords;
+		my %cds_seqs;
 		
-		my %cds_seqs =&parse_fasta_hash($cds_all_isoforms);
-
-		foreach my $key(keys %cds_seqs){
-		    my $cds_seq = $cds_seqs{$key};
-		    my $cds_header = $key;
-		    $cds_seq =~ s/\n//g;
-		    $cds_header =~ s/\n//g;
-
-		    ##################
-		    # Get CDS length #
-		    ##################
-
-		    my $cds_length = length($cds_seq);
-		    my $cdsID = "";
-		    if($cds_header =~ m/\[protein\_id\=([^\]]+)/){
-			$cdsID = $1;
-		    }
-		    $cds_length_hash{$cdsID} = $cds_length;
-
-		    ###################
-		    # Get CDS Coords  #
-		    ###################
-
-		    # Pull coords from header
-		    my @cds_ncbi_coordinates = $cds_header =~ /(\d+)\.\.(\d+)/g;
-
-		    # Sort array
-		    @cds_ncbi_coordinates = sort { $a <=> $b } @cds_ncbi_coordinates;
-
-		    #Get the minimum and maximum values
-		    my $cds_genomic_start = shift(@cds_ncbi_coordinates);
-		    my $cds_genomic_end = pop(@cds_ncbi_coordinates);
-		    my $ncbi_genomic_locus = $cds_genomic_start."|".$cds_genomic_end;
-		    
-		    # Store coords in array:
-		    $ncbi_cds_coords{$cdsID} = $ncbi_genomic_locus;
-
-		    #Get functional status
-		    if($pseudogene_check =~ m/^yes$/i){
-			my @status=&checkframe($cds_seq);
-			my $stat = $status[0];
-			my $annotation = "";
-			if($stat eq "1"){ 
-			    $annotation=$annotation_1; #START codon && no in frame stop codons
-			}
-			if($stat eq "2"){
-			    $annotation=$annotation_2; #no START codon && no stop codons in any frame   
-			}
-			if($stat eq "3"){
-			    $annotation=$annotation_3; #no START codon && no in frame stop codons   
-			}
-			if($stat eq "4"){
-			    $annotation=$annotation_4; #START codon && in frame stop codon  
-			}
-			if($stat eq "5"){
-			    $annotation=$annotation_5; #no START codon && in frame stop codon 
-			}
-			if($stat eq "6"){
-			    $annotation=$annotation_6; #no STARt codon and && stop codons in all frames
-			}
-			if ($cds_length < $pseudogene_length){
-			    $annotation = $annotation_short;
-			}
-			$cds_functional_hash{$cdsID} = $annotation;
-		    }
+		if(-e $cds_all_isoforms){
+		    %cds_seqs =&parse_fasta_hash($cds_all_isoforms);
 		}
 
+		
+		if(%cds_seqs){
+		    foreach my $key(keys %cds_seqs){
+			my $cds_seq = $cds_seqs{$key};
+			my $cds_header = $key;
+			$cds_seq =~ s/\n//g;
+			$cds_header =~ s/\n//g;
+			
+			##################
+			# Get CDS length #
+			##################
+			
+			my $cds_length = length($cds_seq);
+			my $cdsID = "";
+			if($cds_header =~ m/\[protein\_id\=([^\]]+)/){
+			    $cdsID = $1;
+			}
+			$cds_length_hash{$cdsID} = $cds_length;
+			
+			###################
+			# Get CDS Coords  #
+			###################
+			
+			# Pull coords from header
+			my @cds_ncbi_coordinates = $cds_header =~ /(\d+)\.\.(\d+)/g;
+			
+			# Sort array
+			@cds_ncbi_coordinates = sort { $a <=> $b } @cds_ncbi_coordinates;
+			
+			#Get the minimum and maximum values
+			my $cds_genomic_start = shift(@cds_ncbi_coordinates);
+			my $cds_genomic_end = pop(@cds_ncbi_coordinates);
+			my $ncbi_genomic_locus = $cds_genomic_start."|".$cds_genomic_end;
+			
+			# Store coords in array:
+			$ncbi_cds_coords{$cdsID} = $ncbi_genomic_locus;
+			
+			#Get functional status
+			if($pseudogene_check =~ m/^yes$/i){
+			    my @status=&checkframe($cds_seq);
+			    my $stat = $status[0];
+			    my $annotation = "";
+			    if($stat eq "1"){ 
+				$annotation=$annotation_1; #START codon && no in frame stop codons
+			    }
+			    if($stat eq "2"){
+				$annotation=$annotation_2; #no START codon && no stop codons in any frame   
+			    }
+			    if($stat eq "3"){
+				$annotation=$annotation_3; #no START codon && no in frame stop codons   
+			    }
+			    if($stat eq "4"){
+				$annotation=$annotation_4; #START codon && in frame stop codon  
+			    }
+			    if($stat eq "5"){
+				$annotation=$annotation_5; #no START codon && in frame stop codon 
+			    }
+			    if($stat eq "6"){
+				$annotation=$annotation_6; #no STARt codon and && stop codons in all frames
+			    }
+			    if ($cds_length < $pseudogene_length){
+				$annotation = $annotation_short;
+			    }
+			    $cds_functional_hash{$cdsID} = $annotation;
+			}
+		    }
+		}
 		
 		###################################
 		# Get longest isoforms per locus  #
@@ -988,55 +1017,64 @@ foreach my $genome(@genomes){
 		my @locus_seen = ();
 		my @longest_isoforms = ();
 		my @longest_mrnas = ();
-		foreach my $rnaid(keys %info_hash){
-		    my @information = split(/\|/, $info_hash{$rnaid});
-		    my $locus = $information[6];
-		    my %locus_lengths;
-		    unless(grep { $_ eq $locus } @locus_seen) {
-			push(@locus_seen, $locus);
-			foreach my $mrnaid(keys %info_hash){
-			    my @information2 = split(/\|/, $info_hash{$mrnaid});
-			    my $locus2 = $information2[6];
-			    my $cds_name = $information2[8];
-			    if($cds_name){ 
-				if($locus eq $locus2){
-				    my $cds_length = $cds_length_hash{$cds_name};
-				    $locus_lengths{$mrnaid} = $cds_length;
+
+		if(%info_hash){
+		    foreach my $rnaid(keys %info_hash){
+			my @information = split(/\|/, $info_hash{$rnaid});
+			my $locus = $information[6];
+			my %locus_lengths;
+			unless(grep { $_ eq $locus } @locus_seen) {
+			    push(@locus_seen, $locus);
+			    foreach my $mrnaid(keys %info_hash){
+				my @information2 = split(/\|/, $info_hash{$mrnaid});
+				my $locus2 = $information2[6];
+				my $cds_name = $information2[8];
+				if($cds_name){ 
+				    if($locus eq $locus2){
+					my $cds_length = $cds_length_hash{$cds_name};
+					$locus_lengths{$mrnaid} = $cds_length;
+				    }
 				}
 			    }
+			    my @sorted_keys = sort { $locus_lengths{$a} <=> $locus_lengths{$b} or $a cmp $b } keys %locus_lengths;
+			    my $longest_id = pop(@sorted_keys);
+			    my $longest_length = $locus_lengths{$longest_id};
+			    my @longest_details = split(/\|/, $info_hash{$longest_id});
+			    my $longest_cds = $longest_details[8];
+			    push(@longest_mrnas, $longest_id);
+			    push(@longest_isoforms, $longest_cds);
 			}
-			my @sorted_keys = sort { $locus_lengths{$a} <=> $locus_lengths{$b} or $a cmp $b } keys %locus_lengths;
-			my $longest_id = pop(@sorted_keys);
-			my $longest_length = $locus_lengths{$longest_id};
-			my @longest_details = split(/\|/, $info_hash{$longest_id});
-			my $longest_cds = $longest_details[8];
-			push(@longest_mrnas, $longest_id);
-			push(@longest_isoforms, $longest_cds);
 		    }
+		
+		    push (@protein_names, @longest_isoforms);
 		}
 		
-		push (@protein_names, @longest_isoforms);
-
 		#########################################
 		# Print longest isoforms to files:      #
 		# 1) mRNA, longest isoforms             #
 		# 2) CDS nucleotide, longest isoforms   #
 		# 3) CDS protein, longest isoforms      #
 		#########################################
-	 
+		
 		#parse mRNA
 		$parse_type = "mRNA";
-		my @mRNA_longest_headers =&mine_seqs($transcript_nucleotide_isoforms, $unique_longest_transcripts_out, \@longest_mrnas, $parse_type);
-	
+		if(@longest_mrnas){
+		    my @mRNA_longest_headers =&mine_seqs($transcript_nucleotide_isoforms, $unique_longest_transcripts_out, \@longest_mrnas, $parse_type);
+		}
+		
 		# Parse protein
 		$parse_type = "prot_CDS";
-		my @CDS_protein_longest_headers =&mine_seqs($phmmer_prot_isoforms, $cds_prot, \@longest_isoforms, $parse_type);
-		
+		if(@longest_isoforms){
+		    my @CDS_protein_longest_headers =&mine_seqs($phmmer_prot_isoforms, $cds_prot, \@longest_isoforms, $parse_type);
+		}
 		
 		# Parse nucleotide
 		$parse_type = "nuc_CDS";
-		my @CDS_nuc_longest_headers =&mine_seqs($cds_all_isoforms, $cds_nuc, \@longest_isoforms, $parse_type);
+		if(@longest_isoforms){
+		    my @CDS_nuc_longest_headers =&mine_seqs($cds_all_isoforms, $cds_nuc, \@longest_isoforms, $parse_type);
+		}
 
+		#die;
 		
 		############################################################
 		# Get mRNA Coordinates                                     #
@@ -1045,16 +1083,19 @@ foreach my $genome(@genomes){
 
 		my @contig_IDs = ();
 		my @block_coordinates = ();
-		foreach my $mrnaid(@longest_mrnas){
-		    my @details = split(/\|/, $info_hash{$mrnaid});
-		    my $contig = $details[0];
-		    unless(grep { $_ eq $contig } @contig_IDs) {
-			push(@contig_IDs, $contig);
+
+		if(@longest_mrnas){
+		    foreach my $mrnaid(@longest_mrnas){
+			my @details = split(/\|/, $info_hash{$mrnaid});
+			my $contig = $details[0];
+			unless(grep { $_ eq $contig } @contig_IDs) {
+			    push(@contig_IDs, $contig);
+			}
+			my $mrna_start = $details[2];
+			my $mrna_end = $details[3];
+			my $coordinates = $contig."|".$mrna_start."|".$mrna_end;
+			push (@block_coordinates, $coordinates);
 		    }
-		    my $mrna_start = $details[2];
-		    my $mrna_end = $details[3];
-		    my $coordinates = $contig."|".$mrna_start."|".$mrna_end;
-		    push (@block_coordinates, $coordinates);
 		}
 		
 
@@ -1073,141 +1114,146 @@ foreach my $genome(@genomes){
 		open(TSV, ">>$tsv_summary");
 
 		# Sort the hash for consistency
-		my @sorted_ncbi_keys = sort keys %info_hash;
+		my @sorted_ncbi_keys = ();
+		if(%info_hash){
+		    @sorted_ncbi_keys = sort keys %info_hash;
+		}
 		
 		# Iterate through the sorted keys
-		foreach my $ncbi_hit (@sorted_ncbi_keys) {
-
-		    my $tsv_entry;
-		    my @ncbi_hit_info = split(/\|/, $info_hash{$ncbi_hit});
-
-		    # info hash
-		    my $contig_ID = $ncbi_hit_info[0];
-		    my $strand = $ncbi_hit_info[1];
-		    my $mRNA_start = $ncbi_hit_info[2];
-		    my $mRNA_end = $ncbi_hit_info[3];
-		    my $ncbi_locus_name = $ncbi_hit_info[6];
-		    my $ncbi_mRNA_ID = $ncbi_hit_info[7];
-		    my $ncbi_CDS_ID = $ncbi_hit_info[8];
-
-		    # Only print to file if longest isoform
-		    if((grep { $_ eq $ncbi_mRNA_ID } @longest_mrnas) || (grep { $_ eq $ncbi_CDS_ID } @longest_isoforms)) {
+		if(@sorted_ncbi_keys){
+		    foreach my $ncbi_hit (@sorted_ncbi_keys) {
 			
-			# Contig length
-			my $contig_length_value = $contig_lengths{$contig_ID};
-
-			# CDS length
-			my $cds_length_value = $cds_length_hash{$ncbi_CDS_ID};
-
-			# CDS coords
-			my $cds_ncbi_coordinate_vals = $ncbi_cds_coords{$ncbi_CDS_ID};
-			my @coord_split = split(/\|/, $cds_ncbi_coordinate_vals);
-			my $ncbi_CDS_start = $coord_split[0];
-			my $ncbi_CDS_end = $coord_split[1];
+			my $tsv_entry;
+			my @ncbi_hit_info = split(/\|/, $info_hash{$ncbi_hit});
 			
-			# Pseudogene status
-			my $functional_value = "NA";
-			if($pseudogene_check =~ m/^yes$/){
-			    $functional_value = $cds_functional_hash{$ncbi_CDS_ID};
-			}
+			# info hash
+			my $contig_ID = $ncbi_hit_info[0];
+			my $strand = $ncbi_hit_info[1];
+			my $mRNA_start = $ncbi_hit_info[2];
+			my $mRNA_end = $ncbi_hit_info[3];
+			my $ncbi_locus_name = $ncbi_hit_info[6];
+			my $ncbi_mRNA_ID = $ncbi_hit_info[7];
+			my $ncbi_CDS_ID = $ncbi_hit_info[8];
 			
-			# HMMER details (protein)
-			my $protein_full_seq_eval = "";
-			my $protein_domain_eval = "";
-			if(exists $protein_hmm_key{$ncbi_CDS_ID}){
-			    my @hmmer_protein_details = @{$protein_hmm_key{$ncbi_CDS_ID}};
-			    $protein_full_seq_eval = $hmmer_protein_details[0];
-			    $protein_domain_eval = $hmmer_protein_details[1];
-			}
-			else{
-			    $protein_full_seq_eval = "NA";
-			    $protein_domain_eval = "NA";
-			}
-			
-			# nHMMER details (mRNA)
-			my $nhmmer_mrna_eval;
-			my $nhmmer_mrna_start;
-			my $nhmmer_mrna_end;
-			if(exists $mrna_hmm_key{$ncbi_mRNA_ID}){
-			    my @nhmmer_mrna_details = @{$mrna_hmm_key{$ncbi_mRNA_ID}};
-			    $nhmmer_mrna_eval = $nhmmer_mrna_details[0];
-			    $nhmmer_mrna_start = $nhmmer_mrna_details[1];
-			    $nhmmer_mrna_end = $nhmmer_mrna_details[2];
-			}
-			else{
-			    $nhmmer_mrna_eval = "NA";
-			    $nhmmer_mrna_start = "NA";
-			    $nhmmer_mrna_end = "NA";
-			}
-			
-			#nHMMER details (CDS)
-			my $nhmmer_cds_eval;
-			my $nhmmer_cds_start;
-			my $nhmmer_cds_end;
-			if(exists $cds_hmm_key{$ncbi_CDS_ID}){
-			    my @nhmmer_cds_details = @{$cds_hmm_key{$ncbi_CDS_ID}};
-			    $nhmmer_cds_eval = $nhmmer_cds_details[0];
-			    $nhmmer_cds_start = $nhmmer_cds_details[1];
-			    $nhmmer_cds_end = $nhmmer_cds_details[2];
-			}
-			else{
-			    $nhmmer_cds_eval = "NA";
-			    $nhmmer_cds_start = "NA";
-			    $nhmmer_cds_end = "NA";
-			}
-
-			# Prepare line for TSV:
-			$tsv_entry.= $ncbi_locus_name."\t";
-			$tsv_entry.= "Yes"."\t";
-			$tsv_entry.= "No"."\t";
-			$tsv_entry.= "NA"."\t";
-			$tsv_entry.= "NA"."\t";
-			$tsv_entry.= $contig_ID."\t";
-			$tsv_entry.= $contig_length_value."\t";
-			$tsv_entry.= $strand."\t";
-			$tsv_entry.= $ncbi_locus_name."\t";
-			$tsv_entry.= $ncbi_mRNA_ID."\t";
-			$tsv_entry.= $mRNA_start."\t";
-			$tsv_entry.= $mRNA_end."\t";
-			$tsv_entry.= $ncbi_CDS_ID."\t";
-			$tsv_entry.= $ncbi_CDS_start."\t";
-			$tsv_entry.= $ncbi_CDS_end."\t";
-			$tsv_entry.= $cds_length_value."\t";
-			$tsv_entry.= $functional_value."\t";
-			$tsv_entry.= $protein_full_seq_eval."\t";
-			$tsv_entry.= $protein_domain_eval."\t";
-			$tsv_entry.= $nhmmer_mrna_eval."\t";
-			$tsv_entry.= $nhmmer_cds_eval."\t";
-			$tsv_entry.= "NA"."\t";
-			$tsv_entry.= $nhmmer_mrna_start."\t";
-			$tsv_entry.= $nhmmer_mrna_end."\t";
-			$tsv_entry.= $nhmmer_cds_start."\t";
-			$tsv_entry.= $nhmmer_cds_end."\t";
-			
-
-			# Get genomic domain start and end positions from mRNA coords
-			my $genomic_Ds = "NA";
-			my $genomic_De = "NA";
-
-			if($nhmmer_mrna_start ne "NA" && $nhmmer_mrna_end ne "NA"){
-			    if($strand eq "Forward"){
-				$genomic_Ds = $mRNA_start + $nhmmer_mrna_start;
-				$genomic_De = $mRNA_start + $nhmmer_mrna_end;
+			# Only print to file if longest isoform
+			if((grep { $_ eq $ncbi_mRNA_ID } @longest_mrnas) || (grep { $_ eq $ncbi_CDS_ID } @longest_isoforms)) {
+			    
+			    # Contig length
+			    my $contig_length_value = $contig_lengths{$contig_ID};
+			    
+			    # CDS length
+			    my $cds_length_value = $cds_length_hash{$ncbi_CDS_ID};
+			    
+			    # CDS coords
+			    my $cds_ncbi_coordinate_vals = $ncbi_cds_coords{$ncbi_CDS_ID};
+			    my @coord_split = split(/\|/, $cds_ncbi_coordinate_vals);
+			    my $ncbi_CDS_start = $coord_split[0];
+			    my $ncbi_CDS_end = $coord_split[1];
+			    
+			    # Pseudogene status
+			    my $functional_value = "NA";
+			    if($pseudogene_check =~ m/^yes$/){
+				$functional_value = $cds_functional_hash{$ncbi_CDS_ID};
 			    }
-			    elsif($strand eq "Reverse"){
-				$genomic_De = $mRNA_end - $nhmmer_mrna_start;
-				$genomic_Ds = $mRNA_end - $nhmmer_mrna_end;
+			    
+			    # HMMER details (protein)
+			    my $protein_full_seq_eval = "";
+			    my $protein_domain_eval = "";
+			    if(exists $protein_hmm_key{$ncbi_CDS_ID}){
+				my @hmmer_protein_details = @{$protein_hmm_key{$ncbi_CDS_ID}};
+				$protein_full_seq_eval = $hmmer_protein_details[0];
+				$protein_domain_eval = $hmmer_protein_details[1];
 			    }
+			    else{
+				$protein_full_seq_eval = "NA";
+				$protein_domain_eval = "NA";
+			    }
+			    
+			    # nHMMER details (mRNA)
+			    my $nhmmer_mrna_eval;
+			    my $nhmmer_mrna_start;
+			    my $nhmmer_mrna_end;
+			    if(exists $mrna_hmm_key{$ncbi_mRNA_ID}){
+				my @nhmmer_mrna_details = @{$mrna_hmm_key{$ncbi_mRNA_ID}};
+				$nhmmer_mrna_eval = $nhmmer_mrna_details[0];
+				$nhmmer_mrna_start = $nhmmer_mrna_details[1];
+				$nhmmer_mrna_end = $nhmmer_mrna_details[2];
+			    }
+			    else{
+				$nhmmer_mrna_eval = "NA";
+				$nhmmer_mrna_start = "NA";
+				$nhmmer_mrna_end = "NA";
+			    }
+			    
+			    #nHMMER details (CDS)
+			    my $nhmmer_cds_eval;
+			    my $nhmmer_cds_start;
+			    my $nhmmer_cds_end;
+			    if(exists $cds_hmm_key{$ncbi_CDS_ID}){
+				my @nhmmer_cds_details = @{$cds_hmm_key{$ncbi_CDS_ID}};
+				$nhmmer_cds_eval = $nhmmer_cds_details[0];
+				$nhmmer_cds_start = $nhmmer_cds_details[1];
+				$nhmmer_cds_end = $nhmmer_cds_details[2];
+			    }
+			    else{
+				$nhmmer_cds_eval = "NA";
+				$nhmmer_cds_start = "NA";
+				$nhmmer_cds_end = "NA";
+			    }
+			    
+			    # Prepare line for TSV:
+			    $tsv_entry.= $ncbi_locus_name."\t";
+			    $tsv_entry.= "Yes"."\t";
+			    $tsv_entry.= "No"."\t";
+			    $tsv_entry.= "NA"."\t";
+			    $tsv_entry.= "NA"."\t";
+			    $tsv_entry.= $contig_ID."\t";
+			    $tsv_entry.= $contig_length_value."\t";
+			    $tsv_entry.= $strand."\t";
+			    $tsv_entry.= $ncbi_locus_name."\t";
+			    $tsv_entry.= $ncbi_mRNA_ID."\t";
+			    $tsv_entry.= $mRNA_start."\t";
+			    $tsv_entry.= $mRNA_end."\t";
+			    $tsv_entry.= $ncbi_CDS_ID."\t";
+			    $tsv_entry.= $ncbi_CDS_start."\t";
+			    $tsv_entry.= $ncbi_CDS_end."\t";
+			    $tsv_entry.= $cds_length_value."\t";
+			    $tsv_entry.= $functional_value."\t";
+			    $tsv_entry.= $protein_full_seq_eval."\t";
+			    $tsv_entry.= $protein_domain_eval."\t";
+			    $tsv_entry.= $nhmmer_mrna_eval."\t";
+			    $tsv_entry.= $nhmmer_cds_eval."\t";
+			    $tsv_entry.= "NA"."\t";
+			    $tsv_entry.= $nhmmer_mrna_start."\t";
+			    $tsv_entry.= $nhmmer_mrna_end."\t";
+			    $tsv_entry.= $nhmmer_cds_start."\t";
+			    $tsv_entry.= $nhmmer_cds_end."\t";
+			    
+			    
+			    # Get genomic domain start and end positions from mRNA coords
+			    my $genomic_Ds = "NA";
+			    my $genomic_De = "NA";
+			    
+			    if($nhmmer_mrna_start ne "NA" && $nhmmer_mrna_end ne "NA"){
+				if($strand eq "Forward"){
+				    $genomic_Ds = $mRNA_start + $nhmmer_mrna_start;
+				    $genomic_De = $mRNA_start + $nhmmer_mrna_end;
+				}
+				elsif($strand eq "Reverse"){
+				    $genomic_De = $mRNA_end - $nhmmer_mrna_start;
+				    $genomic_Ds = $mRNA_end - $nhmmer_mrna_end;
+				}
+			    }
+			    
+			    $tsv_entry.=  $genomic_Ds."\t";
+			    $tsv_entry.=  $genomic_De."\n";
+			    
+			    # Print line to TSV
+			    print TSV $tsv_entry;
+			    
 			}
-			
-			$tsv_entry.=  $genomic_Ds."\t";
-			$tsv_entry.=  $genomic_De."\n";
-			
-			# Print line to TSV
-			print TSV $tsv_entry;
-			
 		    }
-		}	
+		}
 
 		
 		####################################################################
@@ -1217,8 +1263,8 @@ foreach my $genome(@genomes){
 		#nhmmer on assembly to discover new hits
 		#nhmmer then discount anything which overlaps with existing coordinates
 		
-		if ($predict_new_hits eq "Yes" || $predict_new_hits eq "yes"){
-
+		if ($predict_new_hits =~ m/^yes/i){
+		    
 		    ##########################
 		    # Run nhmmer on assembly #
 		    ##########################
@@ -1258,134 +1304,147 @@ foreach my $genome(@genomes){
 		    ########################
 		    
 		    my @nhmmer_hits=&parse_hmmer($nhmmer_file);
-		    
+		   
 		    
 		    ####################
 		    # Get coordinates  #
 		    ####################
-		    
-		    foreach my $nhit(@nhmmer_hits){
-			my $ntmp;
-			$nhit =~ s/[\s]+/\|/g;
-			my @nhmmdetails = split(/\|/, $nhit);
-			shift @nhmmdetails;
-			my $nevalue = $nhmmdetails[0];
-			push(@nhmmer_evalues, $nevalue);
-			my $ncontig = $nhmmdetails[3]; #print $ncontig."\n";
-			my $nstart =  $nhmmdetails[4]; #print $nstart."\n";
-			my $nend =  $nhmmdetails[5]; #print $nend."\n";
-			my $nhmm_hit = $ncontig."|".$nstart."|".$nend;
-			push @nhmmer_coordinates, $nhmm_hit;
+
+		    if(@nhmmer_hits){
+			foreach my $nhit(@nhmmer_hits){
+			    my $ntmp;
+			    $nhit =~ s/[\s]+/\|/g;
+			    my @nhmmdetails = split(/\|/, $nhit);
+			    shift @nhmmdetails;
+			    my $nevalue = $nhmmdetails[0];
+			    push(@nhmmer_evalues, $nevalue);
+			    my $ncontig = $nhmmdetails[3]; #print $ncontig."\n";
+			    my $nstart =  $nhmmdetails[4]; #print $nstart."\n";
+			    my $nend =  $nhmmdetails[5]; #print $nend."\n";
+			    my $nhmm_hit = $ncontig."|".$nstart."|".$nend;
+			    push @nhmmer_coordinates, $nhmm_hit;
+			}
+		    }
+		    else{
+			print "No hits detected from nhmmer on whole genome assembly ...\n\n";
 		    }
 
 		    #####################################################
 		    # Infer forward/reverse strand based on coordinates #
 		    #####################################################
-		    
-		    foreach my $nhmm_locus(@nhmmer_coordinates){
-			my $overlap = "";
-			my $ntmp = "";
-			my $strand = "";
-			my @details = split(/\|/, $nhmm_locus);
-			my $contig_n = $details[0]; 
-			my $start_n = $details[1];
-			my $end_n = $details[2];
-			if($start_n > $end_n){
-			    $ntmp = $start_n;
-			    $start_n = $end_n;
-			    $end_n = $ntmp;
-			    $strand = "rev";
-			}
-			else{
-			    $strand = "pos";
-			}
-			my $nhit_length = $end_n - $start_n;
 
-			###################################################
-			# Check if hit overlaps with existing annotations #
-			# Only report as 'novel' if no overlap            #
-			###################################################
-			
-			foreach my $stored_hits(@block_coordinates){
-			    my $min_coord = "";
-			    my $max_coord = "";
-			    my $max_span = "";
-			    my $total_length = "";
-			    my @stored_details = split(/\|/, $stored_hits);			
-			    my $contig_stored = $stored_details[0];
-			    my $start_stored = $stored_details[1];
-			    my $end_stored = $stored_details[2];
-			    my $stored_hit_length = $end_stored - $start_stored;
-			    if ($contig_n eq $contig_stored){
-				if ($start_n < $start_stored){
-				    $min_coord = $start_n;
-				}
-				else{
-				    $min_coord = $start_stored;
-				}
-				if ($end_n > $end_stored){
-				    $max_coord = $end_n;
-				}
-				else{
-				    $max_coord = $end_stored;
-				}
-				$max_span = $max_coord - $min_coord;
-				$total_length = $nhit_length + $stored_hit_length;
-				if($max_span<$total_length){
-				    $overlap = "Y";
+		    if(@nhmmer_coordinates){
+			foreach my $nhmm_locus(@nhmmer_coordinates){
+			    my $overlap = "";
+			    my $ntmp = "";
+			    my $strand = "";
+			    my @details = split(/\|/, $nhmm_locus);
+			    my $contig_n = $details[0]; 
+			    my $start_n = $details[1];
+			    my $end_n = $details[2];
+			    if($start_n > $end_n){
+				$ntmp = $start_n;
+				$start_n = $end_n;
+				$end_n = $ntmp;
+				$strand = "rev";
+			    }
+			    else{
+				$strand = "pos";
+			    }
+			    my $nhit_length = $end_n - $start_n;
+			    
+			    ###################################################
+			    # Check if hit overlaps with existing annotations #
+			    # Only report as 'novel' if no overlap            #
+			    ###################################################
+
+			    if(@block_coordinates){
+				foreach my $stored_hits(@block_coordinates){
+				    my $min_coord = "";
+				    my $max_coord = "";
+				    my $max_span = "";
+				    my $total_length = "";
+				    my @stored_details = split(/\|/, $stored_hits);			
+				    my $contig_stored = $stored_details[0];
+				    my $start_stored = $stored_details[1];
+				    my $end_stored = $stored_details[2];
+				    my $stored_hit_length = $end_stored - $start_stored;
+				    if ($contig_n eq $contig_stored){
+					if ($start_n < $start_stored){
+					    $min_coord = $start_n;
+					}
+					else{
+					    $min_coord = $start_stored;
+					}
+					if ($end_n > $end_stored){
+					    $max_coord = $end_n;
+					}
+					else{
+					    $max_coord = $end_stored;
+					}
+					$max_span = $max_coord - $min_coord;
+					$total_length = $nhit_length + $stored_hit_length;
+					if($max_span<$total_length){
+					    $overlap = "Y";
+					}
+				    }
 				}
 			    }
-			}
-			
-			####################################################################
-			# If novel hit (not overlapping), print nucleotide range to file   #
-			####################################################################
-			
-			if($overlap ne "Y"){
-			    my $contig_length = $contig_lengths{$contig_n};
-			    my $nhmm_dets = $nhmm_locus."|".$contig_length."|".$strand;
-			    push (@domain_details, $nhmm_dets);
-			    
-			    ########################################################
-			    # Reverse strand: Esl-sfetch range and output to files #
-			    ########################################################
-			    
-			    if ($strand eq "rev"){
-				$start_n -= $nhmmer_plus; #3' end is $start (hence - plus)
-				if($start_n < 1){
-				    $start_n = 1;
-				}
-				$end_n += $nhmmer_minus; #5' end is $end (hence + minus)
-				if($end_n > $contig_length){
-				    $end_n = $contig_length;
-				}
-				my $range = $start_n."\.\.".$end_n;
-				my $cmd = "esl-sfetch -c $range -r $genome $contig_n >> $nhmmer_nucleotide_sequences";
-				`$cmd`;
+			    else{
+				$overlap = "N";
 			    }
-
-			    #########################################################
-			    # Positive strand: Esl-sfetch range and output to files #
-			    #########################################################
+			
+			    ####################################################################
+			    # If novel hit (not overlapping), print nucleotide range to file   #
+			    ####################################################################
 			    
-			    elsif($strand eq "pos"){
-				$start_n -= $nhmmer_minus;
-				if($start_n < 1){
-				    $start_n = 1;
+			    if($overlap ne "Y"){
+				my $contig_length = $contig_lengths{$contig_n};
+				my $nhmm_dets = $nhmm_locus."|".$contig_length."|".$strand;
+				push (@domain_details, $nhmm_dets);
+				
+				########################################################
+				# Reverse strand: Esl-sfetch range and output to files #
+				########################################################
+				
+				if ($strand eq "rev"){
+				    $start_n -= $nhmmer_plus; #3' end is $start (hence - plus)
+				    if($start_n < 1){
+					$start_n = 1;
+				    }
+				    $end_n += $nhmmer_minus; #5' end is $end (hence + minus)
+				    if($end_n > $contig_length){
+					$end_n = $contig_length;
+				    }
+				    my $range = $start_n."\.\.".$end_n;
+				    my $cmd = "esl-sfetch -c $range -r $genome $contig_n >> $nhmmer_nucleotide_sequences";
+				    `$cmd`;
 				}
-				$end_n += $nhmmer_plus;
-				if($end_n > $contig_length){
-				    $end_n = $contig_length;
+				
+				#########################################################
+				# Positive strand: Esl-sfetch range and output to files #
+				#########################################################
+				
+				elsif($strand eq "pos"){
+				    $start_n -= $nhmmer_minus;
+				    if($start_n < 1){
+					$start_n = 1;
+				    }
+				    $end_n += $nhmmer_plus;
+				    if($end_n > $contig_length){
+					$end_n = $contig_length;
+				    }
+				    my $range = $start_n."\.\.".$end_n;
+				    my $cmd = "esl-sfetch -c $range $genome $contig_n >> $nhmmer_nucleotide_sequences";
+				    `$cmd`;
 				}
-				my $range = $start_n."\.\.".$end_n;
-				my $cmd = "esl-sfetch -c $range $genome $contig_n >> $nhmmer_nucleotide_sequences";
-				`$cmd`;
 			    }
 			}
 		    }
 		    `rm *ssi`;
 		}
-		    
+
+		
 		###################################################
 		# Make outout directories and tidy existing files #
 		###################################################
@@ -1400,10 +1459,13 @@ foreach my $genome(@genomes){
 		    `mv $phmmer_prot_isoforms $transcript_nucleotide_isoforms  $cds_all_isoforms $subdir2`;
 		}
 		if ($cds_available eq "yes" || $cds_available eq "Yes"){
-		    `cp $cds_nuc $cds_final_nuc`;
-		    `cp $cds_prot $cds_final_prot`;
+		    if(-e $cds_nuc && -e $cds_prot){
+			`cp $cds_nuc $cds_final_nuc`;
+			`cp $cds_prot $cds_final_prot`;
+		    }
 		}
 	    }
+	    
 	    
 	    ############################################################
 	    # If no annotations available, run nhmmer on assembly      #
@@ -1458,19 +1520,24 @@ foreach my $genome(@genomes){
 		    ####################
 		    # Get coordinates  #
 		    ####################
-		    
-		    foreach my $nhit(@nhmmer_hits){
-			my $ntmp;
-			$nhit =~ s/[\s]+/\|/g;
-			my @nhmmdetails = split(/\|/, $nhit);
-			shift @nhmmdetails;
-			my $nevalue = $nhmmdetails[0];
-			push(@nhmmer_evalues, $nevalue);
-			my $ncontig = $nhmmdetails[3]; #print $ncontig."\n";
-			my $nstart =  $nhmmdetails[4]; #print $nstart."\n";
-			my $nend =  $nhmmdetails[5]; #print $nend."\n";
-			my $nhmm_hit = $ncontig."|".$nstart."|".$nend;
-			push @nhmmer_coordinates, $nhmm_hit;
+
+		    if(@nhmmer_hits){
+			foreach my $nhit(@nhmmer_hits){
+			    my $ntmp;
+			    $nhit =~ s/[\s]+/\|/g;
+			    my @nhmmdetails = split(/\|/, $nhit);
+			    shift @nhmmdetails;
+			    my $nevalue = $nhmmdetails[0];
+			    push(@nhmmer_evalues, $nevalue);
+			    my $ncontig = $nhmmdetails[3]; #print $ncontig."\n";
+			    my $nstart =  $nhmmdetails[4]; #print $nstart."\n";
+			    my $nend =  $nhmmdetails[5]; #print $nend."\n";
+			    my $nhmm_hit = $ncontig."|".$nstart."|".$nend;
+			    push @nhmmer_coordinates, $nhmm_hit;
+			}
+		    }
+		    else{
+			print "No hits detected after nhmmer on whole genome ...\n";
 		    }
 
 
@@ -1485,70 +1552,72 @@ foreach my $genome(@genomes){
 		    #####################################################
 		    # Infer forward/reverse strand based on coordinates #
 		    #####################################################
-		    
-		    foreach my $nhmm_locus(@nhmmer_coordinates){
-			my $ntmp = "";
-			my $strand = "";
-			my @details = split(/\|/, $nhmm_locus);
-			my $contig_n = $details[0];
-			my $start_n = $details[1];
-			my $end_n = $details[2];
-			if($start_n > $end_n){
-			    $ntmp = $start_n;
-			    $start_n = $end_n;
-			    $end_n = $ntmp;
-			    $strand = "rev";
-			}
-			else{
-			    $strand = "pos";
-			}
 
-			####################################################################
-			# Print nucleotide range to file                                   #
-			# Also print domain range to file                                  #
-			####################################################################
-			
-			my $contig_length = $contig_lengths{$contig_n};
-			my $nhmm_dets = $nhmm_locus."|".$contig_length."|".$strand;
-			push(@domain_details, $nhmm_dets);
-			
-			########################################################
-			# Reverse strand: Esl-sfetch range and output to files #
-			########################################################
-			
-			if($strand eq "rev"){
-			    $start_n -= $nhmmer_plus; #3' end is $start (hence - plus)
-			    $end_n += $nhmmer_minus; #5' end is $end (hence + minus)
-			    if ($start_n < 1){
-				$start_n = 1;
+		    if(@nhmmer_coordinates){
+			foreach my $nhmm_locus(@nhmmer_coordinates){
+			    my $ntmp = "";
+			    my $strand = "";
+			    my @details = split(/\|/, $nhmm_locus);
+			    my $contig_n = $details[0];
+			    my $start_n = $details[1];
+			    my $end_n = $details[2];
+			    if($start_n > $end_n){
+				$ntmp = $start_n;
+				$start_n = $end_n;
+				$end_n = $ntmp;
+				$strand = "rev";
 			    }
-			    if ($end_n > $contig_length){
-				$end_n = $contig_length;
+			    else{
+				$strand = "pos";
 			    }
-			    my $range = $start_n."\.\.".$end_n;
-			    my $cmd = "esl-sfetch -c $range -r $genome $contig_n >> $nhmmer_nucleotide_sequences";
-			    `$cmd`;
-			}
-
-			########################################################
-			# Forward strand: Esl-sfetch range and output to files #
-			########################################################
-			
-			elsif($strand eq "pos"){
-			    $start_n -= $nhmmer_minus;
-			    $end_n += $nhmmer_plus;
-			    if ($start_n < 1){
-				$start_n = 1;
+			    
+			    ####################################################################
+			    # Print nucleotide range to file                                   #
+			    # Also print domain range to file                                  #
+			    ####################################################################
+			    
+			    my $contig_length = $contig_lengths{$contig_n};
+			    my $nhmm_dets = $nhmm_locus."|".$contig_length."|".$strand;
+			    push(@domain_details, $nhmm_dets);
+			    
+			    ########################################################
+			    # Reverse strand: Esl-sfetch range and output to files #
+			    ########################################################
+			    
+			    if($strand eq "rev"){
+				$start_n -= $nhmmer_plus; #3' end is $start (hence - plus)
+				$end_n += $nhmmer_minus; #5' end is $end (hence + minus)
+				if ($start_n < 1){
+				    $start_n = 1;
+				}
+				if ($end_n > $contig_length){
+				    $end_n = $contig_length;
+				}
+				my $range = $start_n."\.\.".$end_n;
+				my $cmd = "esl-sfetch -c $range -r $genome $contig_n >> $nhmmer_nucleotide_sequences";
+				`$cmd`;
 			    }
-			    if ($end_n > $contig_length){
-				$end_n = $contig_length;
+			    
+			    ########################################################
+			    # Forward strand: Esl-sfetch range and output to files #
+			    ########################################################
+			    
+			    elsif($strand eq "pos"){
+				$start_n -= $nhmmer_minus;
+				$end_n += $nhmmer_plus;
+				if ($start_n < 1){
+				    $start_n = 1;
+				}
+				if ($end_n > $contig_length){
+				    $end_n = $contig_length;
+				}
+				my $range = $start_n."\.\.".$end_n;
+				my $cmd = "esl-sfetch -c $range $genome $contig_n >> $nhmmer_nucleotide_sequences";
+				`$cmd`;
 			    }
-			    my $range = $start_n."\.\.".$end_n;
-			    my $cmd = "esl-sfetch -c $range $genome $contig_n >> $nhmmer_nucleotide_sequences";
-			    `$cmd`;
 			}
 		    }
-		    
+			
 		    ###################################################
 		    # Make outout directories and tidy existing files #
 		    ###################################################
@@ -1558,7 +1627,7 @@ foreach my $genome(@genomes){
 		    `rm *ssi`;
 		}
 	    }
-
+	    
 	    #######################################
 	    # 4.7. Predict new hits with AUGUSTUS #
 	    #######################################
@@ -1570,15 +1639,21 @@ foreach my $genome(@genomes){
 	    my %Hit_Hash;
 
 	    
-	    if ($predict_new_hits eq "Yes" || $predict_new_hits eq "yes"){
-		print "running augustus to predict new hits ...\n\n";
+	    if ($predict_new_hits =~ m/^yes$/i){
 
+		if(-e $nhmmer_nucleotide_sequences){
+		    print "running augustus to predict new hits ...\n\n";
+		}
+		
 		##################################################################################
 		# If specified, append mined NCBI sequences from query species to reference file #
 		##################################################################################
 
 		my $copy_reference_file = "backup_reference_file.fa";
-		`cp $reference_file $copy_reference_file`;
+
+		if(-e $nhmmer_nucleotide_sequences){
+		    `cp $reference_file $copy_reference_file`;
+		}
 		
 		if($append_query =~ m/^yes$/){
 		    if(-e  $cds_final_nuc){
@@ -1600,1207 +1675,1106 @@ foreach my $genome(@genomes){
 		my $sequences = "";
 		my $seq_db_pre = $genome_ID."_";
 		my $hit_no = 0;
-	
-		my @seqs =&parse_fasta($nhmmer_nucleotide_sequences);
-		
-	
-		######################################################################
-		# Iterate over each novel hit and feed into augustus for predictions #
-		######################################################################
-		
-		foreach my $seq(@seqs){
+
+		if(-e $nhmmer_nucleotide_sequences){
+		    my @seqs =&parse_fasta($nhmmer_nucleotide_sequences);
 		    
-		    #Declare coord variables
-		    my $genomic_gene_start;
-		    my $genomic_gene_end;
-		    my $genomic_cds_start;
-		    my $genomic_cds_end;
-
-		    # Name novel hit
-		    $hit_no +=1;
-		    my $hit_annotation = $hit_prefix.$hit_no;
 		    
-		    #Begin TSV append
-		    my @tsv_details = ("NA") x 28;
-		    $tsv_details[0] = $hit_annotation;
-		    $tsv_details[8] = $hit_annotation;
-		    $tsv_details[9] = $hit_annotation;
-		    $tsv_details[12] = $hit_annotation;
-		    $tsv_details[1] = "No";	    
-
-		    # get sequence header and cds
-		    if($seq =~ m/\>(.*)\n([\S\n]+)/){
-			my $seq_header = $1;
-			my $seq_nt = $2;
-
-			###########################
-			# Get domain coordinates  #
-			###########################
-
-			# evalue
-			my $nhmm_eval = $nhmmer_evalues[0];
-			shift @nhmmer_evalues;
-			$tsv_details[21] = $nhmm_eval;
-
-			# coordinates
-			my $domain_info = $domain_details[0];
-			my @info = split(/\|/, $domain_info);
-			my $contig_name = $info[0];
-			my $domain_info_start = $info[1];
-			my $domain_info_end = $info[2];
-			my $contig_max = $info[3];
-			my $strand_direction = $info[4];
-			if($strand_direction eq "pos"){
-			    $strand_direction = "Forward";
-			}
-			elsif($strand_direction eq "rev"){
-			    $strand_direction = "Reverse";
-			}
-			if($domain_info_start > $domain_info_end){
-			    my $bu = $domain_info_start;
-			    $domain_info_start = $domain_info_end;
-			    $domain_info_end = $bu;
-			}
-			shift(@domain_details);
-
-			# Append to tsv details
-			$tsv_details[5] = $contig_name;
-			$tsv_details[6] = $contig_max;
-			$tsv_details[7] = $strand_direction;
-			$tsv_details[26] = $domain_info_start;
-			$tsv_details[27] = $domain_info_end;
-		     
-			# Get domain coords and length
-			push(@hit_log, $hit_annotation);
-			my $contig = "";
-			my $start = "";
-			my $end = "";
-			my $domain_scoord = "";
-			my $domain_ecoord = "";
-			my $domain_length = "";
-			my $domain_start = "";
-			my $domain_end = "";
-			if ($seq_header =~ m/^([\S]+)?\/([0-9]+)\-([0-9]+)\s.*/){
-			    $contig = $1; $start = $2; $end = $3;
-			}
-			my $a1 = $domain_info_start - $nhmmer_minus; #position a
-			if($a1 < 1){
-			    my $x = 1 - $a1;
-			    my $y = $nhmmer_minus - $x;
-			    $domain_scoord = 1 + $y;
-			}
-			elsif($a1 >= 1){
-			    $domain_scoord = 1 + $nhmmer_minus;
-			}
-			$domain_length = ($domain_info_end - $domain_info_start) +1;
-			$domain_ecoord = $domain_scoord + $domain_length;
-			$domain_start = $domain_scoord;
-			$domain_end = $domain_ecoord;
-
+		    ######################################################################
+		    # Iterate over each novel hit and feed into augustus for predictions #
+		    ######################################################################
+		    
+		    foreach my $seq(@seqs){
 			
-			########################### 
-			# Prepare sequence header #
-			###########################
+			#Declare coord variables
+			my $genomic_gene_start;
+			my $genomic_gene_end;
+			my $genomic_cds_start;
+			my $genomic_cds_end;
 			
-			$seq_header =~ s/\//\_/g;  #NC_044377.1/77156829-77158035 Cannabis sativa chromosome 6,
-			$seq_header =~ s/\-/\_/g;
-			$seq_header = ">".$hit_prefix.$hit_no."_".$seq_header;
-			my $tmp_out = "tmp.fa";
-
-
-			#######################################################
-			# Print hit +/- range to file and feed into augustus  #
-			#######################################################
+			# Name novel hit
+			$hit_no +=1;
+			my $hit_annotation = $hit_prefix.$hit_no;
 			
-			open(OUT, ">$tmp_out");
-			print OUT $seq_header."\n".$seq_nt;
-			close OUT;
-
-			############################
-			# Prepare augustus files   #
-			############################
+			#Begin TSV append
+			my @tsv_details = ("NA") x 28;
+			$tsv_details[0] = $hit_annotation;
+			$tsv_details[8] = $hit_annotation;
+			$tsv_details[9] = $hit_annotation;
+			$tsv_details[12] = $hit_annotation;
+			$tsv_details[1] = "No";	    
 			
-			my $reference = "";
-			my $psl = $hit_prefix.$hit_no."_ref.psl";
-			my $hints = $hit_prefix.$hit_no."_hints.gff";
-			my $reference_outseq = $hit_prefix.$hit_no."_ref.fa";
-			my $prediction_gff = $hit_prefix.$hit_no."prediction_out.gff";
-
-
-			##########################################################################
-			# Use blat and blat2hints to generate hints for augustus gene prediction #
-			##########################################################################
-
-			# Get blat output
-			
-			# If using entire reference file for hints
-			if($number_hints =~ m/^all$/){
-			    `blat -minIdentity=$minidentity $tmp_out $reference_file $psl`;
-			}
-
-			# If using select number of top blat hits in reference file to generate hints
-			else{
-			    my $n = 5 + $number_hints;
-			    my $psl_prior = "psl_prior.psl";
-			    if( -e $psl_prior){
-				`rm $psl_prior`;
-			    }
-			    `blat -minIdentity=$minidentity $tmp_out $reference_file $psl_prior`;
-			    `head -n $n $psl_prior >> $psl`;
-			    if( -e $psl_prior){
-				`rm $psl_prior`;
-			    }
-			}
-			
-			# convert blat output to hints
-			`perl blat2hints.pl --in=$psl --out=$hints`;
-	
-
-			#################
-			# Run AUGUSTUS  #
-			#################
-			
-			system("augustus --species=$augustus_species --strand=forward --codingseq=on --softmasking=0 --hintsfile=$hints --extrinsicCfgFile=extrinsic.ME.cfg $tmp_out > $prediction_gff");
-
-			
-			##############################
-			# Parse AUGUSTUS predictions #
-			##############################
-			
-			my $prediction_in = "";
-			open(AUG, $prediction_gff);
-			{
-			    local $/;
-			    $prediction_in = <AUG>;
-			}
-			close AUG;
-			my @intron_coords = ();
-			my @exon_coords = ();
-			my @predictions = split(/#[\s]start[\s]gene/, $prediction_in);
-			shift @predictions;
-			
-
-			my $prediction_found = 0;
-			my $verified_cds_seq = "";
-			my $verified_prot_seq = "";
-
-			
-			foreach my $pred(@predictions){
+			# get sequence header and cds
+			if($seq =~ m/\>(.*)\n([\S\n]+)/){
+			    my $seq_header = $1;
+			    my $seq_nt = $2;
 			    
-			    ##########################
-			    # Get prediction details #
-			    ##########################
-			    unless($prediction_found == 1){
-				my @pred_split = split (/#[\s]protein[\s]sequence/, $pred);
-				my $gene_cds_details = $pred_split[0];
-				my $protein_details = $pred_split[1];
-				my @split_again = split(/#[\s]coding[\s]sequence/, $gene_cds_details);
-				my $gene_details = $split_again[0];
-				my $cds_details = $split_again[1];
-				my @gene_dets = split(/\n/, $gene_details);
-				shift(@gene_dets);
-				my $pred_start = "";
-				my $pred_end = "";
-				my $cds_start = "";
-				my $cds_end = "";
-				my $maximum_end = "";
-				my $minimum_start = "";
-				my $total_length3 = "";
-				my $max_span3 = "";
-				my $prediction_length = "";
-				my @prediction_coords = ();
-				my @cds_coords = ();
-				
-				foreach my $gd(@gene_dets){
-				    $gd =~ s/[\s]+/\|/g;
-				    if ($gd =~ m/\|gene\|([0-9]+)\|([0-9]+)/){
-					$pred_start = $1; $pred_end = $2;
-					push(@prediction_coords, $pred_start);
-					push(@prediction_coords, $pred_end);
-				    }
-				    elsif($gd =~ m/\|CDS\|([0-9]+)\|([0-9]+)/){
-					$cds_start =$1;
-					$cds_end = $2;
-					push(@cds_coords, $cds_start);
-					push(@cds_coords, $cds_end);
-				    }
+			    ###########################
+			    # Get domain coordinates  #
+			    ###########################
+			    
+			    # evalue
+			    my $nhmm_eval = $nhmmer_evalues[0];
+			    shift @nhmmer_evalues;
+			    $tsv_details[21] = $nhmm_eval;
+			    
+			    # coordinates
+			    my $domain_info = $domain_details[0];
+			    my @info = split(/\|/, $domain_info);
+			    my $contig_name = $info[0];
+			    my $domain_info_start = $info[1];
+			    my $domain_info_end = $info[2];
+			    my $contig_max = $info[3];
+			    my $strand_direction = $info[4];
+			    if($strand_direction eq "pos"){
+				$strand_direction = "Forward";
+			    }
+			    elsif($strand_direction eq "rev"){
+				$strand_direction = "Reverse";
+			    }
+			    if($domain_info_start > $domain_info_end){
+				my $bu = $domain_info_start;
+				$domain_info_start = $domain_info_end;
+				$domain_info_end = $bu;
+			    }
+			    shift(@domain_details);
+			    
+			    # Append to tsv details
+			    $tsv_details[5] = $contig_name;
+			    $tsv_details[6] = $contig_max;
+			    $tsv_details[7] = $strand_direction;
+			    $tsv_details[26] = $domain_info_start;
+			    $tsv_details[27] = $domain_info_end;
+			    
+			    # Get domain coords and length
+			    push(@hit_log, $hit_annotation);
+			    my $contig = "";
+			    my $start = "";
+			    my $end = "";
+			    my $domain_scoord = "";
+			    my $domain_ecoord = "";
+			    my $domain_length = "";
+			    my $domain_start = "";
+			    my $domain_end = "";
+			    if ($seq_header =~ m/^([\S]+)?\/([0-9]+)\-([0-9]+)\s.*/){
+				$contig = $1; $start = $2; $end = $3;
+			    }
+			    my $a1 = $domain_info_start - $nhmmer_minus; #position a
+			    if($a1 < 1){
+				my $x = 1 - $a1;
+				my $y = $nhmmer_minus - $x;
+				$domain_scoord = 1 + $y;
+			    }
+			    elsif($a1 >= 1){
+				$domain_scoord = 1 + $nhmmer_minus;
+			    }
+			    $domain_length = ($domain_info_end - $domain_info_start) +1;
+			    $domain_ecoord = $domain_scoord + $domain_length;
+			    $domain_start = $domain_scoord;
+			    $domain_end = $domain_ecoord;
+			    
+			    
+			    ########################### 
+			    # Prepare sequence header #
+			    ###########################
+			    
+			    $seq_header =~ s/\//\_/g;  #NC_044377.1/77156829-77158035 Cannabis sativa chromosome 6,
+			    $seq_header =~ s/\-/\_/g;
+			    $seq_header = ">".$hit_prefix.$hit_no."_".$seq_header;
+			    my $tmp_out = "tmp.fa";
+			    
+			    
+			    #######################################################
+			    # Print hit +/- range to file and feed into augustus  #
+			    #######################################################
+			    
+			    open(OUT, ">$tmp_out");
+			    print OUT $seq_header."\n".$seq_nt;
+			    close OUT;
+			    
+			    ############################
+			    # Prepare augustus files   #
+			    ############################
+			    
+			    my $reference = "";
+			    my $psl = $hit_prefix.$hit_no."_ref.psl";
+			    my $hints = $hit_prefix.$hit_no."_hints.gff";
+			    my $reference_outseq = $hit_prefix.$hit_no."_ref.fa";
+			    my $prediction_gff = $hit_prefix.$hit_no."prediction_out.gff";
+			    
+			    
+			    ##########################################################################
+			    # Use blat and blat2hints to generate hints for augustus gene prediction #
+			    ##########################################################################
+			    
+			    # Get blat output
+			    
+			    # If using entire reference file for hints
+			    if($number_hints =~ m/^all$/){
+				`blat -minIdentity=$minidentity $tmp_out $reference_file $psl`;
+			    }
+			    
+			    # If using select number of top blat hits in reference file to generate hints
+			    else{
+				my $n = 5 + $number_hints;
+				my $psl_prior = "psl_prior.psl";
+				if( -e $psl_prior){
+				    `rm $psl_prior`;
 				}
-				@cds_coords = sort { $a <=> $b } @cds_coords;
-
-				# Get the minimum and maximum values
-				$cds_start = shift(@cds_coords);
-				$cds_end  = pop(@cds_coords);    
-				push(@prediction_coords, $cds_start);
-				push(@prediction_coords, $cds_end);
-				
-				$pred_start = $prediction_coords[0];
-				$pred_end = $prediction_coords[1];
-
-				if($prediction_coords[2]){
-				    $cds_start = $prediction_coords[2];
+				`blat -minIdentity=$minidentity $tmp_out $reference_file $psl_prior`;
+				`head -n $n $psl_prior >> $psl`;
+				if( -e $psl_prior){
+				    `rm $psl_prior`;
 				}
-				else{
-				    $cds_start = "NA";
-				}
-				if($prediction_coords[3]){
-				    $cds_end = $prediction_coords[3];
-				}
-				else{
-				    $cds_end = "NA";
-				}
-
+			    }
+			    
+			    # convert blat output to hints
+			    `perl blat2hints.pl --in=$psl --out=$hints`;
+			    
+			    
+			    #################
+			    # Run AUGUSTUS  #
+			    #################
+			    
+			    system("augustus --species=$augustus_species --strand=forward --codingseq=on --softmasking=0 --hintsfile=$hints --extrinsicCfgFile=extrinsic.ME.cfg $tmp_out > $prediction_gff");
+			    
+			    
+			    ##############################
+			    # Parse AUGUSTUS predictions #
+			    ##############################
+			    
+			    my $prediction_in = "";
+			    open(AUG, $prediction_gff);
+			    {
+				local $/;
+				$prediction_in = <AUG>;
+			    }
+			    close AUG;
+			    my @intron_coords = ();
+			    my @exon_coords = ();
+			    my @predictions = split(/#[\s]start[\s]gene/, $prediction_in);
+			    shift @predictions;
+			    
+			    
+			    my $prediction_found = 0;
+			    my $verified_cds_seq = "";
+			    my $verified_prot_seq = "";
+			    
+			    
+			    foreach my $pred(@predictions){
 				
-				#####################################################################
-				# Check that prediction overlaps with target DOMAIN (NHMMER COORDS) #
-				#####################################################################
-
-				if($cds_start ne "NA" && $cds_end ne "NA"){
-				    if($cds_start > $domain_end){
-					$maximum_end = $cds_end;
-				    }
-				    else{
-					$maximum_end = $domain_end;
-				    }
-				    if($cds_start < $domain_start){
-					$minimum_start = $cds_start;
-				    }
-				    else{
-					$minimum_start = $domain_start;
-				    }
-				    $prediction_length = ($cds_end - $cds_start) +1;
-				    $total_length3 = $prediction_length + $domain_length;
-				    $max_span3 = ($maximum_end - $minimum_start) +1;
-				}
-				
-				###############################################
-				# If no CDS values, check overlap with mRNA
-				###############################################
-				
-				else{
-				    if($pred_start > $domain_end){
-					$maximum_end = $pred_end;
-				    }else{
-					$maximum_end = $domain_end;
-				    }
-				    if($pred_start < $domain_start){
-					$minimum_start = $pred_start;
-				    }
-				    else{
-					$minimum_start = $domain_start;
-				    }
-				    $prediction_length = ($pred_end - $pred_start) +1;
-				    $total_length3 = $prediction_length + $domain_length;
-				    $max_span3 = ($maximum_end - $minimum_start) +1;
-				}
-				
-				#############################
-				# Check prediction overlap: #
-				#############################
-				
-				if ($max_span3 < $total_length3){ 
-				    my $domain_not_covered = $max_span3 - $prediction_length;
-				    my $percentage_domain_not_covered = $domain_not_covered / $domain_length;
-				    my $percentage_domain_cover = 1 - $percentage_domain_not_covered;
-
-				    #######################################################
-				    # Ensure overlap is greater than percentage threshold #
-				    #######################################################
+				##########################
+				# Get prediction details #
+				##########################
+				unless($prediction_found == 1){
+				    my @pred_split = split (/#[\s]protein[\s]sequence/, $pred);
+				    my $gene_cds_details = $pred_split[0];
+				    my $protein_details = $pred_split[1];
+				    my @split_again = split(/#[\s]coding[\s]sequence/, $gene_cds_details);
+				    my $gene_details = $split_again[0];
+				    my $cds_details = $split_again[1];
+				    my @gene_dets = split(/\n/, $gene_details);
+				    shift(@gene_dets);
+				    my $pred_start = "";
+				    my $pred_end = "";
+				    my $cds_start = "";
+				    my $cds_end = "";
+				    my $maximum_end = "";
+				    my $minimum_start = "";
+				    my $total_length3 = "";
+				    my $max_span3 = "";
+				    my $prediction_length = "";
+				    my @prediction_coords = ();
+				    my @cds_coords = ();
 				    
-				    if($percentage_domain_cover >= $domain_cover_threshold){
-					
-					# Convert to TSV info coords:
-					
-					#################
-					#1) mRNA coords #
-					#################
-					
-					# 1.1 Within prediction coordinates (zero adjusted)
-
-					my $zero_gene_domain_start;
-					my $zero_gene_domain_end;
-					my $zero_gene_end = $pred_end - $pred_start;
-					
-			
-					#######################
-					# FORWARD mRNA COORDS #
-					#######################
-					
-					if($strand_direction eq "Forward"){
-					    
-					    #Domain is fully captured within mRNA at 5' end
-					    if($pred_start <= $domain_start){
-						$zero_gene_domain_start = $domain_start - $pred_start;
-						$genomic_gene_start = $domain_info_start - $zero_gene_domain_start;
-					    }
-					    
-					    #Domain is cut off at the 5' end
-					    if($pred_start > $domain_start){
-						$zero_gene_domain_start = 0;
-						my $diff = $pred_start - $domain_start;
-						$genomic_gene_start = $domain_info_start + $diff;
-					    }
-					    
-					    #Domain is fully captured within mRNA at 3' end
-					    if($pred_end <= $pred_end){
-						$zero_gene_domain_end = $domain_end - $pred_start;
-						$genomic_gene_end = $genomic_gene_start + $zero_gene_end;
-					    }
-					    
-					    #Domain is cut off at the 3' end
-					    if($pred_end > $pred_end){
-						$zero_gene_domain_end = $zero_gene_end;
-						$genomic_gene_end = $genomic_gene_start + $zero_gene_end;
-					    }
-					    
-					    #Domain does not occur in mRNA
-					    # This condition will never be met #
-					    if($domain_start > $pred_end){
-						$zero_gene_domain_start = 0;
-						$zero_gene_domain_end = 0;
-						my $x1 = $domain_start - $pred_end;
-						$genomic_gene_end = $domain_info_start - $x1;
-						my $x2 = $pred_end - $pred_start;
-						$genomic_gene_start = $genomic_gene_end - $x2;
-					    }
-					    
-					    #Domain does not occur in mRNA
-					    # This condition will never be met #
-					    if($domain_end < $pred_start){
-						$zero_gene_domain_end = 0;
-						$zero_gene_domain_start = 0;
-						my $x1 = $pred_start - $domain_end;
-						$genomic_gene_start = $domain_info_end + $x1;
-						my $x2 = $pred_end - $pred_start;
-						$genomic_gene_end = $genomic_gene_start + $x2;
-					    }
+				    foreach my $gd(@gene_dets){
+					$gd =~ s/[\s]+/\|/g;
+					if ($gd =~ m/\|gene\|([0-9]+)\|([0-9]+)/){
+					    $pred_start = $1; $pred_end = $2;
+					    push(@prediction_coords, $pred_start);
+					    push(@prediction_coords, $pred_end);
 					}
-
-					#######################
-					# REVERSE mRNA COORDS #
-					#######################
-
-					if($strand_direction eq "Reverse"){
-
-					    #Domain is fully captured within mRNA at 5' end
-					    if($pred_start <= $domain_start){
-						$zero_gene_domain_start = $domain_start - $pred_start;
-						$genomic_gene_end = $domain_info_end + $zero_gene_domain_start;
-					    }
-
-					    #Domain is cut off at the 5' end
-					    if($pred_start > $domain_start){
-						$zero_gene_domain_start = 0;
-						my $diff = $pred_start - $domain_start;
-						$genomic_gene_end = $domain_info_end - $diff;
-					    }
-					    
-					    #Domain is fully captured within mRNA at 3' end
-					    if($domain_end <= $pred_end){
-						$zero_gene_domain_end = $domain_end - $pred_start;
-						my $x2 = $zero_gene_end - $zero_gene_domain_end;
-						$genomic_gene_start = $domain_info_start - $x2;
-						$genomic_gene_start -=1;	
-					    }
-					    
-					    #Domain is cut off at the 3' end
-					    if($domain_end > $pred_end){
-						$zero_gene_domain_end = $zero_gene_end;
-						$genomic_gene_start = $genomic_gene_end - $zero_gene_end;
-					    }
-					    
-					    # Domain does not occur in mRNA
-					    # This condition will never be met
-					    if($domain_start > $pred_end){
-						# same as condition 1
-						$genomic_gene_end = $domain_info_end + $zero_gene_domain_start;
-
-						# same as condition 4
-						$genomic_gene_start = $genomic_gene_end - $zero_gene_end;
-
-						# zero domain as 0 as not in mRNA
-						$zero_gene_domain_start = 0;
-						$zero_gene_domain_end = 0;	
-					    }
-					    
-					    #Domain does not occur in mRNA
-					    # This condition will never be met
-					    if($domain_end < $pred_start){
-						# same as condition 2
-						my $diff = $pred_start - $domain_start;
-						$genomic_gene_end = $domain_info_end - $diff;
-
-						# same as condition 3
-						my $x2 = $zero_gene_end - $zero_gene_domain_end;
-						$genomic_gene_start = $domain_info_start - $x2;
-						$genomic_gene_start -=1;
-
-						# zero domain as 0 as not in mRNA
-						$zero_gene_domain_end = 0;
-						$zero_gene_domain_start = 0;
-					    }
-					    
+					elsif($gd =~ m/\|CDS\|([0-9]+)\|([0-9]+)/){
+					    $cds_start =$1;
+					    $cds_end = $2;
+					    push(@cds_coords, $cds_start);
+					    push(@cds_coords, $cds_end);
 					}
-					
-
-					#################
-					#2) CDS coords: #
-					#################
-					
-					# 2.1 Within prediction coordinates (zero adjusted)
-
-					my $zero_cds_domain_start;
-					my $zero_cds_domain_end;
-					my $zero_cds_end = $cds_end - $cds_start;
-
-
-					######################
-					# FORWARD CDS COORDS #
-					######################
-					
-					if($strand_direction eq "Forward"){
-					    if($cds_start <= $domain_start){
-						$zero_cds_domain_start = $domain_start - $cds_start;
-						$genomic_cds_start = $domain_info_start - $zero_cds_domain_start;
-					    }
-					    
-					    #Domain is cut off at the 5' end
-					    if($cds_start > $domain_start){
-						$zero_cds_domain_start = 0;
-						my $diff = $cds_start - $domain_start;
-						$genomic_cds_start = $domain_info_start + $diff;
-					    }
-					    
-					    #Domain is fully captured within CDS at 3' end
-					    if($domain_end <= $cds_end){
-						$zero_cds_domain_end = $domain_end - $cds_start;
-						$genomic_cds_end = $genomic_cds_start + $zero_cds_end;
-					    }
-					    
-					    #Domain is cut off at the 3' end
-					    if($domain_end > $cds_end){
-						$zero_cds_domain_end = $zero_cds_end;
-						$genomic_cds_end = $genomic_cds_start + $zero_cds_end;
-					    }
-					    
-					    #Domain does not occur in CDS
-					    if($domain_start > $cds_end){
-						$zero_cds_domain_start = 0;
-						$zero_cds_domain_end = 0;
-						my $x1 = $domain_start - $cds_end;
-						$genomic_cds_end = $domain_info_start - $x1;
-						my $x2 = $cds_end - $cds_start;
-						$genomic_cds_start = $genomic_cds_end - $x2;
-					    }
-					    
-					    #Domain does not occur in CDS
-					    if($domain_end < $cds_start){
-						$zero_cds_domain_end = 0;
-						$zero_cds_domain_start = 0;
-						my $x1 = $cds_start - $domain_end;
-						$genomic_cds_start = $domain_info_end + $x1;
-						my $x2 = $cds_end - $cds_start;
-						$genomic_cds_end = $genomic_cds_start + $x2;
-						$genomic_cds_start +=1;
-						$genomic_cds_end +=1;
-					    }
+				    }
+				    @cds_coords = sort { $a <=> $b } @cds_coords;
+				    
+				    # Get the minimum and maximum values
+				    $cds_start = shift(@cds_coords);
+				    $cds_end  = pop(@cds_coords);    
+				    push(@prediction_coords, $cds_start);
+				    push(@prediction_coords, $cds_end);
+				    
+				    $pred_start = $prediction_coords[0];
+				    $pred_end = $prediction_coords[1];
+				    
+				    if($prediction_coords[2]){
+					$cds_start = $prediction_coords[2];
+				    }
+				    else{
+					$cds_start = "NA";
+				    }
+				    if($prediction_coords[3]){
+					$cds_end = $prediction_coords[3];
+				    }
+				    else{
+					$cds_end = "NA";
+				    }
+				    
+				    
+				    #####################################################################
+				    # Check that prediction overlaps with target DOMAIN (NHMMER COORDS) #
+				    #####################################################################
+				    
+				    if($cds_start ne "NA" && $cds_end ne "NA"){
+					if($cds_start > $domain_end){
+					    $maximum_end = $cds_end;
 					}
+					else{
+					    $maximum_end = $domain_end;
+					}
+					if($cds_start < $domain_start){
+					    $minimum_start = $cds_start;
+					}
+					else{
+					    $minimum_start = $domain_start;
+					}
+					$prediction_length = ($cds_end - $cds_start) +1;
+					$total_length3 = $prediction_length + $domain_length;
+					$max_span3 = ($maximum_end - $minimum_start) +1;
+				    }
+				    
+				    ###############################################
+				    # If no CDS values, check overlap with mRNA
+				    ###############################################
+				    
+				    else{
+					if($pred_start > $domain_end){
+					    $maximum_end = $pred_end;
+					}else{
+					    $maximum_end = $domain_end;
+					}
+					if($pred_start < $domain_start){
+					    $minimum_start = $pred_start;
+					}
+					else{
+					    $minimum_start = $domain_start;
+					}
+					$prediction_length = ($pred_end - $pred_start) +1;
+					$total_length3 = $prediction_length + $domain_length;
+					$max_span3 = ($maximum_end - $minimum_start) +1;
+				    }
+				    
+				    #############################
+				    # Check prediction overlap: #
+				    #############################
+				    
+				    if ($max_span3 < $total_length3){ 
+					my $domain_not_covered = $max_span3 - $prediction_length;
+					my $percentage_domain_not_covered = $domain_not_covered / $domain_length;
+					my $percentage_domain_cover = 1 - $percentage_domain_not_covered;
 					
-					######################
-					# REVERSE CDS COORDS #
-					######################
+					#######################################################
+					# Ensure overlap is greater than percentage threshold #
+					#######################################################
 					
-					if($strand_direction eq "Reverse"){
+					if($percentage_domain_cover >= $domain_cover_threshold){
 					    
-					    #Domain is fully captured within CDS at 5' end
-					    if($cds_start <= $domain_start){
-						$zero_cds_domain_start = $domain_start - $cds_start;
-						$genomic_cds_end = $domain_info_end + $zero_cds_domain_start;
-					    }
+					    # Convert to TSV info coords:
 					    
-					    #Domain is cut off at the 5' end
-					    if($cds_start > $domain_start){
-						$zero_cds_domain_start = 0;
-						my $diff = $cds_start - $domain_start;
-						$genomic_cds_end = $domain_info_end - $diff;
-					    }
+					    #################
+					    #1) mRNA coords #
+					    #################
 					    
-					    #Domain is fully captured within CDS at 3' end
-					    if($domain_end <= $cds_end){
-						$zero_cds_domain_end = $domain_end - $cds_start;
-						my $x2 = $zero_cds_end - $zero_cds_domain_end;
-						$genomic_cds_start = $domain_info_start - $x2;
-						$genomic_cds_start -=1;
-					    }
+					    # 1.1 Within prediction coordinates (zero adjusted)
 					    
-					    #Domain is cut off at the 3' end
-					    if($domain_end > $cds_end){
-						$zero_cds_domain_end = $zero_cds_end;
-						$genomic_cds_start = $genomic_cds_end - $zero_cds_end;
-					    }
+					    my $zero_gene_domain_start;
+					    my $zero_gene_domain_end;
+					    my $zero_gene_end = $pred_end - $pred_start;
 					    
-					    #Domain does not occur in CDS
-					    if($domain_start > $cds_end){
-						# same as condition 1
-						$genomic_cds_end = $domain_info_end + $zero_cds_domain_start;
-
-						# same as condition 4
-						$genomic_cds_start = $genomic_cds_end - $zero_cds_end;
+					    
+					    #######################
+					    # FORWARD mRNA COORDS #
+					    #######################
+					    
+					    if($strand_direction eq "Forward"){
 						
-						# zero domain as 0 as not in CDS
-						$zero_cds_domain_start = 0;
-						$zero_cds_domain_end = 0;
+						#Domain is fully captured within mRNA at 5' end
+						if($pred_start <= $domain_start){
+						    $zero_gene_domain_start = $domain_start - $pred_start;
+						    $genomic_gene_start = $domain_info_start - $zero_gene_domain_start;
+						}
+						
+						#Domain is cut off at the 5' end
+						if($pred_start > $domain_start){
+						    $zero_gene_domain_start = 0;
+						    my $diff = $pred_start - $domain_start;
+						    $genomic_gene_start = $domain_info_start + $diff;
+						}
+						
+						#Domain is fully captured within mRNA at 3' end
+						if($pred_end <= $pred_end){
+						    $zero_gene_domain_end = $domain_end - $pred_start;
+						    $genomic_gene_end = $genomic_gene_start + $zero_gene_end;
+						}
+						
+						#Domain is cut off at the 3' end
+						if($pred_end > $pred_end){
+						    $zero_gene_domain_end = $zero_gene_end;
+						    $genomic_gene_end = $genomic_gene_start + $zero_gene_end;
+						}
+						
+						#Domain does not occur in mRNA
+						# This condition will never be met #
+						if($domain_start > $pred_end){
+						    $zero_gene_domain_start = 0;
+						    $zero_gene_domain_end = 0;
+						    my $x1 = $domain_start - $pred_end;
+						    $genomic_gene_end = $domain_info_start - $x1;
+						    my $x2 = $pred_end - $pred_start;
+						    $genomic_gene_start = $genomic_gene_end - $x2;
+						}
+						
+						#Domain does not occur in mRNA
+						# This condition will never be met #
+						if($domain_end < $pred_start){
+						    $zero_gene_domain_end = 0;
+						    $zero_gene_domain_start = 0;
+						    my $x1 = $pred_start - $domain_end;
+						    $genomic_gene_start = $domain_info_end + $x1;
+						    my $x2 = $pred_end - $pred_start;
+						    $genomic_gene_end = $genomic_gene_start + $x2;
+						}
 					    }
 					    
-					    #Domain does not occur in CDS
-					    if($domain_end < $cds_start){
-						# same as condition 2
-						my $diff = $cds_start - $domain_start;
-						$genomic_cds_end = $domain_info_end - $diff;
-
-						# same as condition 3
-						my $x2 = $zero_cds_end - $zero_cds_domain_end;
-						$genomic_cds_start = $domain_info_start - $x2;
-						$genomic_cds_start -=1;
-
-						# zer domain as 0 as not in CDS
-						$zero_cds_domain_end = 0;
-						$zero_cds_domain_start = 0;
+					    #######################
+					    # REVERSE mRNA COORDS #
+					    #######################
+					    
+					    if($strand_direction eq "Reverse"){
+						
+						#Domain is fully captured within mRNA at 5' end
+						if($pred_start <= $domain_start){
+						    $zero_gene_domain_start = $domain_start - $pred_start;
+						    $genomic_gene_end = $domain_info_end + $zero_gene_domain_start;
+						}
+						
+						#Domain is cut off at the 5' end
+						if($pred_start > $domain_start){
+						    $zero_gene_domain_start = 0;
+						    my $diff = $pred_start - $domain_start;
+						    $genomic_gene_end = $domain_info_end - $diff;
+						}
+						
+						#Domain is fully captured within mRNA at 3' end
+						if($domain_end <= $pred_end){
+						    $zero_gene_domain_end = $domain_end - $pred_start;
+						    my $x2 = $zero_gene_end - $zero_gene_domain_end;
+						    $genomic_gene_start = $domain_info_start - $x2;
+						    $genomic_gene_start -=1;	
+						}
+						
+						#Domain is cut off at the 3' end
+						if($domain_end > $pred_end){
+						    $zero_gene_domain_end = $zero_gene_end;
+						    $genomic_gene_start = $genomic_gene_end - $zero_gene_end;
+						}
+						
+						# Domain does not occur in mRNA
+						# This condition will never be met
+						if($domain_start > $pred_end){
+						    # same as condition 1
+						    $genomic_gene_end = $domain_info_end + $zero_gene_domain_start;
+						    
+						    # same as condition 4
+						    $genomic_gene_start = $genomic_gene_end - $zero_gene_end;
+						    
+						    # zero domain as 0 as not in mRNA
+						    $zero_gene_domain_start = 0;
+						    $zero_gene_domain_end = 0;	
+						}
+						
+						#Domain does not occur in mRNA
+						# This condition will never be met
+						if($domain_end < $pred_start){
+						    # same as condition 2
+						    my $diff = $pred_start - $domain_start;
+						    $genomic_gene_end = $domain_info_end - $diff;
+						    
+						    # same as condition 3
+						    my $x2 = $zero_gene_end - $zero_gene_domain_end;
+						    $genomic_gene_start = $domain_info_start - $x2;
+						    $genomic_gene_start -=1;
+						    
+						    # zero domain as 0 as not in mRNA
+						    $zero_gene_domain_end = 0;
+						    $zero_gene_domain_start = 0;
+						}
 						
 					    }
-					}
-					
-					# Prepare CDS header and seq
-					$protein_details =~ s/\n//g;
-					$cds_details =~ s/\n//g;
-
-					# Add mRNA coords to tsv
-					$tsv_details[10] = $genomic_gene_start;
-					$tsv_details[11] = $genomic_gene_end;
-					$tsv_details[22] = $zero_gene_domain_start;
-					$tsv_details[23] = $zero_gene_domain_end;
-
-					# Prepare header
-					my $hit_header = ">Hit".$hit_no."_new_augustus_prediction\n";
-
-					# Populate TSV (augustus prediction (yes/no)
-					$tsv_details[2] = "Yes";
-
-					
-					#######################
-					# CDS nucleotide      #
-					#######################
-
-					my $augustus_cds_length = "";
-					
-					my $cds_seq = "";
-					if ($cds_details =~ m/\[([^\]]+)\]/){
-					    $cds_seq = $1;
-					    $cds_seq =~ s/\#//g;
-					    $cds_seq =~ s/\s//g;
-					    $augustus_cds_length = length($cds_seq);
-					    $cds_seq =~ s/.{80}\K/\n/g;
-					    $cds_seq = uc($cds_seq);
-					}
-
-					
-					#######################
-					# CDS protein         #
-					#######################
-					
-					my $protein_seq = "";
-					if ($protein_details =~ m/\[([^\]]+)\]/){
-					    $protein_seq = $1;
-					    $protein_seq =~ s/\#//g;
-					    $protein_seq =~ s/\s//g;
-					    $protein_seq =~ s/.{80}\K/\n/g;
-					}
-
-					
-					##################
-					#   HMM FILTER   #
-					##################
-
-					my $hmm_status = "";
-					my @prediction_details = ();
-					
-					# If HMM filter using protein 
-					if($hmm_filter_type =~ m/^protein$/i){
-
-					    #######################################################
-					    # Prep temporary file with protein sequence for hmmer #
-					    #######################################################
-
-					    my $tmp_prot_out = "tmp_prot_out.fa"; 
-					    open(TPO, ">$tmp_prot_out");
-					    print TPO $hit_header.$protein_seq."\n";
-					    close TPO;
 					    
-					    ######################################
-					    # Prepare input files for subroutine #
-					    ######################################
 					    
-					    @prediction_details = ();
-					    push(@prediction_details, $phmm_profile);
-					    push(@prediction_details, $tmp_prot_out);
+					    #################
+					    #2) CDS coords: #
+					    #################
 					    
-					    ####################################
-					    # Push evaule for hmmer subroutine #
-					    ####################################
+					    # 2.1 Within prediction coordinates (zero adjusted)
 					    
-					    if($default_phmmer_evalue =~ m/^yes$/i){
-						my $default = "default";
-						push(@prediction_details, $default);
+					    my $zero_cds_domain_start;
+					    my $zero_cds_domain_end;
+					    my $zero_cds_end = $cds_end - $cds_start;
+					    
+					    
+					    ######################
+					    # FORWARD CDS COORDS #
+					    ######################
+					    
+					    if($strand_direction eq "Forward"){
+						if($cds_start <= $domain_start){
+						    $zero_cds_domain_start = $domain_start - $cds_start;
+						    $genomic_cds_start = $domain_info_start - $zero_cds_domain_start;
+						}
+						
+						#Domain is cut off at the 5' end
+						if($cds_start > $domain_start){
+						    $zero_cds_domain_start = 0;
+						    my $diff = $cds_start - $domain_start;
+						    $genomic_cds_start = $domain_info_start + $diff;
+						}
+						
+						#Domain is fully captured within CDS at 3' end
+						if($domain_end <= $cds_end){
+						    $zero_cds_domain_end = $domain_end - $cds_start;
+						    $genomic_cds_end = $genomic_cds_start + $zero_cds_end;
+						}
+						
+						#Domain is cut off at the 3' end
+						if($domain_end > $cds_end){
+						    $zero_cds_domain_end = $zero_cds_end;
+						    $genomic_cds_end = $genomic_cds_start + $zero_cds_end;
+						}
+						
+						#Domain does not occur in CDS
+						if($domain_start > $cds_end){
+						    $zero_cds_domain_start = 0;
+						    $zero_cds_domain_end = 0;
+						    my $x1 = $domain_start - $cds_end;
+						    $genomic_cds_end = $domain_info_start - $x1;
+						    my $x2 = $cds_end - $cds_start;
+						    $genomic_cds_start = $genomic_cds_end - $x2;
+						}
+						
+						#Domain does not occur in CDS
+						if($domain_end < $cds_start){
+						    $zero_cds_domain_end = 0;
+						    $zero_cds_domain_start = 0;
+						    my $x1 = $cds_start - $domain_end;
+						    $genomic_cds_start = $domain_info_end + $x1;
+						    my $x2 = $cds_end - $cds_start;
+						    $genomic_cds_end = $genomic_cds_start + $x2;
+						    $genomic_cds_start +=1;
+						    $genomic_cds_end +=1;
+						}
 					    }
-					    else{
-						push(@prediction_details, $phmmer_evalue);
-					    }
-					    					    
-					    ##############
-					    # HMM filter #
-					    ##############
 					    
-					    $hmm_status =&hmm_filter(@prediction_details);
-					    `rm $tmp_prot_out`;
-					    `rm *hmmfilter.out`;
-					}
-					
-					elsif($hmm_filter_type =~ m/^nucleotide$/i){
-					      
-					    ##########################################################
-					    # Prep temporary file with nucleotide sequence for hmmer #
-					    ##########################################################
-
-					    my $tmp_nuc_out = "tmp_nuc_out.fa"; 
-					    open(TNO, ">$tmp_nuc_out");
-					    print TNO $hit_header.$cds_seq."\n";
-					    close TNO;
+					    ######################
+					    # REVERSE CDS COORDS #
+					    ######################
 					    
-					    ######################################
-					    # Prepare input files for subroutine #
-					    ######################################
+					    if($strand_direction eq "Reverse"){
+						
+						#Domain is fully captured within CDS at 5' end
+						if($cds_start <= $domain_start){
+						    $zero_cds_domain_start = $domain_start - $cds_start;
+						    $genomic_cds_end = $domain_info_end + $zero_cds_domain_start;
+						}
+						
+						#Domain is cut off at the 5' end
+						if($cds_start > $domain_start){
+						    $zero_cds_domain_start = 0;
+						    my $diff = $cds_start - $domain_start;
+						    $genomic_cds_end = $domain_info_end - $diff;
+						}
+						
+						#Domain is fully captured within CDS at 3' end
+						if($domain_end <= $cds_end){
+						    $zero_cds_domain_end = $domain_end - $cds_start;
+						    my $x2 = $zero_cds_end - $zero_cds_domain_end;
+						    $genomic_cds_start = $domain_info_start - $x2;
+						    $genomic_cds_start -=1;
+						}
+						
+						#Domain is cut off at the 3' end
+						if($domain_end > $cds_end){
+						    $zero_cds_domain_end = $zero_cds_end;
+						    $genomic_cds_start = $genomic_cds_end - $zero_cds_end;
+						}
+						
+						#Domain does not occur in CDS
+						if($domain_start > $cds_end){
+						    # same as condition 1
+						    $genomic_cds_end = $domain_info_end + $zero_cds_domain_start;
 
-					    @prediction_details = ();
-					    push(@prediction_details, $nhmm_profile);
-					    push(@prediction_details, $tmp_nuc_out);
+						    # same as condition 4
+						    $genomic_cds_start = $genomic_cds_end - $zero_cds_end;
+						    
+						    # zero domain as 0 as not in CDS
+						    $zero_cds_domain_start = 0;
+						    $zero_cds_domain_end = 0;
+						}
+						
+						#Domain does not occur in CDS
+						if($domain_end < $cds_start){
+						    # same as condition 2
+						    my $diff = $cds_start - $domain_start;
+						    $genomic_cds_end = $domain_info_end - $diff;
 
-					    ####################################
-					    # Push evaule for hmmer subroutine #
-					    ####################################
+						    # same as condition 3
+						    my $x2 = $zero_cds_end - $zero_cds_domain_end;
+						    $genomic_cds_start = $domain_info_start - $x2;
+						    $genomic_cds_start -=1;
 
-					    if($default_nhmmer_evalue =~ m/^yes$/i){
-						my $default = "default";
-						push(@prediction_details, $default);
+						    # zer domain as 0 as not in CDS
+						    $zero_cds_domain_end = 0;
+						    $zero_cds_domain_start = 0;
+						    
+						}
 					    }
-					    else{
-						push(@prediction_details, $nhmmer_evalue);
-					    }
+					    
+					    # Prepare CDS header and seq
+					    $protein_details =~ s/\n//g;
+					    $cds_details =~ s/\n//g;
 
-					    ##############
-					    # HMM filter #
-					    ##############
-					    $hmm_status =&hmm_filter_nucleotide(@prediction_details);
-					    `rm $tmp_nuc_out`;
-					    `rm *hmmfilter.out`;
-					}			
+					    # Add mRNA coords to tsv
+					    $tsv_details[10] = $genomic_gene_start;
+					    $tsv_details[11] = $genomic_gene_end;
+					    $tsv_details[22] = $zero_gene_domain_start;
+					    $tsv_details[23] = $zero_gene_domain_end;
 
-					#####################################
-					# Check that sequence passed filter #
-					#####################################
-					
-					if($hmm_status == 1){
-					    $prediction_found = 1;
-					    my $hit_details = $hit_prefix.$hit_no." prediction:\n";
-					    $verified_cds_seq = $cds_seq;
-					    $verified_prot_seq = $protein_seq;
-					    `echo \"-----------------------------\n\" >> $augustus_prediction_log`;
-					    `echo \"$hit_details\" >> $augustus_prediction_log`;
-					    `echo \"$pred\" >> $augustus_prediction_log`;
+					    # Prepare header
+					    my $hit_header = ">Hit".$hit_no."_new_augustus_prediction\n";
 
-					    # Add to TSV details
+					    # Populate TSV (augustus prediction (yes/no)
 					    $tsv_details[2] = "Yes";
-					    $tsv_details[3] = "Pass";
-					    $tsv_details[24] = $zero_cds_domain_start;
-					    $tsv_details[25] = $zero_cds_domain_end;
-					    $tsv_details[13] = $genomic_cds_start;
-					    $tsv_details[14] = $genomic_cds_end;
-					    $tsv_details[15] = $augustus_cds_length;
+
 					    
-					    # Functional or Pseudogene status
-					    # Get functional status
-					    if($pseudogene_check =~ m/^yes$/i){
-						my $copy_seq = $cds_seq;
-						$copy_seq =~ s/\n//g;
-						my @status=&checkframe($copy_seq);
-						my $stat = $status[0];
-						my $annotation = "";
-						if($stat eq "1"){ 
-						    $annotation=$annotation_1; #START codon && no in frame stop codons
+					    #######################
+					    # CDS nucleotide      #
+					    #######################
+
+					    my $augustus_cds_length = "";
+					    
+					    my $cds_seq = "";
+					    if ($cds_details =~ m/\[([^\]]+)\]/){
+						$cds_seq = $1;
+						$cds_seq =~ s/\#//g;
+						$cds_seq =~ s/\s//g;
+						$augustus_cds_length = length($cds_seq);
+						$cds_seq =~ s/.{80}\K/\n/g;
+						$cds_seq = uc($cds_seq);
+					    }
+
+					    
+					    #######################
+					    # CDS protein         #
+					    #######################
+					    
+					    my $protein_seq = "";
+					    if ($protein_details =~ m/\[([^\]]+)\]/){
+						$protein_seq = $1;
+						$protein_seq =~ s/\#//g;
+						$protein_seq =~ s/\s//g;
+						$protein_seq =~ s/.{80}\K/\n/g;
+					    }
+
+					    
+					    ##################
+					    #   HMM FILTER   #
+					    ##################
+
+					    my $hmm_status = "";
+					    my @prediction_details = ();
+					    
+					    # If HMM filter using protein 
+					    if($hmm_filter_type =~ m/^protein$/i){
+
+						#######################################################
+						# Prep temporary file with protein sequence for hmmer #
+						#######################################################
+
+						my $tmp_prot_out = "tmp_prot_out.fa"; 
+						open(TPO, ">$tmp_prot_out");
+						print TPO $hit_header.$protein_seq."\n";
+						close TPO;
+						
+						######################################
+						# Prepare input files for subroutine #
+						######################################
+						
+						@prediction_details = ();
+						push(@prediction_details, $phmm_profile);
+						push(@prediction_details, $tmp_prot_out);
+						
+						####################################
+						# Push evaule for hmmer subroutine #
+						####################################
+						
+						if($default_phmmer_evalue =~ m/^yes$/i){
+						    my $default = "default";
+						    push(@prediction_details, $default);
 						}
-						if($stat eq "2"){
-						    $annotation=$annotation_2; #no START codon && no stop codons in any frame   
+						else{
+						    push(@prediction_details, $phmmer_evalue);
 						}
-						if($stat eq "3"){
-						    $annotation=$annotation_3; #no START codon && no in frame stop codons   
+						
+						##############
+						# HMM filter #
+						##############
+						
+						$hmm_status =&hmm_filter(@prediction_details);
+						`rm $tmp_prot_out`;
+						`rm *hmmfilter.out`;
+					    }
+					    
+					    elsif($hmm_filter_type =~ m/^nucleotide$/i){
+						
+						##########################################################
+						# Prep temporary file with nucleotide sequence for hmmer #
+						##########################################################
+
+						my $tmp_nuc_out = "tmp_nuc_out.fa"; 
+						open(TNO, ">$tmp_nuc_out");
+						print TNO $hit_header.$cds_seq."\n";
+						close TNO;
+						
+						######################################
+						# Prepare input files for subroutine #
+						######################################
+
+						@prediction_details = ();
+						push(@prediction_details, $nhmm_profile);
+						push(@prediction_details, $tmp_nuc_out);
+
+						####################################
+						# Push evaule for hmmer subroutine #
+						####################################
+
+						if($default_nhmmer_evalue =~ m/^yes$/i){
+						    my $default = "default";
+						    push(@prediction_details, $default);
 						}
-						if($stat eq "4"){
-						    $annotation=$annotation_4; #START codon && in frame stop codon  
+						else{
+						    push(@prediction_details, $nhmmer_evalue);
 						}
-						if($stat eq "5"){
-						    $annotation=$annotation_5; #no START codon && in frame stop codon 
+
+						##############
+						# HMM filter #
+						##############
+						$hmm_status =&hmm_filter_nucleotide(@prediction_details);
+						`rm $tmp_nuc_out`;
+						`rm *hmmfilter.out`;
+					    }			
+
+					    #####################################
+					    # Check that sequence passed filter #
+					    #####################################
+					    
+					    if($hmm_status == 1){
+						$prediction_found = 1;
+						my $hit_details = $hit_prefix.$hit_no." prediction:\n";
+						$verified_cds_seq = $cds_seq;
+						$verified_prot_seq = $protein_seq;
+						`echo \"-----------------------------\n\" >> $augustus_prediction_log`;
+						`echo \"$hit_details\" >> $augustus_prediction_log`;
+						`echo \"$pred\" >> $augustus_prediction_log`;
+
+						# Add to TSV details
+						$tsv_details[2] = "Yes";
+						$tsv_details[3] = "Pass";
+						$tsv_details[24] = $zero_cds_domain_start;
+						$tsv_details[25] = $zero_cds_domain_end;
+						$tsv_details[13] = $genomic_cds_start;
+						$tsv_details[14] = $genomic_cds_end;
+						$tsv_details[15] = $augustus_cds_length;
+						
+						# Functional or Pseudogene status
+						# Get functional status
+						if($pseudogene_check =~ m/^yes$/i){
+						    my $copy_seq = $cds_seq;
+						    $copy_seq =~ s/\n//g;
+						    my @status=&checkframe($copy_seq);
+						    my $stat = $status[0];
+						    my $annotation = "";
+						    if($stat eq "1"){ 
+							$annotation=$annotation_1; #START codon && no in frame stop codons
+						    }
+						    if($stat eq "2"){
+							$annotation=$annotation_2; #no START codon && no stop codons in any frame   
+						    }
+						    if($stat eq "3"){
+							$annotation=$annotation_3; #no START codon && no in frame stop codons   
+						    }
+						    if($stat eq "4"){
+							$annotation=$annotation_4; #START codon && in frame stop codon  
+						    }
+						    if($stat eq "5"){
+							$annotation=$annotation_5; #no START codon && in frame stop codon 
+						    }
+						    if($stat eq "6"){
+							$annotation=$annotation_6; #no STARt codon and && stop codons in all frames
+						    }
+						    if ($augustus_cds_length < $pseudogene_length){
+							$annotation = $annotation_short;
+						    }
+						    $tsv_details[16] = $annotation;
+						    $cds_functional_hash{$hit_annotation} = $annotation;
 						}
-						if($stat eq "6"){
-						    $annotation=$annotation_6; #no STARt codon and && stop codons in all frames
-						}
-						if ($augustus_cds_length < $pseudogene_length){
-						    $annotation = $annotation_short;
-						}
-						$tsv_details[16] = $annotation;
-						$cds_functional_hash{$hit_annotation} = $annotation;
+					    }
+					    else{
+						$prediction_found = 0;
+						$tsv_details[3] = "Fail";
 					    }
 					}
 					else{
 					    $prediction_found = 0;
-					    $tsv_details[3] = "Fail";
 					}
 				    }
 				    else{
 					$prediction_found = 0;
 				    }
 				}
-				else{
-				    $prediction_found = 0;
+				
+			    }
+			    
+			    #################################################################
+			    # If prediction overlaps with NHMMER coordinates, print to file #
+			    #################################################################
+			    
+			    if ($prediction_found  == 1){
+				my $locus_flag = " [Coordinates=$contig:$genomic_cds_start-$genomic_cds_end]";
+				my $prediction_flag =" [Augustus prediction]";
+				my $cds_header = ">".$hit_prefix.$hit_no.$locus_flag.$prediction_flag."\n";
+				my $hit_annotation = $hit_prefix.$hit_no;
+				push(@protein_names, $hit_annotation);
+
+				my $cds_copy = $verified_cds_seq;
+				$cds_copy =~ s/\n//g;
+				my $cds_length = length($cds_copy);
+				
+				# Print to CDS nucleotide
+				open(CDS_NT, ">>$cds_final_nuc");
+				print CDS_NT $cds_header.$verified_cds_seq."\n";
+				close CDS_NT;
+				
+				# Print to CDS protein
+				open(CDS_PROT, ">>$cds_final_prot");
+				print CDS_PROT $cds_header.$verified_prot_seq."\n";
+				close CDS_PROT;
+			    }
+			    else{
+				if($tsv_details[3] eq "Fail"){
+				    $tsv_details[2] = "Yes";
 				}
 			    }
-	
-			}
-			
-			#################################################################
-			# If prediction overlaps with NHMMER coordinates, print to file #
-			#################################################################
-			
-			if ($prediction_found  == 1){
-			    my $locus_flag = " [Coordinates=$contig:$genomic_cds_start-$genomic_cds_end]";
-			    my $prediction_flag =" [Augustus prediction]";
-			    my $cds_header = ">".$hit_prefix.$hit_no.$locus_flag.$prediction_flag."\n";
-			    my $hit_annotation = $hit_prefix.$hit_no;
-			    push(@protein_names, $hit_annotation);
-
-			    my $cds_copy = $verified_cds_seq;
-			    $cds_copy =~ s/\n//g;
-			    my $cds_length = length($cds_copy);
-			    
-			    # Print to CDS nucleotide
-			    open(CDS_NT, ">>$cds_final_nuc");
-			    print CDS_NT $cds_header.$verified_cds_seq."\n";
-			    close CDS_NT;
-			    
-			    # Print to CDS protein
-			    open(CDS_PROT, ">>$cds_final_prot");
-			    print CDS_PROT $cds_header.$verified_prot_seq."\n";
-			    close CDS_PROT;
-			}
-			else{
-			    if($tsv_details[3] eq "Fail"){
-				$tsv_details[2] = "Yes";
+			    if($tsv_details[2] eq "NA"){
+				$tsv_details[2] = "No";
 			    }
+			    open(TSV, ">>$tsv_summary");
+			    my $last_entry = pop(@tsv_details);
+			    print TSV join("\t", @tsv_details), "\t";
+			    print TSV $last_entry."\n";
+			    close TSV;
 			}
-			if($tsv_details[2] eq "NA"){
-			    $tsv_details[2] = "No";
-			}
-			open(TSV, ">>$tsv_summary");
-			my $last_entry = pop(@tsv_details);
-			print TSV join("\t", @tsv_details), "\t";
-			print TSV $last_entry."\n";
-			close TSV;
+		    }
+		    
+		    ##############################
+		    # Remove the temporary files #
+		    ##############################
+		    
+		    if($hit_prefix){
+			`rm $hit_prefix*`;
+		    }
+		    if( -e "tmp.fa"){
+			`rm tmp.fa`;
+		    }
+		    my @domain_seqs = "";
+		    
+		    if(-e $copy_reference_file){
+			my $append_reference_file = $genome_ID."_".$reference_file; 
+			`cp $reference_file $append_reference_file`;
+			`mv $copy_reference_file $reference_file`;
 		    }
 		}
-	    
-		##############################
-		# Remove the temporary files #
-		##############################
-
-		if($hit_prefix){
-		    `rm $hit_prefix*`;
-		}
-		`rm tmp.fa`;
 		`rm *ssi`;
-		my @domain_seqs = "";
-		
-		
-		if(-e $copy_reference_file){
-		    my $append_reference_file = $genome_ID."_".$reference_file; 
-		    `cp $reference_file $append_reference_file`;
-		    `mv $copy_reference_file $reference_file`;
-		}
 	    }
-
+	    
 	    ######################################################################################
 	    # 4.8. Tidy and assign pseudogene/functional status to all predictions (if specified)
 	    ######################################################################################
-	    
-	    my $out = "tmp_cds.fa";
-	    my @cds_final_files = ();
-	    my %prot_headers;
-	    push(@cds_final_files, $cds_final_prot);
-	    push(@cds_final_files, $cds_final_nuc);
-	    
-	    my $counter = 0;
-	    foreach my $cds_final_file(@cds_final_files){
-		my @ncbi_seqs_final = ();
-		my @augustus_seqs_final = ();
-		$counter ++;
-	                	
-		if(-e $out){
-		    `rm $out`;
-		}
+
+	    if(-e $cds_final_prot && -e $cds_final_nuc && -e $tsv_summary){
+		my $out = "tmp_cds.fa";
+		my @cds_final_files = ();
+		my %prot_headers;
+		push(@cds_final_files, $cds_final_prot);
+		push(@cds_final_files, $cds_final_nuc);
 		
-		my @finalseqs =&parse_fasta($cds_final_file);
-		
-		foreach my $cds(@finalseqs){
-		    if($cds =~ m/(.*)\n([\S\n]+)/){
-			my $cds_header = $1;
-			my $cds_seq = $2;
-			$cds_header =~ s/\n//g;
-			$cds_seq =~ s/\n//g;
-			$cds_seq =~ s/.{80}\K/\n/g;
-			my $cds_ID_name;
-			my $ncbi_prediction = 0;
-			if($cds_header =~ m/NCBI/i){
-			    $ncbi_prediction = 1;
-			}
-			if($cds_header =~ m/\[protein\_id\=([^\]]+)/){
-			    $cds_ID_name = $1;
-			}
-			elsif($cds_header =~ m/\>([\S]+)/){
-			    $cds_ID_name = $1;
-			}
-			my $functional_flag = "";
-			if ($pseudogene_check eq "yes" || $pseudogene_check eq "Yes"){
-			    #print "Annotating hits with functional or pseudogene status ...\n\n";
-			    my $functional_status = $cds_functional_hash{$cds_ID_name};
-			    $functional_flag = " [status=$functional_status]";
-			}
-			else{
-			    $functional_flag = "NA";
-			}
-			if($counter ==1){
-			    if($functional_flag ne "NA"){
-				$cds_header.=$functional_flag;
+		my $counter = 0;
+		foreach my $cds_final_file(@cds_final_files){
+		    my @ncbi_seqs_final = ();
+		    my @augustus_seqs_final = ();
+		    $counter ++;
+		    
+		    if(-e $out){
+			`rm $out`;
+		    }
+		    
+		    my @finalseqs =&parse_fasta($cds_final_file);
+		    
+		    foreach my $cds(@finalseqs){
+			if($cds =~ m/(.*)\n([\S\n]+)/){
+			    my $cds_header = $1;
+			    my $cds_seq = $2;
+			    $cds_header =~ s/\n//g;
+			    $cds_seq =~ s/\n//g;
+			    $cds_seq =~ s/.{80}\K/\n/g;
+			    my $cds_ID_name;
+			    my $ncbi_prediction = 0;
+			    if($cds_header =~ m/NCBI/i){
+				$ncbi_prediction = 1;
+			    }
+			    if($cds_header =~ m/\[protein\_id\=([^\]]+)/){
+				$cds_ID_name = $1;
+			    }
+			    elsif($cds_header =~ m/\>([\S]+)/){
+				$cds_ID_name = $1;
+			    }
+			    my $functional_flag = "";
+			    if ($pseudogene_check eq "yes" || $pseudogene_check eq "Yes"){
+				#print "Annotating hits with functional or pseudogene status ...\n\n";
+				my $functional_status = $cds_functional_hash{$cds_ID_name};
+				$functional_flag = " [status=$functional_status]";
+			    }
+			    else{
+				$functional_flag = "NA";
+			    }
+			    if($counter ==1){
+				if($functional_flag ne "NA"){
+				    $cds_header.=$functional_flag;
+				}
+			    }
+			    if($counter == 1){ # protein
+				$prot_headers{$cds_ID_name} = $cds_header;
+			    }
+			    elsif($counter == 2){ #nucleotide
+				$cds_header = $prot_headers{$cds_ID_name};
+			    }
+			    
+			    my $seq_final = $cds_header."\n".$cds_seq."\n";
+			    
+			    if($ncbi_prediction ==1){
+				push(@ncbi_seqs_final, $seq_final);
+			    }
+			    else{
+				push(@augustus_seqs_final, $seq_final);
 			    }
 			}
-			if($counter == 1){ # protein
-			    $prot_headers{$cds_ID_name} = $cds_header;
-			}
-			elsif($counter == 2){ #nucleotide
-			    $cds_header = $prot_headers{$cds_ID_name};
-			}
-			
-			my $seq_final = $cds_header."\n".$cds_seq."\n";
-			
-			if($ncbi_prediction ==1){
-			    push(@ncbi_seqs_final, $seq_final);
-			}
-			else{
-			    push(@augustus_seqs_final, $seq_final);
-			}
 		    }
-		}
-		my @sorted_ncbi_seqs_final = sort(@ncbi_seqs_final);
-		foreach my $annotated_seq(@sorted_ncbi_seqs_final){	
-		    open(OUT_FINAL, ">>$out");
-		    print OUT_FINAL $annotated_seq;
-		    close OUT_FINAL;
-		}
-		if(@augustus_seqs_final){
-		    #my @sorted_augustus_seqs_final = sort(@augustus_seqs_final);
-		    foreach my $annotated_seq(@augustus_seqs_final){	
+		    my @sorted_ncbi_seqs_final = sort(@ncbi_seqs_final);
+		    foreach my $annotated_seq(@sorted_ncbi_seqs_final){	
 			open(OUT_FINAL, ">>$out");
 			print OUT_FINAL $annotated_seq;
 			close OUT_FINAL;
 		    }
-		}
-		`mv $out $cds_final_file`;
-	    }
-
-	    close OUTTSV;
-
-	    # Sort by order of TSV
-	    my $tmp_cds_nuc = "tmp_cds_nuc.fa";
-	    my $tmp_cds_prot = "tmp_cds_prot.fa";
-
-	    if(-e $tmp_cds_nuc && -e $tmp_cds_prot){
-		`rm $tmp_cds_nuc`;
-		`rm $tmp_cds_nuc`;
-	    }
-
-	    `esl-sfetch --index $cds_final_nuc`;
-	    `esl-sfetch --index $cds_final_prot`;
-	    
-	    open(TSV_IN, $tsv_summary);
-	    my @tsv_entries = (<TSV_IN>);
-	    close TSV_IN;
-	    shift(@tsv_entries); # remove header
-	    foreach my $tsv_line(@tsv_entries){
-		$tsv_line =~ s/\n//g;
-		my @tsvals = split(/\t/, $tsv_line);
-		my $target = $tsvals[12];
-		unless($tsvals[1] eq "No" && $tsvals[2] eq "No"){
-		    unless($tsvals[3] eq "Fail"){
-			`esl-sfetch $cds_final_nuc $target >> $tmp_cds_nuc`;
-			`esl-sfetch $cds_final_prot $target >> $tmp_cds_prot`;
+		    if(@augustus_seqs_final){
+			#my @sorted_augustus_seqs_final = sort(@augustus_seqs_final);
+			foreach my $annotated_seq(@augustus_seqs_final){	
+			    open(OUT_FINAL, ">>$out");
+			    print OUT_FINAL $annotated_seq;
+			    close OUT_FINAL;
+			}
+		    }
+		    if(-e $cds_final_file){
+			`mv $out $cds_final_file`;
 		    }
 		}
-	    }
-	    
-	    if(-e $tmp_cds_nuc && -e $tmp_cds_prot){
-		`mv $tmp_cds_nuc $cds_final_nuc`;
-		`mv $tmp_cds_prot $cds_final_prot`;
-	    }
-	    
-	    `rm *ssi`;
- 	    
+		
+		close OUTTSV;
+		
+		# Sort by order of TSV
+		my $tmp_cds_nuc = "tmp_cds_nuc.fa";
+		my $tmp_cds_prot = "tmp_cds_prot.fa";
+		
+		if(-e $tmp_cds_nuc && -e $tmp_cds_prot){
+		    `rm $tmp_cds_nuc`;
+		    `rm $tmp_cds_nuc`;
+		}
+		
+		`esl-sfetch --index $cds_final_nuc`;
+		`esl-sfetch --index $cds_final_prot`;
+		
+		open(TSV_IN, $tsv_summary);
+		my @tsv_entries = (<TSV_IN>);
+		close TSV_IN;
+		shift(@tsv_entries); # remove header
+		foreach my $tsv_line(@tsv_entries){
+		    $tsv_line =~ s/\n//g;
+		    my @tsvals = split(/\t/, $tsv_line);
+		    my $target = $tsvals[12];
+		    unless($tsvals[1] eq "No" && $tsvals[2] eq "No"){
+			unless($tsvals[3] eq "Fail"){
+			    `esl-sfetch $cds_final_nuc $target >> $tmp_cds_nuc`;
+			    `esl-sfetch $cds_final_prot $target >> $tmp_cds_prot`;
+			}
+		    }
+		}
+		
+		if(-e $tmp_cds_nuc && -e $tmp_cds_prot){
+		    `mv $tmp_cds_nuc $cds_final_nuc`;
+		    `mv $tmp_cds_prot $cds_final_prot`;
+		}
+		
+		`rm *ssi`;
+ 	    }
 
 	    ###################################################
 	    # 4.9. Remove duplicates - if option is selected  #
 	    ###################################################
 
-	    if($remove_duplicates =~ m/^yes$/i){
-		my $filter_threshold = $duplicate_threshold * 100;
-		my $filtered_nuc = $genome_ID."_cds_nuc_remove_duplicates_".$filter_threshold.".fa";
-		my $filtered_prot = $genome_ID."_cds_prot_remove_duplicates_".$filter_threshold.".fa";
+	    if( -e $cds_final_nuc && $cds_final_prot){
+		if($remove_duplicates =~ m/^yes$/i){
+		    my $filter_threshold = $duplicate_threshold * 100;
+		    my $filtered_nuc = $genome_ID."_cds_nuc_remove_duplicates_".$filter_threshold.".fa";
+		    my $filtered_prot = $genome_ID."_cds_prot_remove_duplicates_".$filter_threshold.".fa";
+		    
+		    # Index cds files
+		    `esl-sfetch --index $cds_final_nuc`;
+		    `esl-sfetch --index $cds_final_prot`;
+		    
+		    print "generating percent identity matrix ...\n\n";
+		    
+		    open(TSV_IN, $tsv_summary);
+		    my @tsv_entries = (<TSV_IN>);
+		    close TSV_IN;
+		    
+		    # Blast protein file against itself to calculate pairiwse percent identity scores
+		    # Store percent identity values in a matrix
+		    # If pairs exceed $duplicate_threshold, retain the sequence on the longer contig
+		    # Will need a hash with cds_name => contig and contig => contig_length
+		    # Add keep/remove to the tsv
 
-		# Index cds files
-		`esl-sfetch --index $cds_final_nuc`;
-		`esl-sfetch --index $cds_final_prot`;
-		
-		print "generating percent identity matrix ...\n\n";
+		    # maybe iterate through each query, be greedy, always keep the longer sequence in pair ..
+		    # Do this until you have a status hash (which can be overwritten with each query pair)
+		    # CDS_ID => status
+		    # Then output the 'keeps' to '_filtered_X_percent_id.fa' files (protein and nucleotide).
 
-		open(TSV_IN, $tsv_summary);
-		my @tsv_entries = (<TSV_IN>);
-		close TSV_IN;
-		
-		# Blast protein file against itself to calculate pairiwse percent identity scores
-		# Store percent identity values in a matrix
-		# If pairs exceed $duplicate_threshold, retain the sequence on the longer contig
-		# Will need a hash with cds_name => contig and contig => contig_length
-		# Add keep/remove to the tsv
+		    # If best has already been SEEN and removed, check the next best ... so on, until you have a BEST in the pair that has not been seen?
+		    
+		    #my @pid_matrix =&get_matrix();
+		    my $matrix_db = "matrix_db.db";
+		    my $blast_out = "matrix_blast.out";
+		    my $output_format = "6 qseqid qlen sseqid slen qstart qend sstart send evalue length nident qcovhsp pident";
+		    
+		    `makeblastdb -in $cds_final_prot -dbtype="prot" -out $matrix_db`; 
+		    `blastp -db $matrix_db -query $cds_final_prot -out $blast_out -num_threads $threads -outfmt \"$output_format\"`;
 
-		# maybe iterate through each query, be greedy, always keep the longer sequence in pair ..
-		# Do this until you have a status hash (which can be overwritten with each query pair)
-		# CDS_ID => status
-		# Then output the 'keeps' to '_filtered_X_percent_id.fa' files (protein and nucleotide).
+		    my @pid_matrix =&get_matrix($blast_out, \@protein_names, \@protein_names, $matrix_out);
+		    
+		    `rm $matrix_db*`;
+		    `rm $blast_out`;
 
-		# If best has already been SEEN and removed, check the next best ... so on, until you have a BEST in the pair that has not been seen?
-		
-		#my @pid_matrix =&get_matrix();
-		my $matrix_db = "matrix_db.db";
-		my $blast_out = "matrix_blast.out";
-		my $output_format = "6 qseqid qlen sseqid slen qstart qend sstart send evalue length nident qcovhsp pident";
-		
-		`makeblastdb -in $cds_final_prot -dbtype="prot" -out $matrix_db`; 
-		`blastp -db $matrix_db -query $cds_final_prot -out $blast_out -num_threads $threads -outfmt \"$output_format\"`;
+		    #################
+		    # Parse matrix  #
+		    #################
 
-		my @pid_matrix =&get_matrix($blast_out, \@protein_names, \@protein_names, $matrix_out);
-		
-		`rm $matrix_db*`;
-		`rm $blast_out`;
+		    print "removing duplicates which share over $filter_threshold"."% identity...\n\n";
 
-		#################
-		# Parse matrix  #
-		#################
+		    my $duplicate_log = $genome_ID."_remove_duplicates_".$filter_threshold.".log";
+		    open(DLOG, ">$duplicate_log");
 
-		print "removing duplicates which share over $filter_threshold"."% identity...\n\n";
-
-		my $duplicate_log = $genome_ID."_remove_duplicates_".$filter_threshold.".log";
-		open(DLOG, ">$duplicate_log");
-
-		my %keep_discard_hash;
-		
-		###################
-		# Cluster remove  #
-		###################
-		
-		if($duplicate_type =~m/^cluster$/){
-		    my $row_no = 0;
-		    foreach my $row(@pid_matrix){
-			my $row_name = $protein_names[$row_no];
-			my @cluster = ();
-			push(@cluster, $row_name);
-			#print "searching row $row_no \n";
-			$row_no ++;
-			#print DLOG "=" x 20;
-			#print DLOG "Cluster".$row_no;
-			#print DLOG "=" x 20, "\n\n";
-			print DLOG "=" x 50;
-			print DLOG "\n\nCluster".$row_no."\n";
-			my @row_values = @$row;
-			my $indx = -1;
-			foreach my $entry(@row_values){
-			    $indx ++;
-			    #print "searching column number $indx \n";
-			    unless($entry =~ m/\*/ || $entry =~ m/NA/){
-				if($entry > $filter_threshold){
-				    push(@cluster, $protein_names[$indx]);
-				    #print "Column no: $indx."."\n";
-				}
-			    }
-			}
-
-			print DLOG "Cluster size: ", scalar(@cluster), "\n";
-			print DLOG "$row_name: ";
-
-			my %cluster_contig_lengths;
-			if(scalar(@cluster >= 2)){
-			    #print "cluster for row $row_name :\t";
-			    print DLOG join("\, ", @cluster), "\n";
-			    foreach my $member(@cluster){
-				my $contig_cluster = "";
-				my $contig_cluster_length = "";
-				foreach my $tsv_line(@tsv_entries){
-				    my @tsvals = split(/\t/, $tsv_line);
-				    if($tsvals[12] eq $member){
-					$contig_cluster = $tsvals[5];
-					$contig_cluster_length = $tsvals[6];
-					$cluster_contig_lengths{$member} = $contig_cluster_length;
+		    my %keep_discard_hash;
+		    
+		    ###################
+		    # Cluster remove  #
+		    ###################
+		    
+		    if($duplicate_type =~m/^cluster$/){
+			my $row_no = 0;
+			foreach my $row(@pid_matrix){
+			    my $row_name = $protein_names[$row_no];
+			    my @cluster = ();
+			    push(@cluster, $row_name);
+			    #print "searching row $row_no \n";
+			    $row_no ++;
+			    #print DLOG "=" x 20;
+			    #print DLOG "Cluster".$row_no;
+			    #print DLOG "=" x 20, "\n\n";
+			    print DLOG "=" x 50;
+			    print DLOG "\n\nCluster".$row_no."\n";
+			    my @row_values = @$row;
+			    my $indx = -1;
+			    foreach my $entry(@row_values){
+				$indx ++;
+				#print "searching column number $indx \n";
+				unless($entry =~ m/\*/ || $entry =~ m/NA/){
+				    if($entry > $filter_threshold){
+					push(@cluster, $protein_names[$indx]);
+					#print "Column no: $indx."."\n";
 				    }
 				}
 			    }
-			    my @sorted_members = sort { $cluster_contig_lengths{$a} <=> $cluster_contig_lengths{$b} or $a cmp $b } keys %cluster_contig_lengths;
-			    my $retained_dup = shift(@sorted_members);
-			    if(exists $keep_discard_hash{$retained_dup}){
-				if($keep_discard_hash{$retained_dup} ne "Remove"){
-				    print DLOG "Keep $retained_dup !\n\n";
-				    $keep_discard_hash{$retained_dup} = "Keep";
-				    foreach my $sorted_member(@sorted_members){
-					$keep_discard_hash{$sorted_member} = "Remove";
+
+			    print DLOG "Cluster size: ", scalar(@cluster), "\n";
+			    print DLOG "$row_name: ";
+
+			    my %cluster_contig_lengths;
+			    if(scalar(@cluster >= 2)){
+				#print "cluster for row $row_name :\t";
+				print DLOG join("\, ", @cluster), "\n";
+				foreach my $member(@cluster){
+				    my $contig_cluster = "";
+				    my $contig_cluster_length = "";
+				    foreach my $tsv_line(@tsv_entries){
+					my @tsvals = split(/\t/, $tsv_line);
+					if($tsvals[12] eq $member){
+					    $contig_cluster = $tsvals[5];
+					    $contig_cluster_length = $tsvals[6];
+					    $cluster_contig_lengths{$member} = $contig_cluster_length;
+					}
+				    }
+				}
+				my @sorted_members = sort { $cluster_contig_lengths{$a} <=> $cluster_contig_lengths{$b} or $a cmp $b } keys %cluster_contig_lengths;
+				my $retained_dup = shift(@sorted_members);
+				if(exists $keep_discard_hash{$retained_dup}){
+				    if($keep_discard_hash{$retained_dup} ne "Remove"){
+					print DLOG "Keep $retained_dup !\n\n";
+					$keep_discard_hash{$retained_dup} = "Keep";
+					foreach my $sorted_member(@sorted_members){
+					    $keep_discard_hash{$sorted_member} = "Remove";
+					}
+				    }
+				    else{
+					my $found = 0;
+					foreach my $sorted_member(@sorted_members){
+					    if($found ==0){
+						if($keep_discard_hash{$retained_dup} ne "Remove"){
+						    #print "keep $retained_dup \n";
+						    $keep_discard_hash{$retained_dup} = "Keep";
+						    print DLOG "Keep $retained_dup !\n\n";
+						    $found = 1;
+						}
+					    }
+					    else{
+						$keep_discard_hash{$sorted_member} = "Remove";
+					    }
+					}	    
 				    }
 				}
 				else{
-				    my $found = 0;
-				    foreach my $sorted_member(@sorted_members){
-					if($found ==0){
-					    if($keep_discard_hash{$retained_dup} ne "Remove"){
-						#print "keep $retained_dup \n";
-						$keep_discard_hash{$retained_dup} = "Keep";
-						print DLOG "Keep $retained_dup !\n\n";
-						$found = 1;
-					    }
-					}
-					else{
-					    $keep_discard_hash{$sorted_member} = "Remove";
-					}
-				    }	    
-				}
-			    }
-			    else{
-				#print "keep $retained_dup \n";
-				$keep_discard_hash{$retained_dup} = "Keep";
-				print DLOG "Keep $retained_dup !\n\n";
-				foreach my $sorted_member(@sorted_members){
-				    $keep_discard_hash{$sorted_member} = "Remove";
-				}
-			    }
-			}
-			else{
-			    $keep_discard_hash{$row_name} = "Keep";
-			    print DLOG join(", ", @cluster), "\n";
-			    print DLOG "Keep $row_name !\n\n";
-			    #keep row_name
-			}
-		    }
-		    print DLOG "=" x 50, "\n\n";
-		    close DLOG;
-		    #foreach my $keyy( keys %keep_discard_hash){
-			#print $keyy.": ".$keep_discard_hash{$keyy}."\n";
-		    #}
-		    open(OUTTSV, ">$tsv_summary");
-		    my $tsv_header = shift(@tsv_entries);
-		    print OUTTSV $tsv_header;
-		    foreach my $tsv_line(@tsv_entries){
-			$tsv_line =~ s/\n//g;
-			my @tsvals = split(/\t/, $tsv_line);
-			my $keep_remove = "";
-			if(exists $keep_discard_hash{$tsvals[12]}){
-			    $keep_remove = $keep_discard_hash{$tsvals[12]};
-			}
-			else{
-			    $keep_remove = "NA";
-			}
-			$tsvals[4] = $keep_remove;
-			if($keep_remove eq "Keep"){
-			    `esl-sfetch $cds_final_nuc $tsvals[12] >> $filtered_nuc`;
-			    `esl-sfetch $cds_final_prot $tsvals[12] >> $filtered_prot`;
-			}
-			print OUTTSV join("\t", @tsvals), "\n";
-		    }
-		    close OUTTSV;
-		}
-
-		
-		###################
-		# Pairwise-remove #
-		###################
-
-		elsif($duplicate_type =~m/^pairwise$/i){
-		    my %pair_key;
-		    my $row_no = 0;
-		    foreach my $row(@pid_matrix){
-			my @pair = (); #note that the 'pair' can have more than 2 values
-			my $row_name = $protein_names[$row_no];
-			print DLOG "=" x 50, "\n";
-			print DLOG "\nPair".$row_no."\n";
-			push(@pair, $row_name);
-			$row_no ++;
-			my @cluster = ();
-			my @row_values = @$row;
-			my $max_row_value = max(@row_values);
-			if($max_row_value ne "NA" && $max_row_value ne "\*"){
-			    if($max_row_value >= $filter_threshold){
-				my @max_column_indices = grep {$row_values[$_] == $max_row_value} 0 .. $#row_values;
-				my @column_names = map { $protein_names[$_] } @max_column_indices;
-
-				foreach my $max_column_indx(@max_column_indices){
-				    my $column_name = $protein_names[$max_column_indx];
-				    my @column_values = (map { $_->[$max_column_indx] } @pid_matrix); #get column values for column number $first_idx
-				    my $max_column_value = max(@column_values);
-				    my @max_row_indices = grep {$column_values[$_] == $max_column_value} 0 .. $#column_values;
-				    my @row_names = map { $protein_names[$_] } @max_row_indices;
-				    foreach my $max_row_indx(@max_row_indices){
-					if($protein_names[$max_row_indx] eq $row_name){
-					    if($max_row_value == $max_column_value && $max_row_value >= $filter_threshold){
-						#print "$row_name and $column_name are pairs with $max_row_value % identity ..\n";
-						push(@pair, $column_name);
-					    }
-					}
-				    }
-				}
-			    }
-			}
-			
-			my %pair_contig_lengths;
-			if(scalar(@pair >= 2)){
-			    print DLOG "Pair size: ", scalar(@pair), "\n";
-			    print DLOG "Members in pair share $max_row_value","% identity\n";
-			    print DLOG "$row_name: ";
-			    #print "Pair for row $row_name :\t";
-			    #print join("\t", @pair), "\n";
-			    print DLOG join(", ", @pair), "\n";
-			    foreach my $member(@pair){
-				my $contig_pair = "";
-				my $contig_pair_length = "";
-				foreach my $tsv_line(@tsv_entries){
-				    my @tsvals = split(/\t/, $tsv_line);
-				    if($tsvals[12] eq $member){
-					$contig_pair = $tsvals[5];
-					$contig_pair_length = $tsvals[6];
-					$pair_contig_lengths{$member} = $contig_pair_length;
-				    }
-				}
-			    }
-			    my @sorted_members = sort { $pair_contig_lengths{$a} <=> $pair_contig_lengths{$b} or $a cmp $b } keys %pair_contig_lengths;
-			    my $retained_dup = shift(@sorted_members);
-			    if(exists $keep_discard_hash{$retained_dup}){
-				if($keep_discard_hash{$retained_dup} ne "Remove"){
 				    #print "keep $retained_dup \n";
 				    $keep_discard_hash{$retained_dup} = "Keep";
 				    print DLOG "Keep $retained_dup !\n\n";
@@ -2808,78 +2782,187 @@ foreach my $genome(@genomes){
 					$keep_discard_hash{$sorted_member} = "Remove";
 				    }
 				}
-				else{
-				    my $found = 0;
-				    foreach my $sorted_member(@sorted_members){
-					if($found ==0){
-					    if($keep_discard_hash{$retained_dup} ne "Remove"){
-						#print "keep $retained_dup \n";
-						print DLOG "Keep $retained_dup !\n\n";
-						$keep_discard_hash{$retained_dup} = "Keep";
-						$found = 1;
+			    }
+			    else{
+				$keep_discard_hash{$row_name} = "Keep";
+				print DLOG join(", ", @cluster), "\n";
+				print DLOG "Keep $row_name !\n\n";
+				#keep row_name
+			    }
+			}
+			print DLOG "=" x 50, "\n\n";
+			close DLOG;
+			#foreach my $keyy( keys %keep_discard_hash){
+			#print $keyy.": ".$keep_discard_hash{$keyy}."\n";
+			#}
+			open(OUTTSV, ">$tsv_summary");
+			my $tsv_header = shift(@tsv_entries);
+			print OUTTSV $tsv_header;
+			foreach my $tsv_line(@tsv_entries){
+			    $tsv_line =~ s/\n//g;
+			    my @tsvals = split(/\t/, $tsv_line);
+			    my $keep_remove = "";
+			    if(exists $keep_discard_hash{$tsvals[12]}){
+				$keep_remove = $keep_discard_hash{$tsvals[12]};
+			    }
+			    else{
+				$keep_remove = "NA";
+			    }
+			    $tsvals[4] = $keep_remove;
+			    if($keep_remove eq "Keep"){
+				`esl-sfetch $cds_final_nuc $tsvals[12] >> $filtered_nuc`;
+				`esl-sfetch $cds_final_prot $tsvals[12] >> $filtered_prot`;
+			    }
+			    print OUTTSV join("\t", @tsvals), "\n";
+			}
+			close OUTTSV;
+		    }
+
+		    
+		    ###################
+		    # Pairwise-remove #
+		    ###################
+
+		    elsif($duplicate_type =~m/^pairwise$/i){
+			my %pair_key;
+			my $row_no = 0;
+			foreach my $row(@pid_matrix){
+			    my @pair = (); #note that the 'pair' can have more than 2 values
+			    my $row_name = $protein_names[$row_no];
+			    print DLOG "=" x 50, "\n";
+			    print DLOG "\nPair".$row_no."\n";
+			    push(@pair, $row_name);
+			    $row_no ++;
+			    my @cluster = ();
+			    my @row_values = @$row;
+			    my $max_row_value = max(@row_values);
+			    if($max_row_value ne "NA" && $max_row_value ne "\*"){
+				if($max_row_value >= $filter_threshold){
+				    my @max_column_indices = grep {$row_values[$_] == $max_row_value} 0 .. $#row_values;
+				    my @column_names = map { $protein_names[$_] } @max_column_indices;
+
+				    foreach my $max_column_indx(@max_column_indices){
+					my $column_name = $protein_names[$max_column_indx];
+					my @column_values = (map { $_->[$max_column_indx] } @pid_matrix); #get column values for column number $first_idx
+					my $max_column_value = max(@column_values);
+					my @max_row_indices = grep {$column_values[$_] == $max_column_value} 0 .. $#column_values;
+					my @row_names = map { $protein_names[$_] } @max_row_indices;
+					foreach my $max_row_indx(@max_row_indices){
+					    if($protein_names[$max_row_indx] eq $row_name){
+						if($max_row_value == $max_column_value && $max_row_value >= $filter_threshold){
+						    #print "$row_name and $column_name are pairs with $max_row_value % identity ..\n";
+						    push(@pair, $column_name);
+						}
 					    }
 					}
-					else{
+				    }
+				}
+			    }
+			    
+			    my %pair_contig_lengths;
+			    if(scalar(@pair >= 2)){
+				print DLOG "Pair size: ", scalar(@pair), "\n";
+				print DLOG "Members in pair share $max_row_value","% identity\n";
+				print DLOG "$row_name: ";
+				#print "Pair for row $row_name :\t";
+				#print join("\t", @pair), "\n";
+				print DLOG join(", ", @pair), "\n";
+				foreach my $member(@pair){
+				    my $contig_pair = "";
+				    my $contig_pair_length = "";
+				    foreach my $tsv_line(@tsv_entries){
+					my @tsvals = split(/\t/, $tsv_line);
+					if($tsvals[12] eq $member){
+					    $contig_pair = $tsvals[5];
+					    $contig_pair_length = $tsvals[6];
+					    $pair_contig_lengths{$member} = $contig_pair_length;
+					}
+				    }
+				}
+				my @sorted_members = sort { $pair_contig_lengths{$a} <=> $pair_contig_lengths{$b} or $a cmp $b } keys %pair_contig_lengths;
+				my $retained_dup = shift(@sorted_members);
+				if(exists $keep_discard_hash{$retained_dup}){
+				    if($keep_discard_hash{$retained_dup} ne "Remove"){
+					#print "keep $retained_dup \n";
+					$keep_discard_hash{$retained_dup} = "Keep";
+					print DLOG "Keep $retained_dup !\n\n";
+					foreach my $sorted_member(@sorted_members){
 					    $keep_discard_hash{$sorted_member} = "Remove";
 					}
-				    }	    
+				    }
+				    else{
+					my $found = 0;
+					foreach my $sorted_member(@sorted_members){
+					    if($found ==0){
+						if($keep_discard_hash{$retained_dup} ne "Remove"){
+						    #print "keep $retained_dup \n";
+						    print DLOG "Keep $retained_dup !\n\n";
+						    $keep_discard_hash{$retained_dup} = "Keep";
+						    $found = 1;
+						}
+					    }
+					    else{
+						$keep_discard_hash{$sorted_member} = "Remove";
+					    }
+					}	    
+				    }
+				}
+				else{
+				    #print "keep $retained_dup \n";
+				    $keep_discard_hash{$retained_dup} = "Keep";
+				    print DLOG "Keep $retained_dup !\n\n";
+				    foreach my $sorted_member(@sorted_members){
+					$keep_discard_hash{$sorted_member} = "Remove";
+				    }
 				}
 			    }
 			    else{
-				#print "keep $retained_dup \n";
-				$keep_discard_hash{$retained_dup} = "Keep";
-				print DLOG "Keep $retained_dup !\n\n";
-				foreach my $sorted_member(@sorted_members){
-				    $keep_discard_hash{$sorted_member} = "Remove";
-				}
+				print DLOG "Pair size: ", scalar(@pair), "\n";
+				print DLOG "$row_name: ";
+				$keep_discard_hash{$row_name} = "Keep";
+				print DLOG join(", ", @pair), "\n";
+				print DLOG "Keep $row_name !\n\n";
+				#keep row_name
 			    }
 			}
-			else{
-			    print DLOG "Pair size: ", scalar(@pair), "\n";
-			    print DLOG "$row_name: ";
-			    $keep_discard_hash{$row_name} = "Keep";
-			    print DLOG join(", ", @pair), "\n";
-			    print DLOG "Keep $row_name !\n\n";
-			    #keep row_name
+			#foreach my $keyy( keys %keep_discard_hash){
+			#		print $keyy.": ".$keep_discard_hash{$keyy}."\n";
+			#	    }
+			print DLOG "=" x 50, "\n\n";
+			close DLOG;
+			open(OUTTSV, ">$tsv_summary");
+			my $tsv_header = shift(@tsv_entries);
+			print OUTTSV $tsv_header;
+			foreach my $tsv_line(@tsv_entries){
+			    $tsv_line =~ s/\n//g;
+			    my @tsvals = split(/\t/, $tsv_line);
+			    my $keep_remove = "";
+			    if(exists $keep_discard_hash{$tsvals[12]}){
+				$keep_remove = $keep_discard_hash{$tsvals[12]};
+			    }
+			    else{
+				$keep_remove = "NA";
+			    }
+			    if($keep_remove eq "Keep"){
+				`esl-sfetch $cds_final_nuc $tsvals[12] >> $filtered_nuc`;
+				`esl-sfetch $cds_final_prot $tsvals[12] >> $filtered_prot`;
+			    }
+			    $tsvals[4] = $keep_remove;
+			    print OUTTSV join("\t", @tsvals), "\n";
 			}
+			close OUTTSV;
 		    }
-		    #foreach my $keyy( keys %keep_discard_hash){
-		    #		print $keyy.": ".$keep_discard_hash{$keyy}."\n";
-		    #	    }
-		    print DLOG "=" x 50, "\n\n";
-		    close DLOG;
-		    open(OUTTSV, ">$tsv_summary");
-		    my $tsv_header = shift(@tsv_entries);
-		    print OUTTSV $tsv_header;
-		    foreach my $tsv_line(@tsv_entries){
-			$tsv_line =~ s/\n//g;
-			my @tsvals = split(/\t/, $tsv_line);
-			my $keep_remove = "";
-			if(exists $keep_discard_hash{$tsvals[12]}){
-			    $keep_remove = $keep_discard_hash{$tsvals[12]};
-			}
-			else{
-			    $keep_remove = "NA";
-			}
-			if($keep_remove eq "Keep"){
-			    `esl-sfetch $cds_final_nuc $tsvals[12] >> $filtered_nuc`;
-			    `esl-sfetch $cds_final_prot $tsvals[12] >> $filtered_prot`;
-			}
-			$tsvals[4] = $keep_remove;
-			print OUTTSV join("\t", @tsvals), "\n";
+		    `rm *ssi`;
+		    
+		    if(-e $matrix_out){
+			`mkdir $subdir4`;
+			`mv $matrix_out $subdir4`;
+			`mv $duplicate_log $subdir4`;
+			`mv $filtered_nuc $filtered_prot $outdir`;
 		    }
-		    close OUTTSV;
-		}
-		`rm *ssi`;
-		
-		if(-e $matrix_out){
-		    `mkdir $subdir4`;
-		    `mv $matrix_out $subdir4`;
-		    `mv $duplicate_log $subdir4`;
-		    `mv $filtered_nuc $filtered_prot $outdir`;
 		}
 	    }
-
+	    
 	    ################################
 	    # 4.10. Sort output directories #
 	    ################################
@@ -2887,10 +2970,19 @@ foreach my $genome(@genomes){
 	    if(-e $nhmmer_nucleotide_sequences){
 		`rm $nhmmer_nucleotide_sequences`;
 	    }
-	    `mv $cds_final_nuc $cds_final_prot $outdir`;
+	    if( -e $cds_final_nuc && $cds_final_prot){
+		`mv $cds_final_nuc $cds_final_prot $outdir`;
+	    }
 	    if ($annotation_available eq "Yes" || $annotation_available eq "yes"){
-		`mv $cds_nuc $cds_prot $subdir2`;
-		`mv $unique_longest_transcripts_out $subdir2`;
+		if(-e $cds_nuc){
+		    `mv $cds_nuc $subdir2`;
+		}
+		if( -e $cds_prot){
+		    `mv $cds_prot $subdir2`;
+		}
+		if( -e $unique_longest_transcripts_out){
+		    `mv $unique_longest_transcripts_out $subdir2`;
+		}
 	    }
 	    if($predict_new_hits eq "Yes" || $predict_new_hits eq "yes"){
 		if(-e $augustus_prediction_log){
@@ -3078,29 +3170,47 @@ sub downloadGenomes {
 sub parse_hmmer{
     my $hmmer_file = $_[0];
     my $hmmer_results;
+    my @hmmer_hits = ();
     open(HMMER, $hmmer_file);
     {
 	local $/; #set delimiter to nothing, enables phmmer file to be read in as one chunk
 	$hmmer_results = <HMMER>; #store phmmer results
     }
     close HMMER;
-    my @hmm_array = split(/\>\>/, $hmmer_results);
-    my $hmmer_hit_chunk = $hmm_array[0];
-    my @hmmer_array2 = split("Description\n", $hmmer_hit_chunk);
-    my $hmmer_hit_chunk2 =  $hmmer_array2[1];
-    my @hmmer_hits = ();
-    if ($hmmer_hit_chunk2 =~ m/.*inclusion[\s]threshold.*/){
-	my @hmmer_array3 = split("------ inclusion threshold ------", $hmmer_hit_chunk2);
-	my $sig_hmmer_hits = $hmmer_array3[0];
-	@hmmer_hits = split("\n", $sig_hmmer_hits);
-	shift(@hmmer_hits); #remove rubbish element 
-	pop(@hmmer_hits); #remove empty line at end
+
+    if($hmmer_results =~ m/No hits detected that satisfy reporting thresholds/){
     }
     else{
-	my @hmmer_array3 = split("\n\nDomain", $hmmer_hit_chunk2);
-	my $sig_hmmer_hits = $hmmer_array3[0];
-	@hmmer_hits = split("\n", $sig_hmmer_hits);
-	shift(@hmmer_hits); #remove rubbish element 1
+	my @hmm_array = split(/\>\>/, $hmmer_results);
+	my $hmmer_hit_chunk = $hmm_array[0];
+	my @hmmer_array2 = split("Description\n", $hmmer_hit_chunk);
+	my $hmmer_hit_chunk2 =  $hmmer_array2[1];
+	
+	if($hmmer_hit_chunk2 =~ m/\n\nAnnotation/){
+	    my @splitdets = split(/\n\nAnnotation/, $hmmer_hit_chunk2);
+	    $hmmer_hit_chunk2 = $splitdets[0];
+	}
+	
+	
+	if ($hmmer_hit_chunk2 =~ m/.*inclusion[\s]threshold.*/){
+	    #print "I am here (inclusion threshold) \n";
+	    my @hmmer_array3 = split("------ inclusion threshold ------", $hmmer_hit_chunk2);
+	    my $sig_hmmer_hits = $hmmer_array3[0];
+	    @hmmer_hits = split("\n", $sig_hmmer_hits);
+	    shift(@hmmer_hits); #remove rubbish element 
+	    pop(@hmmer_hits); #remove empty line at end
+	    #print "These are hits: \n";
+	    #print join("\n", @hmmer_hits), "\n";
+	}
+	else{
+	    #print "I am here, no inclusion threshold \n";
+	    my @hmmer_array3 = split("\n\nDomain", $hmmer_hit_chunk2);
+	    my $sig_hmmer_hits = $hmmer_array3[0];
+	    @hmmer_hits = split("\n", $sig_hmmer_hits);
+	    shift(@hmmer_hits); #remove rubbish element 1
+	    #print "These are hits: \n";
+	    #print join("\n", @hmmer_hits), "\n";
+	}
     }
     return @hmmer_hits;
 }
@@ -3291,54 +3401,56 @@ sub parse_gff{
 			}
 
 			#Check that ID is target
-			if(grep { $_ eq $attribute_hash{$identifier_type} } @identifiers) {
+			if(exists $attribute_hash{$identifier_type}){
+			    if(grep { $_ eq $attribute_hash{$identifier_type} } @identifiers) {
 			    
 
-			    $gene_details[0] = $seqname; #contig name
-			    
-			    #Account for reverse strand
-			    if($end < $start){
-				my $tmp_val = $start;
-				$start = $end;
-				$end = $tmp_val;
-			    }
-
-			    if($strand eq "+"){
-				$strand = "Forward";
-			    }
-			    elsif($strand eq "-"){
-				$strand = "Reverse";
-			    }
-			    
-			    $gene_details[1] = $strand; #Forward or Reverse
-			    
-			    #Gather attributes
-			    foreach my $key (keys %attribute_hash) {
-				my $value = $attribute_hash{$key};
+				$gene_details[0] = $seqname; #contig name
 				
-				if($key eq "Parent"){
-				    my $adjust_value = $value;
-				    $adjust_value =~ s/rna\-//g;
-				    $rna_ID = $adjust_value;
-				    push(@rna_IDs, $value);
+				#Account for reverse strand
+				if($end < $start){
+				    my $tmp_val = $start;
+				    $start = $end;
+				    $end = $tmp_val;
 				}
-				elsif($key eq "protein_id"){
-				    $protein_ID = $value;
+				
+				if($strand eq "+"){
+				    $strand = "Forward";
 				}
+				elsif($strand eq "-"){
+				    $strand = "Reverse";
+				}
+				
+				$gene_details[1] = $strand; #Forward or Reverse
+				
+				#Gather attributes
+				foreach my $key (keys %attribute_hash) {
+				    my $value = $attribute_hash{$key};
+				    
+				    if($key eq "Parent"){
+					my $adjust_value = $value;
+					$adjust_value =~ s/rna\-//g;
+					$rna_ID = $adjust_value;
+					push(@rna_IDs, $value);
+				    }
+				    elsif($key eq "protein_id"){
+					$protein_ID = $value;
+				    }
+				}
+				
+				#Populate @gene_details
+				if($rna_ID){
+				    $gene_details[7] = $rna_ID;
+				}
+				if($protein_ID){
+				    $gene_details[8] = $protein_ID;
+				}
+				$gene_info{$rna_ID} = join("|", @gene_details);
 			    }
-
-			    #Populate @gene_details
-			    if($rna_ID){
-				$gene_details[7] = $rna_ID;
-			    }
-			    if($protein_ID){
-				$gene_details[8] = $protein_ID;
-			    }
-			    $gene_info{$rna_ID} = join("|", @gene_details);
 			}
 		    }
+		    
 		}
-
 	    }
 	    #Get GENE NAME from mRNA features.
 	    foreach my $line(@features){
@@ -3373,20 +3485,23 @@ sub parse_gff{
 			    $attribute_hash{$key} = $value;
 			}
 			my $id = "ID";
-			if(grep { $_ eq $attribute_hash{$id} } @rna_IDs) {
-			    my $gene_id = $attribute_hash{"Parent"};
-			    $gene_id =~ s/gene-//g;
-			    my $rna_name = $attribute_hash{$id};
-			    my $rna = $rna_name;
-			    $rna =~ s/rna-//g;	    
-			    my @info_array = split(/\|/, $gene_info{$rna});
-			    $info_array[6] = $gene_id; #gene ID
-			    $info_array[2] = $start; #mRNA start
-			    $info_array[3] = $end; #mRNA end
-			    $info_array[9] = $mrna_length; #mRNA length
-			    $gene_info{$rna} = join("|", @info_array);
-			}
-		    }		
+
+			if(exists $attribute_hash{$id}){
+			    if(grep { $_ eq $attribute_hash{$id} } @rna_IDs) {
+				my $gene_id = $attribute_hash{"Parent"};
+				$gene_id =~ s/gene-//g;
+				my $rna_name = $attribute_hash{$id};
+				my $rna = $rna_name;
+				$rna =~ s/rna-//g;	    
+				my @info_array = split(/\|/, $gene_info{$rna});
+				$info_array[6] = $gene_id; #gene ID
+				$info_array[2] = $start; #mRNA start
+				$info_array[3] = $end; #mRNA end
+				$info_array[9] = $mrna_length; #mRNA length
+				$gene_info{$rna} = join("|", @info_array);
+			    }
+			}		
+		    }
 		}
 	    }
 	}
@@ -3476,12 +3591,14 @@ sub mine_seqs{
 		$seqID = $1;
 	    }
 	}
-	if(grep { $_ eq $seqID } @ID_array) {
-	    unless($header =~ m/\Q$ncbi_flag\E/){
-		$header.=$ncbi_flag;
+	if($seqID){
+	    if(grep { $_ eq $seqID } @ID_array) {
+		unless($header =~ m/\Q$ncbi_flag\E/){
+		    $header.=$ncbi_flag;
+		}
+		print FILEOUT $header."\n".$seq."\n";
+		push(@headers, $header);
 	    }
-	    print FILEOUT $header."\n".$seq."\n";
-	    push(@headers, $header);
 	}
     }
     close FILEOUT;
