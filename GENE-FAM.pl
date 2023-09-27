@@ -14,15 +14,15 @@ use List::Util qw( min max );
 ########################
 
 # phmmer and nhmmer alignments for transcription factor domain
-my $pfam_seed = "PF00319_seed.txt"; #protein alignment (E.g PFAM seed alignment)
-my $nuc_alignment = "MADS_nhmmer_alignment.fa"; #Nucleotide alignment
+my $pfam_seed = ""; #protein alignment (E.g PFAM seed alignment)
+my $nuc_alignment = ""; #Nucleotide alignment
 
 # Augustus reference file:
-my $reference_file = "MADS_reference_file.fa"; #if augustus option is on, enter reference file name here.
+my $reference_file = ""; #if augustus option is on, enter reference file name here.
 
 # HMM profile names - these files will be created automatically using your alignment files.
-my $phmm_profile = "MADSp.hmm"; #nhmmer profile name: use hmmer to build hmm profile from $pfam_seed. Please note that these must end in ".hmm".
-my $nhmm_profile = "MADSn.hmm"; #phmmer profile name: use hmmer to build hmm profile from $nuc_alignment. Please note that these must end in ".hmm".
+my $phmm_profile = ".hmm"; #nhmmer profile name: use hmmer to build hmm profile from $pfam_seed. Please note that these must end in ".hmm".
+my $nhmm_profile = ".hmm"; #phmmer profile name: use hmmer to build hmm profile from $nuc_alignment. Please note that these must end in ".hmm".
 
 
 ############ 
@@ -33,7 +33,7 @@ my $nhmm_profile = "MADSn.hmm"; #phmmer profile name: use hmmer to build hmm pro
 my $annotation_available = "yes"; #If NCBI annotations are available for your genome set below variable to "yes". Set as "no" if no annotations are available, and you wish to mine the assembly only.
 
 # Automate download of annotation files? #FOR NCBI REFSEQ GENOMES ONLY!#
-my $automate_download = "no";
+my $automate_download = "yes";
 my $species_list = "species.txt"; #list species names in species.txt file to download files for each species
 
 # hmmsearch evalue threshold (protein):
@@ -66,7 +66,7 @@ my $pseudogene_check = "yes"; #If yes, all cds seqs with in frame stop codons, o
 my $pseudogene_length = 300; #coding sequences below this length are considered pesuogenes (nucloetide length).
 
 # Remove duplicates
-my $remove_duplicates = "no"; # If you wish to filter out potential duplicates, set this to "yes", otherwise set this to "no". Duplicate on longest contig will be retained.
+my $remove_duplicates = "yes"; # If you wish to filter out potential duplicates, set this to "yes", otherwise set this to "no". Duplicate on longest contig will be retained.
 my $duplicate_threshold = 0.9; #Percentage identity which pairs or clusters must share to be considered 'duplicates'.
 my $duplicate_type = "cluster"; #pairwise or cluster. 
 
