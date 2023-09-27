@@ -1,5 +1,5 @@
-# TFAM
-Transcription factor family annotation and mining tool
+# GENE-FAM
+A gene family mining and prediction tool
 
 ### <ins>Usage:</ins>
 ```
