@@ -313,16 +313,28 @@ unless($predict_new_hits =~ m/^no$/i){
     }
 }
 if($default_phmmer_evalue =~ m/^no$/i){
-    unless(looks_like_number($phmmer_evalue)){
+    if(looks_like_number($phmmer_evalue)){
+	if($phmmer_evalue == 0){
+	    print "The \$phmmer_evalue cannot be set to 0. Please adjust this variable accordingly and retry. \n\n";
+	    $die_signal ++;
+	}
+    }
+    else{
 	print "The \$phmmer_evalue variable is not numeric. Please ensure a numeric value is set for this variable and try again. \n\n";
 	$die_signal ++;
-    }
+    }   
 }
 if($default_nhmmer_evalue =~ m/^no$/i){
-    unless(looks_like_number($nhmmer_evalue)){
+    if(looks_like_number($nhmmer_evalue)){
+	if($nhmmer_evalue == 0){
+	    print "The \$nhmmer_evalue cannot be set to 0. Please adjust this variable accordingly and retry. \n\n";
+	    $die_signal ++;
+	}
+    }
+    else{
 	print "The \$nhmmer_evalue variable is not numeric. Please ensure a numeric value is set for this variable and try again. \n\n";
 	$die_signal ++;
-    }
+    }   
 }
 unless($predict_new_hits =~ m/^no$/){
     if(looks_like_number($minidentity)){
