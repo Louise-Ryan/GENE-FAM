@@ -1,18 +1,15 @@
-In this example, TFAM will be run on Cannabis, Apple and Arabidopsis looking for MADS box genes.
+In this example, GENE-FAM will be run on Apple and Arabidopsis to mine MADS box genes.
 
-As these are all RefSeq genomes, with annotation files available, the genomes can be automatically downloaded with TFAM.
+As these are all RefSeq genomes, with annotation files available, the genomes can be automatically downloaded using GENE-FAM.
 
 The species of interest are specified in the species.txt file.
 
 Run the following command:
-perl TFAM_refseq_example.pl
+perl GENE-FAM-RefSeq-example.pl
 
 If everything is installed properly, this should work fine!
 
-You can ignore "smartmatch warnings" if they pop up.
-
 As annotation files are available for each species, the following parameters should be set as below:
    - $annotation_available = "yes"
-   - $cds_available = "yes"
    - $automate_download = "yes"
    - $species_list = "species.txt"
