@@ -3,7 +3,7 @@ A gene family mining and prediction tool
 
 ### <ins>Usage:</ins>
 ```
-perl TFAM.pl
+perl GENE-FAM.pl
 ```
 </p>
 Note, the blat2hints.pl script must be in your working directory for augustus to work!
@@ -184,11 +184,15 @@ my $remove_duplicates = "no"; #Line 69
 ```
 To specify the threshold percentage identity for which genes are considered duplicates, please set the following variable. Note that this is a percentage and should be a number between 0 and 1.
 ```
-my $duplicate_threshold = 0.9; #Line 71
+my $duplicate_threshold = 0.9; #Line 70
 ```
 When identifying duplicates, the pipeline can make use of two distinct algoirithms - "pairwise" or "cluster". In the pairwise algorithm, duplicate pairs are identified as mutual best scoring hits in the percent identity matrix. Note that more than 2 members may exist in a pair, if each member shares the maximum identity score. Mutual best scores are only considered pairs if they exceed the $duplicate_threshold set above. The member in each pair which is located on the longest contig is retained. In the "cluster" algorithm, genes which share greater percent identity than the $duplicate_threshold are combined into clusters. The member in each cluster which is located on the longest contig is retained. To specify whether you want to use the "pairwise" or "cluster" algorithms, please set the below variable:
 ```
-my $duplicate_type = "cluster"; #pairwise or cluster. 
+my $duplicate_type = "cluster"; #Line 71
+```
+To increase the number of threads, the $threads variable can be adjusted accordingly.
+```
+my $threads = 8;
 ```
 
 <b>
