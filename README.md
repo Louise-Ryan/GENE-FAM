@@ -342,9 +342,9 @@ my $duplicate_type = "cluster"; #Line 71
 
 <li> <b>Adjust the number of threads:</b> </li> </p>
 
-To increase the number of threads used for HMMER and BLAST , please adjust the $threads variable on line X  accordingly.
+To increase the number of threads used for HMMER and BLAST , please adjust the $threads variable on line 74  accordingly.
 ```
-my $threads = 8;
+my $threads = 8; #Line 74
 ```
 
 <b>
