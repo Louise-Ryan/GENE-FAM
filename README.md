@@ -279,11 +279,11 @@ my $hmm_filter_type = "protein"; #Line 55
 </p>
 <br>
 
-<li> <b>Options for nhmmer on whole genome assembly:</b> </li> </p>
+<li> <b>Options for nhmmer on the genome assembly:</b> </li> </p>
 
 For each novel hit identified with nhmmer on the genome assembly, the nucleotide region upstream and downstream of the hit are retrieved and fed into augustus for gene prediction. To specify the amount of nucleotides added to the 3' and 5' ends of the hit prior to prediction, please  specify the following variables: </p>
 
-Add X nucleotides to end of sequence (3' end): 
+To specify the number of nucleotides added to the 3' end, please define the $nhmmer_plus variable on line 58 as follows:
 
 ```
 $nhmmer_plus = 20000; #Line 58
@@ -291,13 +291,13 @@ $nhmmer_plus = 20000; #Line 58
 
 </p>
 
-Add X nucleotides to start of sequence (5' end):
+To specify the number of nucleotides added to the 5' end, please define the $nhmmer_minus variable on line 59 as follows:
 ```
 $nhmmer_minus = 5000; #Line 59
 ```
 </p>
 
-Running nhmmer on the whole genome assembly can be an intensive task, requiring long run-times. To speed up the process for large genomes, an nhmmer database can be generated for the assembly. While, this dramatically speeds up run-times, it reduces sensitivity slightly - and hence we reccomend that this option is only switched on for large genomes. To specify this option, please set the following variable:
+Running nhmmer on the whole genome assembly can be an intensive task requiring long run-times. To speed up the process for large genomes, an nhmmer database can be generated for the assembly. While, this dramatically speeds up run-times for large genomes, it reduces sensitivity slightly. Hence we reccomend that this option is only switched on for large genomes. To specify this option, please set the $nhmmer_genome_database variable on line 62 as either "yes" or "no".
 ```
 my $nhmmer_genome_database = "no"; #Line 62
 ```
@@ -306,13 +306,13 @@ my $nhmmer_genome_database = "no"; #Line 62
 
 <li> <b>Pseudogene options:</b> </li> </p>
 
-If yes, all cds seqs with in-frame stop codons, or below threshold length, will be annotated as pseudogenes:
+If you wish to annotate each mined sequence as "pseudogene" or "functional", the $pseudogene_check variable on line 65 should be set to "yes". If this option is switched on, each coding sequence with in-frame stop codons or below a user-defined length threshold will be annotated as pseudogenes. To turn this feature off, please set this variable to "no".
 ```
 $pseudogene_check = "yes"; #Line 65
 ```
 </p>
 
-Coding sequences below this length are considered pseudogenes (nucleotide length):
+If the $pseudogene_check option is switched on, the $pseudogene_length variable on line 66 corresponds to the length threshold for pseudogene annotation status. Coding sequences below this length are considered pseudogenes (nucleotide length).
 ```
 $pseudogene_length = 300; #Line 66 
 ```
