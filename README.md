@@ -1,6 +1,6 @@
 <p align="left">
 <img src = "pipeline_image/GENE-FAM-LOGO-TMP1.png" max-width=100%>
-<br>
+
 <hr>
 
 <br>
