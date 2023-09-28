@@ -1,5 +1,6 @@
 # GENE-FAM
 
+<br>
 
 ### <ins>Overview:</ins>
 A gene family mining and prediction tool
@@ -180,19 +181,19 @@ my $nhmm_profile = "my_name.hmm"; #Please note that this must end in ".hmm". #Li
 
 <li> <b>General options:</b> </li> </p>
 
-If NCBI RefSeq annotations are available for your genome, set this variable to "yes". Set as "no" if no annotations are available, and you wish to mine the assembly only:
+If NCBI RefSeq annotations are available for your genome, set the $annotation_available variable on line 33 to "yes". Set as "no" if no annotations are available, and you wish to mine the assembly only:
 ```
 $annotation_available = "yes"; #Line 33
 ```
 </p>
 
-If yes, script will use a list of species to download assembly and annotation files:
+If you wish to automate the download of genome assembly and annotation files for your target species, please set the $automate_download variable on line 36 to "yes". Please note that this feature only downloads annotation files for reference species on the RefSeq database. If your target genome is not the reference genome for your query species, or if the genome assembly does not exist on RefSeq, please set this variable to "no" and download the appropriate files manually.
 ```
 $automate_download = "yes"; #Line 36
 ```
 </p>
 
-Enter the name of your species list file here:
+If you selected "yes" for the $automate_download option, please specify your query species names in a text file. Please specify the name of this file on line 37 as follows:
 ```
 $species_list = "species.txt"; #Line 37
 ```
@@ -202,25 +203,25 @@ $species_list = "species.txt"; #Line 37
 
 <li> <b>HMMER e-values:</b> </li> </p>
 
-If “yes”, the default e-value (1e-5) will be used for <b> protein hmmer </b>. For custom evalue, set this variable to "no":
+If you wish to use the default e-value (1e-5) for <b> hmmsearch (protein) </b>, please set the $default_phmmer_evalue variable to "yes" on line 40. For custom evalues, set this variable to "no".
 ```
 $default_phmmer_evalue = "yes"; #Line 40
 ```
 </p>
 
-If $default_phmmer_evalue is "no", enter your custom evalue for <b> protein hmmer </b> here:
+If the $default_phmmer_evalue is set to "no", enter your custom evalue for <b> hmmsearch (protein) </b> on line 41 as follows:
 ```
 $phmmer_evalue = "1e-5"; #Line 41
 ```
 </p>
 
-If “yes”, the default e-value (1e-5) will be used for <b> nucleotide hmmer </b>. For custom evalue, set this variable to "no":
+If you wish to use the default e-value (1e-5) for <b> nhmmer (nucleotide) </b>, please set the $default_nhmmer_evalue variable to "yes" on line 40. For custom evalues, set this variable to "no".
 ```
 $default_nhmmer_evalue = "yes"; #Line 44
 ```
 </p>
 
-If $default_nhmmer_evalue is "no", enter your custom evalue for <b> nucleotide hmmer </b>  here:	
+If $default_nhmmer_evalue is set to "no", enter your custom evalue for <b> nhmmer (nucleotide) </b> on line 45 as follows:	
 ```
 $nhmmer_evalue = "1e-5"; #Line 45
 ```
