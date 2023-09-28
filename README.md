@@ -1,15 +1,10 @@
 # GENE-FAM
+
+
+### <ins>Overview:</ins>
 A gene family mining and prediction tool
 
-### <ins>Usage:</ins>
-```
-perl GENE-FAM.pl
-```
-</p>
-Note, the blat2hints.pl script must be in your working directory for augustus to work!
-
 <br>
-
 
 ### <ins>Dependencies:</ins>
 <ol type="1">
@@ -18,14 +13,7 @@ Note, the blat2hints.pl script must be in your working directory for augustus to
 To install hmmer and easel miniapps, follow instructions from hmmer manual (pgs 17-18): <p>
 http://eddylab.org/software/hmmer/Userguide.pdf
 
-#### <li>BLAST:</li>
-<b>Quick install with root privilages:</b>
-```
-sudo apt-get update
-sudo apt-get -y install ncbi-blast+
-```
-<b>Install blast from source:</b> <p>
-https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/
+<br>
 
 #### <li>AUGUSTUS:</li>
 <b>Quick install with root privilages:</b>
@@ -41,25 +29,115 @@ Make sure to set your AUGUSTUS_CONFIG_PATH variable by appending the following t
 ```
 export AUGUSTUS_CONFIG_PATH=/my_path_to_AUGUSTUS/Augustus/config/    #where my_path_to_AUGUSTUS is dependent on where you cloned the augustus repo
 ```
+
+ <b> Blat2hints:</b>
+ 
+ GENE-FAM requires the blat2hints.pl script from augustus. 
+ 
+ Please dowload the script from the augustus github page as linked below, and place the script in your working directory.
+ https://github.com/nextgenusfs/augustus/blob/master/scripts/blat2hints.pl 
+ 
+<br>
+
+ 
 #### <li>BLAT:</li>
 Augustus requires blat to generate hints. Follow instructions here: <p>
 https://bioinformaticsreview.com/20200822/installing-blat-a-pairwise-alignment-tool-on-ubuntu/ 
-  </ol>
-  
+
+<br>
+
+#### <li>BLAST (optional) :</li>
+BLAST is only required if you wish to remove potential duplicates in the output CDS files based on percentage identity. If you do not wish to use this feature, 
+
+<b>Quick install with root privilages:</b>
+```
+sudo apt-get update
+sudo apt-get -y install ncbi-blast+
+```
+
+<b>Install blast from source:</b> <p>
+https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/
+
+
+</ol>
 </p>
 <br>
 
+
 ### <ins>Pipeline:</ins>
+Please see pipeline image for description of the serial steps implemented in the GENE-FAM pipeline.
+<br>
+
 <p align="center">
 <img src = "pipeline_image/GENE-FAM (draft).png" width="600">
 </p>
 
 <br>
 
-### <ins> Input files, options and parameters:</ins>
+
+### <ins>Usage:</ins>
+
+To run the <b>GENE-FAM</b> pipeline, please use the following command:
+
+```
+perl GENE-FAM.pl
+```
 
 <br>
+
+### <ins> Preparing your working directory: </ins>
+
+In order for the pipeline to work, you must first prepare your working directory with the required input files. The following files should be in your working directory: </p>
+
+#### <ins>Scripts</ins>:
+
 <ol type="1">
+  
+<li> <b> GENE-FAM.pl :</b> This is the pipeline script, which should be downloaded from this github repository. </li>  </p>
+<li><b> blast2hints.pl :</b> This file is required to generate hints which guide AUGUSTUS gene prediction. Please download this from the AUGUSTUS github repository.</li> 
+
+</ol>
+
+</p>
+  
+#### <ins>Input Files</ins>: 
+
+<ol type="1">
+<li> <b> Protein aligment file: </b> This protein alignment file should contain aligned amino acid sequences from your gene family of interest. If you are intersted in a gene family which share a conserved domain, this alignment may contain aligned sequences for the domain of interest. Seed alignments for your domain of interest may be available and downloaded from the Interpro database. </li> </p>
+
+<li> <b> Nucleotide aligment file: </b> This nucleotide alignment file should contain aligned nucleotide sequences from your gene family of  interest. Similarly to the protein alignment, the alignment may contain aligned sequences for a conserved domain of interest. </li> </p>
+
+<li> <b> Reference file </b> This file is used to guide AUGUSTUS gene prediction. The file should be in fasta format, and should contain nucleotide mRNA sequences from closely related species for your gene family of interest. </li> </p>
+
+<li> <b> Species list </b> This file is only required if you wish to automate the download of annotation files for a list of query species. This txt file should contain the species names, exactly as they appear on the NCBI RefSeq database. Please note that this feature only works for reference genomes on the RefSeq database. </li> 
+
+</ol> 
+</ol>
+
+</p>
+
+#### <ins>Assembly and Annotation files:</ins>
+If your query species is available on RefSeq, and the genome assembly of interest is the reference genome for that species, then the following annotation files and assembly can be automatically downloaded with GENE-FAM (please see options and parameters below). Otherwise, you should manually download the following files from the NCBI database for your query species. Note, if no annotation files are available for your query species, only the assembly should be downloaded and the $annotation_available option should be set to "no" in the GENE-FAM script (please see below for instructions).
+
+<ol type="1">
+  
+<li> <b> Genome assembly:</b></li> This is the genome assembly for your query species. The genome should end in "genomic.fna" if downloaded from the NCBI database.  </li></p>
+<li> <b> Protein CDS annotations:</b></li> These are the protein coding sequence annotations downloaded from the NCBI RefSeq database. This file should end in "protein.faa". </li></p>
+<li> <b> Nucleotide CDS annotations: </b>b></li> These are the nucleotide coding sequence annotations downloaded from the NCBI RefSeq database. This file should end in "cds_from_genomic.fna". </li></p>
+<li> <b> mRNA annotations:</li> </b> These are the mRNA annotations downloaded from the NCBI RefSeq database. This file should end in "rna.fna". </li></p>
+<li> <b> GFF file: </b></li> This is the GFF annotation file downloaded from the NCBI RefSeq database. This file should end in "genomic.gff".  </li>
+</p>
+
+</ol>
+
+<br>
+
+### <ins> Specifying your input files, options and parameters:</ins>
+
+To specify your input files, options and parameters please open the <b>GENE-FAM.pl</b> script with a text editor and edit the variables on the lines outlined below. 
+
+<br>
+
 <b>
   
 <li> Input files and profile HMMs: </p>    
@@ -87,9 +165,8 @@ my $nhmm_profile = "my_name.hmm"; #Please note that this must end in ".hmm". #Li
 <b>
 </ul>
 <br>
-  
-<li> Options: </p>
-</b>
+
+<li> <ins></ins>Options and parameters:</ins> </p> </b>
 
 If NCBI RefSeq annotations are available for your genome, set this variable to "yes". Set as "no" if no annotations are available, and you wish to mine the assembly only:
 ```
