@@ -1,9 +1,7 @@
-# GENE-FAM
-
+<p align="left">
+<img src = "pipeline_image/GENE-FAM-LOGO-TMP1.png" max-width=100%>
 <br>
-
-### <ins>Overview:</ins>
-A gene family mining and prediction tool
+<hr>
 
 <br>
 
