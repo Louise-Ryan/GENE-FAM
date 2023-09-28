@@ -321,19 +321,19 @@ $pseudogene_length = 300; #Line 66
 
 <li> <b> Removing duplicates options:</b> </li> </p>
 
-If you want to remove duplicates which may arise due to assembly error, set the following variable to "yes". This option will create a percent identity matrix to identify potential duplicates. The dupplicate on the largest contig is retained.
+If you want to remove duplicates which may arise due to assembly error, set the $remove_duplicates variable on line 69 to "yes". This option will use BLAST on the mined protein annotations to create a percent identity matrix to identify potential duplicates. The duplicate on the largest contig is retained.
 ```
 my $remove_duplicates = "no"; #Line 69
 ```
 </p>
 
-To specify the threshold percentage identity for which genes are considered duplicates, please set the following variable. Note that this is a percentage and should be a number between 0 and 1.
+To specify the percentage identity threshold for which genes are considered duplicates, please set the following variable. Note that this is a percentage corresponding to amino acid identity and should set to a number between 0 and 1.
 ```
 my $duplicate_threshold = 0.9; #Line 70
 ```
 </p>
 
-When identifying duplicates, the pipeline can make use of two distinct algoirithms - "pairwise" or "cluster". In the pairwise algorithm, duplicate pairs are identified as mutual best scoring hits in the percent identity matrix. Note that more than 2 members may exist in a pair, if each member shares the maximum identity score. Mutual best scores are only considered pairs if they exceed the $duplicate_threshold set above. The member in each pair which is located on the longest contig is retained. In the "cluster" algorithm, genes which share greater percent identity than the $duplicate_threshold are combined into clusters. The member in each cluster which is located on the longest contig is retained. To specify whether you want to use the "pairwise" or "cluster" algorithms, please set the below variable:
+When identifying duplicates, the pipeline can make use of two distinct algoirithms - "pairwise" or "cluster". In the pairwise algorithm, duplicate pairs are identified as mutual best scoring hits in the percent identity matrix. Note that more than 2 members may exist in a given pair, if each member shares the same maximum identity score. Mutual best scores are only considered pairs if they exceed the $duplicate_threshold set above. The member in each pair which is located on the longest contig is retained. In the "cluster" algorithm, genes which share percent identity greater than the user defined threshold are combined into clusters. The member in each cluster which is located on the longest contig is retained. To specify whether you want to use the "pairwise" or "cluster" algorithms, please set the $duplicate_type variable on line 71 as follows:
 ```
 my $duplicate_type = "cluster"; #Line 71
 ```
@@ -342,7 +342,7 @@ my $duplicate_type = "cluster"; #Line 71
 
 <li> <b>Adjust the number of threads:</b> </li> </p>
 
-To increase the number of threads, the $threads variable can be adjusted accordingly.
+To increase the number of threads used for HMMER and BLAST , please adjust the $threads variable on line X  accordingly.
 ```
 my $threads = 8;
 ```
