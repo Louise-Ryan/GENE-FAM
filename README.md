@@ -230,48 +230,48 @@ $nhmmer_evalue = "1e-5"; #Line 45
 
 <li> <b>Augustus options and parameters:</b> </li> </p>
 
-If you want to predict any new, unannotated, hits with augustus, set this to "yes". If augustus is not installed, set this as "no":
+If you want to predict any new, unannotated, hits with augustus, set the $predict_new_hits variable on line 48 to "yes". If augustus is not installed, set this as "no":
 ```
 $predict_new_hits = "yes"; #Line 48
 ```
 </p>
 
-If using augustus, this is the species that augustus is trained on. Set your closely related species here:
+If using augustus, the $augustus_species variable corresponds to the species that augustus is trained on. Please set your closely related augustus species on line 49. For list of available species, please visit the augustus page linked here: https://github.com/Gaius-Augustus/Augustus/blob/master/docs/RUNNING-AUGUSTUS.md .
 ```
 $augustus_species = "arabidopsis"; #Line 49
 ```
 </p>
 
-If using augustus, this is the minimum identity required for alignment with a reference receptor to be used to generate prediction hints:
+If using augustus, the $minidentity variable specifies the minimum identity required a reference receptor to be used to generate prediction hints. To specify this parameter, please adjust the $minidentity parameter on line 50 as follows. Note that this value is a percentage, and hence should set as a number between 0 and 100.
 ```
 $minidentity = 60; #Line 50
 ```
-If using augustus, this is the number of sequences from the reference file used to generate hints. This can either be set to a number greater than 0, or to "all" if you wish to use the entire reference file.
+If using augustus, the $number_hints option specifies the number of sequences from the reference file that are used to generate hints. For each hit, BLAT is used to identify the top 'n' hits from the reference file. This can either be set to a number greater than 0, or to "all" if you wish to use the entire reference file.
 ```
 my $number_hints = "all";  #Line 51
 ```
 </p>
 
-If using augsutus, you can chose to append the mined NCBI sequences from each query species to the reference file to guide gene prediction. If you wish to do this, set the following variable to "yes". Otherwise this should be set to "no".
+If using augsutus, you can chose to append the mined NCBI sequences from each query species to the reference file to guide gene prediction. If you wish to do this, set the $append_query variable on line 52 to "yes". Otherwise, this should be set to "no".
 ```
 my $append_query = "no"; #Line 52
 ```
 </p>
 
-If new hits are predicted with augustus, they will be labelled with a prefix set using the following variable. For example, if this is set to "Hit", new opredictions will be labelled as "Hit1, Hit2 ...etc.". This can be adjusted to suit the use-case. 
+If new hits are predicted with augustus, they will be labelled with a prefix defined using the $hit_prefix variable on line 53. For example, if this variable is set to "Hit", new predictions will be labelled as "Hit1, Hit2 ...etc.". This can be adjusted to suit the use-case. 
 ```
 my $hit_prefix = "Hit"; #Line 53
 ```
 </p>
 
-New augutsus predictions are checked to ensure that the hmmer identified region is retained in the prediction. The following parameter specifies the percentage of the hmmer identified region must be retained in the prediction to be considered valid. This number should be between 0 and 1.
+New augutsus predictions are checked to ensure that the hmmer identified region is retained in the prediction. The $domain_cover_threshold parameter on line 54 specifies the percentage of the hmmer identified region that must be retained in the prediction to be considered valid. This number should be between 0 and 1.
 ```
 my $domain_cover_threshold = 0.9; #Line 54
 ```
 
 </p>
 
-Augustus predictions are also scanned again using HMMER to ensure the domain is present. This HMM filter can use either the protein profile HMM or the nucleotide profile HMM. To select either option, specify the below variable as "protein" or "nucleotide".
+Each new augustus prediction is scanned using HMMER to ensure that the prediction is valid. This HMM filter can use either the protein profile HMM or the nucleotide profile HMM. To select either option, specify the $hmm_filter_type variable on line 55 as either "protein" or "nucleotide".
 ```
 my $hmm_filter_type = "protein"; #Line 55
 ```
