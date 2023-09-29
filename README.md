@@ -103,9 +103,10 @@ https://www.ncbi.nlm.nih.gov/books/NBK52640/
 <br>
 
 
-### <ins>Usage:</ins>
+### <ins>Running GENE-FAM:</ins>
 
-To run the <b>GENE-FAM</b> pipeline, please use the following command:
+<p>Prior to running GENE-FAM, the user should prepare their working directory and specify their input files as outlined in the instructions below. </p>
+<p></p>To run the <b>GENE-FAM</b> pipeline, please use the following command:</p>
 
 ```
 perl GENE-FAM.pl
