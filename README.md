@@ -6,6 +6,9 @@
 <br>
 
 ### <ins>Dependencies:</ins>
+
+<br>
+
 <ol type="1">
   
 #### <li>HMMER and easel miniapps:</li>
