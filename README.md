@@ -12,7 +12,7 @@
 <ol type="1">
   
 #### <li>HMMER and easel miniapps:</li>
-To install hmmer and easel miniapps, please follow instructions from HMMER manual (pgs 17-18): <p>
+To install hmmer and easel miniapps, please follow instructions from the HMMER user manual (pgs 17-18): <p>
 http://eddylab.org/software/hmmer/Userguide.pdf </p>
 
 <p></p>
@@ -67,13 +67,13 @@ If you have trouble installing AUGUSTUS from source, try setting the ZINPUT and 
 
  
 #### <li>BLAT:</li>
-AUGUSTUS requires BLAT to generate hints. Please follow the instructions found here: <p>
+AUGUSTUS requires BLAT to generate hints. Please follow the installation instructions found here: <p>
 https://bioinformaticsreview.com/20200822/installing-blat-a-pairwise-alignment-tool-on-ubuntu/ 
 
 <br>
 
 #### <li>BLAST (optional) :</li>
-BLAST is only required if you wish to remove potential duplicates in the output CDS files based on percentage identity. If you do not wish to use this feature, you do not need to install BLAST.
+BLAST is only required if you want to remove potential duplicates in the output CDS files based on percentage identity. If you do not wish to use this feature, you do not need to install BLAST.
 
 <b>Quick install with root privilages:</b>
 ```
@@ -120,7 +120,7 @@ perl GENE-FAM.pl
 
 ### <ins> Preparing your working directory: </ins>
 
-In order for the pipeline to work, you must first prepare your working directory with the required input files. The following files should be in your working directory: </p>
+In order for the pipeline to work, you must first prepare your working directory with the required input files. The following files should be placed in your working directory: </p>
 
 <br>
 
@@ -129,7 +129,7 @@ In order for the pipeline to work, you must first prepare your working directory
 <ol type="1">
   
 <li> <b> GENE-FAM.pl :</b></li> This is the pipeline script, which should be downloaded from this github repository. </p>
-<li><b> blast2hints.pl :</b> </li> This file is required to generate hints which guide AUGUSTUS gene prediction. Please download this from the AUGUSTUS github repository.
+<li><b> blast2hints.pl :</b> </li> This script is required to generate hints which guide AUGUSTUS gene prediction. Please download this from the AUGUSTUS github repository (link above).
 
 </ol>
 
@@ -138,13 +138,13 @@ In order for the pipeline to work, you must first prepare your working directory
 #### <ins>Input Files</ins>: 
 
 <ol type="1">
-<li> <b> Protein aligment file: </b> </li> This protein alignment file should contain aligned amino acid sequences from your gene family of interest. If you are intersted in a gene family which share a conserved domain, this alignment may contain aligned sequences for the domain of interest. Seed alignments for your domain of interest may be available and downloaded from the Interpro database. </p>
+<li> <b> Protein alignment file: </b> </li> This protein alignment file should contain aligned amino acid sequences from your gene family of interest. If you are interested in a gene family in which members share a conserved domain, this alignment may contain sequences for the domain of interest. Seed alignments for your domain of interest may be available for download from the Interpro database. </p>
 
-<li> <b> Nucleotide aligment file: </b> </li> This nucleotide alignment file should contain aligned nucleotide sequences from your gene family of  interest. Similarly to the protein alignment, the alignment may contain aligned sequences for a conserved domain of interest. </p>
+<li> <b> Nucleotide alignment file: </b> </li> This nucleotide alignment file should contain aligned nucleotide sequences from your gene family of interest. Similarly to the protein alignment, this alignment may contain aligned sequences for a conserved domain of interest. </p>
 
-<li> <b> Reference file: </b> </li> This file is used to guide AUGUSTUS gene prediction. The file should be in fasta format, and should contain nucleotide mRNA sequences from closely related species for your gene family of interest. </p>
+<li> <b> Reference file: </b> </li> This file is used to guide AUGUSTUS gene prediction. This file should be in fasta format, and should contain nucleotide mRNA sequences from closely related species for your gene family of interest. </p>
 
-<li> <b> Species list </b> </li> This file is only required if you wish to automate the download of annotation files for a list of query species. This txt file should contain the species names, exactly as they appear on the NCBI RefSeq database. Please note that this feature only works for reference genomes on the RefSeq database.
+<li> <b> Species list: </b> </li> This file is only required if you wish to automate the download of annotation files for a list of query species. This txt file should contain the species names, exactly as they appear on the NCBI RefSeq database. Please note that this feature only works for reference genomes which are available on the NCBI RefSeq database.
 
 </ol> 
 </ol>
@@ -152,11 +152,11 @@ In order for the pipeline to work, you must first prepare your working directory
 <br>
 
 #### <ins>Assembly and Annotation files:</ins>
-If your query species is available on RefSeq, and the genome assembly of interest is the reference genome for that species, then the following annotation files and assembly can be automatically downloaded with GENE-FAM (please see options and parameters below). Otherwise, you should manually download the following files from the NCBI database for your query species. Note, if no annotation files are available for your query species, only the assembly should be downloaded and the $annotation_available option should be set to "no" in the GENE-FAM script (please see below for instructions).
+If your query species is available on RefSeq, and the genome assembly of interest is the reference genome for that species, then the genome assembly and following annotation files can be automatically downloaded using GENE-FAM (please see options and parameters below). Otherwise, you should manually download the following files from the NCBI database for your query species. Note, if no annotation files are available for your query species, only the genome assembly should be downloaded and the $annotation_available option should be set to "no" in the GENE-FAM.pl script (please see below for instructions).
 
 <ol type="1">
   
-<li> <b> Genome assembly:</b></li> This is the genome assembly for your query species. The genome should end in "genomic.fna" if downloaded from the NCBI database.  </li></p>
+<li> <b> Genome assembly:</b></li> This is the genome assembly for your query species. The genome file should end in "genomic.fna" if downloaded from the NCBI database.  </li></p>
 <li> <b> Protein CDS annotations:</b></li> These are the protein coding sequence annotations downloaded from the NCBI RefSeq database. This file should end in "protein.faa". </li></p>
 <li> <b> Nucleotide CDS annotations: </b></li> These are the nucleotide coding sequence annotations downloaded from the NCBI RefSeq database. This file should end in "cds_from_genomic.fna". </li></p>
 <li> <b> mRNA annotations:</li> </b> These are the mRNA annotations downloaded from the NCBI RefSeq database. This file should end in "rna.fna". </li></p>
@@ -197,7 +197,7 @@ $nuc_alignmnent = "nucletide_alignment.aln"; #Line 18
   
 If the AUGUSTUS prediction ($predict_new_hits) option is on, please enter the name of your reference file on line 21 as follows:
 ```
-$reference_file = "reference_transcription_factors_mrna.fa"; #Line 21
+$reference_file = "reference_file_name.fa"; #Line 21
 ```
 </p>
 
@@ -224,13 +224,13 @@ $annotation_available = "yes"; #Line 33
 ```
 </p>
 
-If you wish to automate the download of genome assembly and annotation files for your target species, please set the $automate_download variable on line 36 to "yes". Please note that this feature only downloads annotation files for reference species on the RefSeq database. If your target genome is not the reference genome for your query species, or if the genome assembly does not exist on RefSeq, please set this variable to "no" and download the appropriate files manually.
+If you want to automate the download of genome assemblies and annotation files for your given target species, please set the $automate_download variable on line 36 to "yes". Please note that this feature only downloads annotation files for reference species on the NCBI RefSeq database. If your target genome is not the reference genome for your query species, or if the genome assembly does not exist on RefSeq, please set this variable to "no" and download the appropriate files manually.
 ```
 $automate_download = "yes"; #Line 36
 ```
 </p>
 
-If you selected "yes" for the $automate_download option, please specify your query species names in a text file. Please specify the name of this file on line 37 as follows:
+If you selected "yes" for the $automate_download option, please specify your query species name(s) in a text file. Please specify the name of this text file on line 37 as follows:
 ```
 $species_list = "species.txt"; #Line 37
 ```
@@ -240,25 +240,25 @@ $species_list = "species.txt"; #Line 37
 
 <li> <b>HMMER e-values:</b> </li> </p>
 
-If you wish to use the default e-value (1e-5) for <b> hmmsearch (protein) </b>, please set the $default_phmmer_evalue variable to "yes" on line 40. For custom evalues, set this variable to "no".
+If you wish to use the default e-value (1e-5) for <b> hmmsearch (protein) </b>, please set the $default_phmmer_evalue variable to "yes" on line 40. For custom e-values, set this variable to "no".
 ```
 $default_phmmer_evalue = "yes"; #Line 40
 ```
 </p>
 
-If the $default_phmmer_evalue is set to "no", enter your custom evalue for <b> hmmsearch (protein) </b> on line 41 as follows:
+If the $default_phmmer_evalue is set to "no", enter your custom e-value for <b> hmmsearch (protein) </b> on line 41 as follows:
 ```
 $phmmer_evalue = "1e-5"; #Line 41
 ```
 </p>
 
-If you wish to use the default e-value (1e-5) for <b> nhmmer (nucleotide) </b>, please set the $default_nhmmer_evalue variable to "yes" on line 40. For custom evalues, set this variable to "no".
+If you wish to use the default e-value (1e-5) for <b> nhmmer (nucleotide) </b>, please set the $default_nhmmer_evalue variable to "yes" on line 40. For custom e-values, set this variable to "no".
 ```
 $default_nhmmer_evalue = "yes"; #Line 44
 ```
 </p>
 
-If $default_nhmmer_evalue is set to "no", enter your custom evalue for <b> nhmmer (nucleotide) </b> on line 45 as follows:	
+If $default_nhmmer_evalue is set to "no", enter your custom e-value for <b> nhmmer (nucleotide) </b> on line 45 as follows:	
 ```
 $nhmmer_evalue = "1e-5"; #Line 45
 ```
@@ -267,19 +267,19 @@ $nhmmer_evalue = "1e-5"; #Line 45
 
 <li> <b>AUGUSTUS options and parameters:</b> </li> </p>
 
-If you want to predict any new, unannotated, hits with AUGUSTUS, set the $predict_new_hits variable on line 48 to "yes". If AUGUSTUS is not installed, set this as "no":
+If you want to predict new hits with AUGUSTUS, set the $predict_new_hits variable on line 48 to "yes". If AUGUSTUS is not installed, set this as "no":
 ```
 $predict_new_hits = "yes"; #Line 48
 ```
 </p>
 
-If using AUGUSTUS, the $AUGUSTUS_species variable corresponds to the species that AUGUSTUS is trained on. Please set your closely related AUGUSTUS species on line 49. For list of available species, please visit the AUGUSTUS page linked here: https://github.com/Gaius-AUGUSTUS/AUGUSTUS/blob/master/docs/RUNNING-AUGUSTUS.md .
+If using AUGUSTUS, the $AUGUSTUS_species variable corresponds to the species that AUGUSTUS is trained on. Please set your closely related AUGUSTUS species on line 49. For the list of available species, please visit the AUGUSTUS page linked here: https://github.com/Gaius-AUGUSTUS/AUGUSTUS/blob/master/docs/RUNNING-AUGUSTUS.md .
 ```
 $AUGUSTUS_species = "arabidopsis"; #Line 49
 ```
 </p>
 
-If using AUGUSTUS, the $minidentity variable specifies the minimum identity required a reference receptor to be used to generate prediction hints. To specify this parameter, please adjust the $minidentity parameter on line 50 as follows. Note that this value is a percentage, and hence should set as a number between 0 and 100.
+If using AUGUSTUS, the $minidentity variable specifies the minimum identity required a reference receptor to be used to generate prediction hints. To specify this parameter, please adjust the $minidentity variable on line 50 as follows. Note that this value is a percentage, and hence should be set as a number between 0 and 100.
 ```
 $minidentity = 60; #Line 50
 ```
@@ -295,13 +295,13 @@ my $append_query = "no"; #Line 52
 ```
 </p>
 
-If new hits are predicted with AUGUSTUS, they will be labelled with a prefix defined using the $hit_prefix variable on line 53. For example, if this variable is set to "Hit", new predictions will be labelled as "Hit1, Hit2 ...etc.". This can be adjusted to suit the use-case. 
+If new hits are predicted with AUGUSTUS, they will be labelled with a prefix defined using the $hit_prefix variable on line 53. For example, if this variable is set to "Hit", new predictions will be labelled as "Hit1", "Hit2" etc. This can be adjusted to suit the use case. 
 ```
 my $hit_prefix = "Hit"; #Line 53
 ```
 </p>
 
-New AUGUSTUS predictions are checked to ensure that the hmmer identified region is retained in the prediction. The $domain_cover_threshold parameter on line 54 specifies the percentage of the hmmer identified region that must be retained in the prediction to be considered valid. This number should be between 0 and 1.
+New AUGUSTUS predictions are checked to ensure that the hmmer identified region is retained in each prediction. The $domain_cover_threshold parameter on line 54 specifies the percentage of the hmmer identified region that must be retained in the prediction to be considered valid. This number should be between 0 and 1.
 ```
 my $domain_cover_threshold = 0.9; #Line 54
 ```
@@ -316,9 +316,9 @@ my $hmm_filter_type = "protein"; #Line 55
 </p>
 <br>
 
-<li> <b>Options for nhmmer on the genome assembly:</b> </li> </p>
+<li> <b>Options for nhmmer on the whole genome assembly:</b> </li> </p>
 
-For each novel hit identified with nhmmer on the genome assembly, the nucleotide region upstream and downstream of the hit are retrieved and fed into AUGUSTUS for gene prediction. To specify the amount of nucleotides added to the 3' and 5' ends of the hit prior to prediction, please  specify the following variables: </p>
+For each novel hit identified with nhmmer on the genome assembly, the nucleotide region upstream and downstream of the hit are retrieved and fed into AUGUSTUS for gene prediction. To specify the amount of nucleotides added to the 3' and 5' ends of the hit prior to gene prediction, please  specify the following variables: </p>
 
 To specify the number of nucleotides added to the 3' end, please define the $nhmmer_plus variable on line 58 as follows:
 
@@ -334,14 +334,14 @@ $nhmmer_minus = 5000; #Line 59
 ```
 </p>
 
-Running nhmmer on the whole genome assembly can be an intensive task requiring long run-times. To speed up the process for large genomes, an nhmmer database can be generated for the assembly. While, this dramatically speeds up run-times for large genomes, it reduces sensitivity slightly. Hence we reccomend that this option is only switched on for large genomes. To specify this option, please set the $nhmmer_genome_database variable on line 62 as either "yes" or "no".
+Running nhmmer on the whole genome assembly can be an intensive task requiring long run-times. To speed up the process for large genomes, an nhmmer database can be generated for the assembly. While, this dramatically speeds up run-times for large genomes, it reduces sensitivity slightly. Hence we recommend that this option is only switched on for large genomes. To specify this option, please set the $nhmmer_genome_database variable on line 62 as either "yes" or "no".
 ```
 my $nhmmer_genome_database = "no"; #Line 62
 ```
 </p>
 <br>
 
-<li> <b>Pseudogene options:</b> </li> </p>
+<li> <b>Pseudogene classification options:</b> </li> </p>
 
 If you wish to annotate each mined sequence as "pseudogene" or "functional", the $pseudogene_check variable on line 65 should be set to "yes". If this option is switched on, each coding sequence with in-frame stop codons or below a user-defined length threshold will be annotated as pseudogenes. To turn this feature off, please set this variable to "no".
 ```
@@ -358,28 +358,32 @@ $pseudogene_length = 300; #Line 66
 
 <li> <b> Removing duplicates options:</b> </li> </p>
 
-If you want to remove duplicates which may arise due to assembly error, set the $remove_duplicates variable on line 69 to "yes". This option will use BLAST on the mined protein annotations to create a percent identity matrix to identify potential duplicates. The duplicate on the largest contig is retained.
+If you want to remove duplicates which may arise due to assembly error, set the $remove_duplicates variable on line 69 to "yes". This option will use BLAST on the mined protein annotations to create a percent identity matrix to identify potential duplicates. The duplicate on the largest contig is retained. If you do not wish to avail of this feature, please set this variable to "no".
 ```
 my $remove_duplicates = "no"; #Line 69
 ```
 </p>
 
-To specify the percentage identity threshold for which genes are considered duplicates, please set the following variable. Note that this is a percentage corresponding to amino acid identity and should set to a number between 0 and 1.
+To specify the percentage identity threshold for which genes are considered duplicates, please set the $duplicate_threshold variable on line 70. Note that this is a percentage corresponding to amino acid identity and should set to a number between 0 and 1.
 ```
 my $duplicate_threshold = 0.9; #Line 70
 ```
 </p>
 
-When identifying duplicates, the pipeline can make use of two distinct algoirithms - "pairwise" or "cluster". In the pairwise algorithm, duplicate pairs are identified as mutual best scoring hits in the percent identity matrix. Note that more than 2 members may exist in a given pair, if each member shares the same maximum identity score. Mutual best scores are only considered pairs if they exceed the $duplicate_threshold set above. The member in each pair which is located on the longest contig is retained. In the "cluster" algorithm, genes which share percent identity greater than the user defined threshold are combined into clusters. The member in each cluster which is located on the longest contig is retained. To specify whether you want to use the "pairwise" or "cluster" algorithms, please set the $duplicate_type variable on line 71 as follows:
+<p>When identifying potential duplicates, the pipeline can make use of two distinct algorithms - "pairwise" or "cluster".</p>
+<p> In the <b>"pairwise"</b> algorithm, duplicate pairs are identified as mutual best scoring hits in the percent identity matrix. Note that more than 2 members may exist in a given pair, if each member shares the same maximum identity score. Mutual best scores are only considered pairs if they exceed the $duplicate_threshold set above. The member in each pair which is located on the longest contig is retained. </p> 
+<p> In the <b>"cluster"</b> algorithm, genes which share percent identity greater than the user defined threshold are combined into clusters. The member in each cluster which is located on the longest contig is retained. </p>
+<p>To specify whether you want to use the "pairwise" or "cluster" algorithms, please set the $duplicate_type variable on line 71 as follows:</p>
+
 ```
 my $duplicate_type = "cluster"; #Line 71
 ```
 </p>
 <br>
 
-<li> <b>Adjust the number of threads:</b> </li> </p>
+<li> <b>Adjusting the number of threads:</b> </li> </p>
 
-To increase the number of threads used for HMMER and BLAST , please adjust the $threads variable on line 74  accordingly.
+To increase the number of threads used for HMMER and BLAST, please adjust the $threads variable on line 74  accordingly.
 ```
 my $threads = 8; #Line 74
 ```
