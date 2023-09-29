@@ -27,30 +27,30 @@ https://github.com/EddyRivasLab/hmmer
 <b>Quick install with root privilages:</b>
 ```
 sudo apt-get update
-sudo apt-get install augustus
+sudo apt-get install AUGUSTUS
 ```
 
 <p></p>
 
 <b> Install AUGUSTUS with conda: </b>
 ```
-conda install -c bioconda augustus
+conda install -c bioconda AUGUSTUS
 ```
 
 <p></p>
 
 <p><b>Install AUGUSTUS from source </b></p>
-<p>AUGUSTUS dependencies: https://github.com/Gaius-Augustus/Augustus/blob/master/docs/INSTALL.md </p>
-<p>Build AUGUSTUS: https://github.com/Gaius-Augustus/Augustus </p>
+<p>AUGUSTUS dependencies: https://github.com/Gaius-AUGUSTUS/AUGUSTUS/blob/master/docs/INSTALL.md </p>
+<p>Build AUGUSTUS: https://github.com/Gaius-AUGUSTUS/AUGUSTUS </p>
 
 <p>Make sure to set your AUGUSTUS_CONFIG_PATH variable by appending the following to your ~/.bashrc file: </p>
 
 ```
-export AUGUSTUS_CONFIG_PATH=/my_path_to_AUGUSTUS/Augustus/config/    #where my_path_to_AUGUSTUS is dependent on where you cloned the augustus repo
+export AUGUSTUS_CONFIG_PATH=/my_path_to_AUGUSTUS/AUGUSTUS/config/    #where my_path_to_AUGUSTUS is dependent on where you cloned the AUGUSTUS repo
 ```
 
 Troubleshooting:
-If you have trouble installing augustus from source, try setting the ZINPUT and COMPGENEPRED variables in the common.mk file to false.
+If you have trouble installing AUGUSTUS from source, try setting the ZINPUT and COMPGENEPRED variables in the common.mk file to false.
 
 
 <p></p>
@@ -61,19 +61,19 @@ If you have trouble installing augustus from source, try setting the ZINPUT and 
  GENE-FAM requires the blat2hints.pl script from AUGUSTUS. 
  
  Please dowload the script from the AUGUSTUS github page as linked below, and place the script in your working directory.
- https://github.com/nextgenusfs/augustus/blob/master/scripts/blat2hints.pl 
+ https://github.com/nextgenusfs/AUGUSTUS/blob/master/scripts/blat2hints.pl 
  
 <br>
 
  
 #### <li>BLAT:</li>
-Augustus requires BLAT to generate hints. Please follow the instructions found here: <p>
+AUGUSTUS requires BLAT to generate hints. Please follow the instructions found here: <p>
 https://bioinformaticsreview.com/20200822/installing-blat-a-pairwise-alignment-tool-on-ubuntu/ 
 
 <br>
 
 #### <li>BLAST (optional) :</li>
-BLAST is only required if you wish to remove potential duplicates in the output CDS files based on percentage identity. If you do not wish to use this feature, 
+BLAST is only required if you wish to remove potential duplicates in the output CDS files based on percentage identity. If you do not wish to use this feature, you do not need to install BLAST.
 
 <b>Quick install with root privilages:</b>
 ```
@@ -128,8 +128,8 @@ In order for the pipeline to work, you must first prepare your working directory
 
 <ol type="1">
   
-<li> <b> GENE-FAM.pl :</b> This is the pipeline script, which should be downloaded from this github repository. </li>  </p>
-<li><b> blast2hints.pl :</b> This file is required to generate hints which guide AUGUSTUS gene prediction. Please download this from the AUGUSTUS github repository.</li> 
+<li> <b> GENE-FAM.pl :</b></li> This is the pipeline script, which should be downloaded from this github repository. </p>
+<li><b> blast2hints.pl :</b> </li> This file is required to generate hints which guide AUGUSTUS gene prediction. Please download this from the AUGUSTUS github repository.
 
 </ol>
 
@@ -195,7 +195,7 @@ $nuc_alignmnent = "nucletide_alignment.aln"; #Line 18
 
 </p>
   
-If the augustus prediction ($predict_new_hits) option is on, please enter the name of your reference file on line 21 as follows:
+If the AUGUSTUS prediction ($predict_new_hits) option is on, please enter the name of your reference file on line 21 as follows:
 ```
 $reference_file = "reference_transcription_factors_mrna.fa"; #Line 21
 ```
@@ -265,50 +265,50 @@ $nhmmer_evalue = "1e-5"; #Line 45
 </p>
 <br>
 
-<li> <b>Augustus options and parameters:</b> </li> </p>
+<li> <b>AUGUSTUS options and parameters:</b> </li> </p>
 
-If you want to predict any new, unannotated, hits with augustus, set the $predict_new_hits variable on line 48 to "yes". If augustus is not installed, set this as "no":
+If you want to predict any new, unannotated, hits with AUGUSTUS, set the $predict_new_hits variable on line 48 to "yes". If AUGUSTUS is not installed, set this as "no":
 ```
 $predict_new_hits = "yes"; #Line 48
 ```
 </p>
 
-If using augustus, the $augustus_species variable corresponds to the species that augustus is trained on. Please set your closely related augustus species on line 49. For list of available species, please visit the augustus page linked here: https://github.com/Gaius-Augustus/Augustus/blob/master/docs/RUNNING-AUGUSTUS.md .
+If using AUGUSTUS, the $AUGUSTUS_species variable corresponds to the species that AUGUSTUS is trained on. Please set your closely related AUGUSTUS species on line 49. For list of available species, please visit the AUGUSTUS page linked here: https://github.com/Gaius-AUGUSTUS/AUGUSTUS/blob/master/docs/RUNNING-AUGUSTUS.md .
 ```
-$augustus_species = "arabidopsis"; #Line 49
+$AUGUSTUS_species = "arabidopsis"; #Line 49
 ```
 </p>
 
-If using augustus, the $minidentity variable specifies the minimum identity required a reference receptor to be used to generate prediction hints. To specify this parameter, please adjust the $minidentity parameter on line 50 as follows. Note that this value is a percentage, and hence should set as a number between 0 and 100.
+If using AUGUSTUS, the $minidentity variable specifies the minimum identity required a reference receptor to be used to generate prediction hints. To specify this parameter, please adjust the $minidentity parameter on line 50 as follows. Note that this value is a percentage, and hence should set as a number between 0 and 100.
 ```
 $minidentity = 60; #Line 50
 ```
-If using augustus, the $number_hints option specifies the number of sequences from the reference file that are used to generate hints. For each hit, BLAT is used to identify the top 'n' hits from the reference file. This can either be set to a number greater than 0, or to "all" if you wish to use the entire reference file.
+If using AUGUSTUS, the $number_hints option specifies the number of sequences from the reference file that are used to generate hints. For each hit, BLAT is used to identify the top 'n' hits from the reference file. This can either be set to a number greater than 0, or to "all" if you wish to use the entire reference file.
 ```
 my $number_hints = "all";  #Line 51
 ```
 </p>
 
-If using augsutus, you can chose to append the mined NCBI sequences from each query species to the reference file to guide gene prediction. If you wish to do this, set the $append_query variable on line 52 to "yes". Otherwise, this should be set to "no".
+If using AUGUSTUS, you can chose to append the mined NCBI sequences from each query species to the reference file to guide gene prediction. If you wish to do this, set the $append_query variable on line 52 to "yes". Otherwise, this should be set to "no".
 ```
 my $append_query = "no"; #Line 52
 ```
 </p>
 
-If new hits are predicted with augustus, they will be labelled with a prefix defined using the $hit_prefix variable on line 53. For example, if this variable is set to "Hit", new predictions will be labelled as "Hit1, Hit2 ...etc.". This can be adjusted to suit the use-case. 
+If new hits are predicted with AUGUSTUS, they will be labelled with a prefix defined using the $hit_prefix variable on line 53. For example, if this variable is set to "Hit", new predictions will be labelled as "Hit1, Hit2 ...etc.". This can be adjusted to suit the use-case. 
 ```
 my $hit_prefix = "Hit"; #Line 53
 ```
 </p>
 
-New augutsus predictions are checked to ensure that the hmmer identified region is retained in the prediction. The $domain_cover_threshold parameter on line 54 specifies the percentage of the hmmer identified region that must be retained in the prediction to be considered valid. This number should be between 0 and 1.
+New AUGUSTUS predictions are checked to ensure that the hmmer identified region is retained in the prediction. The $domain_cover_threshold parameter on line 54 specifies the percentage of the hmmer identified region that must be retained in the prediction to be considered valid. This number should be between 0 and 1.
 ```
 my $domain_cover_threshold = 0.9; #Line 54
 ```
 
 </p>
 
-Each new augustus prediction is scanned using HMMER to ensure that the prediction is valid. This HMM filter can use either the protein profile HMM or the nucleotide profile HMM. To select either option, specify the $hmm_filter_type variable on line 55 as either "protein" or "nucleotide".
+Each new AUGUSTUS prediction is scanned using HMMER to ensure that the prediction is valid. This HMM filter can use either the protein profile HMM or the nucleotide profile HMM. To select either option, specify the $hmm_filter_type variable on line 55 as either "protein" or "nucleotide".
 ```
 my $hmm_filter_type = "protein"; #Line 55
 ```
@@ -318,7 +318,7 @@ my $hmm_filter_type = "protein"; #Line 55
 
 <li> <b>Options for nhmmer on the genome assembly:</b> </li> </p>
 
-For each novel hit identified with nhmmer on the genome assembly, the nucleotide region upstream and downstream of the hit are retrieved and fed into augustus for gene prediction. To specify the amount of nucleotides added to the 3' and 5' ends of the hit prior to prediction, please  specify the following variables: </p>
+For each novel hit identified with nhmmer on the genome assembly, the nucleotide region upstream and downstream of the hit are retrieved and fed into AUGUSTUS for gene prediction. To specify the amount of nucleotides added to the 3' and 5' ends of the hit prior to prediction, please  specify the following variables: </p>
 
 To specify the number of nucleotides added to the 3' end, please define the $nhmmer_plus variable on line 58 as follows:
 
