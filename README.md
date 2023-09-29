@@ -138,13 +138,13 @@ In order for the pipeline to work, you must first prepare your working directory
 #### <ins>Input Files</ins>: 
 
 <ol type="1">
-<li> <b> Protein aligment file: </b> This protein alignment file should contain aligned amino acid sequences from your gene family of interest. If you are intersted in a gene family which share a conserved domain, this alignment may contain aligned sequences for the domain of interest. Seed alignments for your domain of interest may be available and downloaded from the Interpro database. </li> </p>
+<li> <b> Protein aligment file: </b> </li> This protein alignment file should contain aligned amino acid sequences from your gene family of interest. If you are intersted in a gene family which share a conserved domain, this alignment may contain aligned sequences for the domain of interest. Seed alignments for your domain of interest may be available and downloaded from the Interpro database. </p>
 
-<li> <b> Nucleotide aligment file: </b> This nucleotide alignment file should contain aligned nucleotide sequences from your gene family of  interest. Similarly to the protein alignment, the alignment may contain aligned sequences for a conserved domain of interest. </li> </p>
+<li> <b> Nucleotide aligment file: </b> </li> This nucleotide alignment file should contain aligned nucleotide sequences from your gene family of  interest. Similarly to the protein alignment, the alignment may contain aligned sequences for a conserved domain of interest. </p>
 
-<li> <b> Reference file </b> This file is used to guide AUGUSTUS gene prediction. The file should be in fasta format, and should contain nucleotide mRNA sequences from closely related species for your gene family of interest. </li> </p>
+<li> <b> Reference file: </b> </li> This file is used to guide AUGUSTUS gene prediction. The file should be in fasta format, and should contain nucleotide mRNA sequences from closely related species for your gene family of interest. </p>
 
-<li> <b> Species list </b> This file is only required if you wish to automate the download of annotation files for a list of query species. This txt file should contain the species names, exactly as they appear on the NCBI RefSeq database. Please note that this feature only works for reference genomes on the RefSeq database. </li> 
+<li> <b> Species list </b> </li> This file is only required if you wish to automate the download of annotation files for a list of query species. This txt file should contain the species names, exactly as they appear on the NCBI RefSeq database. Please note that this feature only works for reference genomes on the RefSeq database.
 
 </ol> 
 </ol>
