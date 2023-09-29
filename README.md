@@ -3,22 +3,22 @@
 
 <hr>
 
-<br>
+<br></br>
 
 ### <ins>Dependencies:</ins>
 <ol type="1">
   
 #### <li>HMMER and easel miniapps:</li>
 To install hmmer and easel miniapps, please follow instructions from HMMER manual (pgs 17-18): <p>
-http://eddylab.org/software/hmmer/Userguide.pdf
+http://eddylab.org/software/hmmer/Userguide.pdf </p>
 
-</p>
+<p></p>
 
 Alternatively, please visit the HMMER github page for instructions:
 
 https://github.com/EddyRivasLab/hmmer
 
-<br>
+<br></br>
 
 #### <li>AUGUSTUS:</li>
 <b>Quick install with root privilages:</b>
@@ -27,20 +27,21 @@ sudo apt-get update
 sudo apt-get install augustus
 ```
 
-</p>
+<p></p>
 
 <b> Install AUGUSTUS with conda: </b>
 ```
 conda install -c bioconda augustus
 ```
 
-</p>
+<p></p>
 
-<b>Install AUGUSTUS from source </b><p>
-AUGUSTUS dependencies: https://github.com/Gaius-Augustus/Augustus/blob/master/docs/INSTALL.md <p>
-Build AUGUSTUS: https://github.com/Gaius-Augustus/Augustus <p>
+<p><b>Install AUGUSTUS from source </b></p>
+<p>AUGUSTUS dependencies: https://github.com/Gaius-Augustus/Augustus/blob/master/docs/INSTALL.md </p>
+<p>Build AUGUSTUS: https://github.com/Gaius-Augustus/Augustus </p>
 
-Make sure to set your AUGUSTUS_CONFIG_PATH variable by appending the following to your ~/.bashrc file: <p>
+<p>Make sure to set your AUGUSTUS_CONFIG_PATH variable by appending the following to your ~/.bashrc file: </p>
+
 ```
 export AUGUSTUS_CONFIG_PATH=/my_path_to_AUGUSTUS/Augustus/config/    #where my_path_to_AUGUSTUS is dependent on where you cloned the augustus repo
 ```
@@ -49,8 +50,8 @@ Troubleshooting:
 If you have trouble installing augustus from source, try setting the ZINPUT and COMPGENEPRED variables in the common.mk file to false.
 
 
-</p>
-</p>
+<p></p>
+<p></p>
 
  <b> Blat2hints:</b>
  
