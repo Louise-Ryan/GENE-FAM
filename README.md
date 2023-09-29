@@ -60,7 +60,7 @@ If you have trouble installing AUGUSTUS from source, try setting the ZINPUT and 
  
  GENE-FAM requires the blat2hints.pl script from AUGUSTUS. 
  
- Please dowload the script from the AUGUSTUS github page as linked below, and place the script in your working directory.
+ Please download the script from the AUGUSTUS github page as linked below, and place the script in your working directory.
  https://github.com/nextgenusfs/AUGUSTUS/blob/master/scripts/blat2hints.pl 
  
 <br>
