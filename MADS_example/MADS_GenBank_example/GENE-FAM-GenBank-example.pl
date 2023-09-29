@@ -68,7 +68,7 @@ my $pseudogene_length = 300; #coding sequences below this length are considered 
 # Remove duplicates
 my $remove_duplicates = "yes"; # If you wish to filter out potential duplicates, set this to "yes", otherwise set this to "no". Duplicate on longest contig will be retained.
 my $duplicate_threshold = 0.9; #Percentage identity which pairs or clusters must share to be considered 'duplicates'.
-my $duplicate_type = "cluster"; #pairwise or cluster. 
+my $duplicate_type = "clustered"; #pairwise or clustered. 
 
 #Threads
 my $threads = 8;
@@ -198,8 +198,8 @@ unless($remove_duplicates =~ m/^yes$/i || $remove_duplicates =~ m/^no$/i){
     $die_signal ++;
 }
 unless($remove_duplicates =~ m/^no$/i){
-    unless($duplicate_type =~ m/^cluster$/i || $duplicate_type =~ m/^pairwise$/i){
-	print "The \$duplicate_type variable has not been assigned correctly. Please set this variable as \"cluster\" or \"pairwise\" and retry.\n\n";
+    unless($duplicate_type =~ m/^clustered$/i || $duplicate_type =~ m/^pairwise$/i){
+	print "The \$duplicate_type variable has not been assigned correctly. Please set this variable as \"clustered\" or \"pairwise\" and retry.\n\n";
 	$die_signal ++;
     }
     if(looks_like_number($duplicate_threshold)){
@@ -2674,20 +2674,6 @@ foreach my $genome(@genomes){
 		    my @tsv_entries = (<TSV_IN>);
 		    close TSV_IN;
 		    
-		    # Blast protein file against itself to calculate pairiwse percent identity scores
-		    # Store percent identity values in a matrix
-		    # If pairs exceed $duplicate_threshold, retain the sequence on the longer contig
-		    # Will need a hash with cds_name => contig and contig => contig_length
-		    # Add keep/remove to the tsv
-
-		    # maybe iterate through each query, be greedy, always keep the longer sequence in pair ..
-		    # Do this until you have a status hash (which can be overwritten with each query pair)
-		    # CDS_ID => status
-		    # Then output the 'keeps' to '_filtered_X_percent_id.fa' files (protein and nucleotide).
-
-		    # If best has already been SEEN and removed, check the next best ... so on, until you have a BEST in the pair that has not been seen?
-		    
-		    #my @pid_matrix =&get_matrix();
 		    my $matrix_db = "matrix_db.db";
 		    my $blast_out = "matrix_blast.out";
 		    my $output_format = "6 qseqid qlen sseqid slen qstart qend sstart send evalue length nident qcovhsp pident";
@@ -2715,28 +2701,22 @@ foreach my $genome(@genomes){
 		    # Cluster remove  #
 		    ###################
 		    
-		    if($duplicate_type =~m/^cluster$/){
+		    if($duplicate_type =~m/^clustered$/){
 			my $row_no = 0;
 			foreach my $row(@pid_matrix){
 			    my $row_name = $protein_names[$row_no];
 			    my @cluster = ();
 			    push(@cluster, $row_name);
-			    #print "searching row $row_no \n";
 			    $row_no ++;
-			    #print DLOG "=" x 20;
-			    #print DLOG "Cluster".$row_no;
-			    #print DLOG "=" x 20, "\n\n";
 			    print DLOG "=" x 50;
 			    print DLOG "\n\nCluster".$row_no."\n";
 			    my @row_values = @$row;
 			    my $indx = -1;
 			    foreach my $entry(@row_values){
 				$indx ++;
-				#print "searching column number $indx \n";
 				unless($entry =~ m/\*/ || $entry =~ m/NA/){
 				    if($entry > $filter_threshold){
 					push(@cluster, $protein_names[$indx]);
-					#print "Column no: $indx."."\n";
 				    }
 				}
 			    }
@@ -2746,7 +2726,6 @@ foreach my $genome(@genomes){
 
 			    my %cluster_contig_lengths;
 			    if(scalar(@cluster >= 2)){
-				#print "cluster for row $row_name :\t";
 				print DLOG join("\, ", @cluster), "\n";
 				foreach my $member(@cluster){
 				    my $contig_cluster = "";
@@ -2775,7 +2754,6 @@ foreach my $genome(@genomes){
 					foreach my $sorted_member(@sorted_members){
 					    if($found ==0){
 						if($keep_discard_hash{$retained_dup} ne "Remove"){
-						    #print "keep $retained_dup \n";
 						    $keep_discard_hash{$retained_dup} = "Keep";
 						    print DLOG "Keep $retained_dup !\n\n";
 						    $found = 1;
@@ -2788,7 +2766,6 @@ foreach my $genome(@genomes){
 				    }
 				}
 				else{
-				    #print "keep $retained_dup \n";
 				    $keep_discard_hash{$retained_dup} = "Keep";
 				    print DLOG "Keep $retained_dup !\n\n";
 				    foreach my $sorted_member(@sorted_members){
@@ -2800,14 +2777,10 @@ foreach my $genome(@genomes){
 				$keep_discard_hash{$row_name} = "Keep";
 				print DLOG join(", ", @cluster), "\n";
 				print DLOG "Keep $row_name !\n\n";
-				#keep row_name
 			    }
 			}
 			print DLOG "=" x 50, "\n\n";
 			close DLOG;
-			#foreach my $keyy( keys %keep_discard_hash){
-			#print $keyy.": ".$keep_discard_hash{$keyy}."\n";
-			#}
 			open(OUTTSV, ">$tsv_summary");
 			my $tsv_header = shift(@tsv_entries);
 			print OUTTSV $tsv_header;
@@ -2863,7 +2836,6 @@ foreach my $genome(@genomes){
 					foreach my $max_row_indx(@max_row_indices){
 					    if($protein_names[$max_row_indx] eq $row_name){
 						if($max_row_value == $max_column_value && $max_row_value >= $filter_threshold){
-						    #print "$row_name and $column_name are pairs with $max_row_value % identity ..\n";
 						    push(@pair, $column_name);
 						}
 					    }
@@ -2877,8 +2849,6 @@ foreach my $genome(@genomes){
 				print DLOG "Pair size: ", scalar(@pair), "\n";
 				print DLOG "Members in pair share $max_row_value","% identity\n";
 				print DLOG "$row_name: ";
-				#print "Pair for row $row_name :\t";
-				#print join("\t", @pair), "\n";
 				print DLOG join(", ", @pair), "\n";
 				foreach my $member(@pair){
 				    my $contig_pair = "";
@@ -2896,7 +2866,6 @@ foreach my $genome(@genomes){
 				my $retained_dup = shift(@sorted_members);
 				if(exists $keep_discard_hash{$retained_dup}){
 				    if($keep_discard_hash{$retained_dup} ne "Remove"){
-					#print "keep $retained_dup \n";
 					$keep_discard_hash{$retained_dup} = "Keep";
 					print DLOG "Keep $retained_dup !\n\n";
 					foreach my $sorted_member(@sorted_members){
@@ -2908,7 +2877,6 @@ foreach my $genome(@genomes){
 					foreach my $sorted_member(@sorted_members){
 					    if($found ==0){
 						if($keep_discard_hash{$retained_dup} ne "Remove"){
-						    #print "keep $retained_dup \n";
 						    print DLOG "Keep $retained_dup !\n\n";
 						    $keep_discard_hash{$retained_dup} = "Keep";
 						    $found = 1;
@@ -2921,7 +2889,6 @@ foreach my $genome(@genomes){
 				    }
 				}
 				else{
-				    #print "keep $retained_dup \n";
 				    $keep_discard_hash{$retained_dup} = "Keep";
 				    print DLOG "Keep $retained_dup !\n\n";
 				    foreach my $sorted_member(@sorted_members){
@@ -2935,12 +2902,8 @@ foreach my $genome(@genomes){
 				$keep_discard_hash{$row_name} = "Keep";
 				print DLOG join(", ", @pair), "\n";
 				print DLOG "Keep $row_name !\n\n";
-				#keep row_name
 			    }
 			}
-			#foreach my $keyy( keys %keep_discard_hash){
-			#		print $keyy.": ".$keep_discard_hash{$keyy}."\n";
-			#	    }
 			print DLOG "=" x 50, "\n\n";
 			close DLOG;
 			open(OUTTSV, ">$tsv_summary");
