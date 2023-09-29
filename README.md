@@ -8,9 +8,15 @@
 ### <ins>Dependencies:</ins>
 <ol type="1">
   
-#### <li>HMMER:</li>
-To install hmmer and easel miniapps, follow instructions from hmmer manual (pgs 17-18): <p>
+#### <li>HMMER and easel miniapps:</li>
+To install hmmer and easel miniapps, please follow instructions from HMMER manual (pgs 17-18): <p>
 http://eddylab.org/software/hmmer/Userguide.pdf
+
+</p>
+
+Alternatively, please visit the HMMER github page for instructions:
+
+https://github.com/EddyRivasLab/hmmer
 
 <br>
 
@@ -20,27 +26,44 @@ http://eddylab.org/software/hmmer/Userguide.pdf
 sudo apt-get update
 sudo apt-get install augustus
 ```
+
+</p>
+
+<b> Install AUGUSTUS with conda: </b>
+```
+conda install -c bioconda augustus
+```
+
+</p>
+
 <b>Install AUGUSTUS from source </b><p>
-Augustus dependencies: https://github.com/Gaius-Augustus/Augustus/blob/master/docs/INSTALL.md <p>
-Build augustus: https://github.com/Gaius-Augustus/Augustus <p>
+AUGUSTUS dependencies: https://github.com/Gaius-Augustus/Augustus/blob/master/docs/INSTALL.md <p>
+Build AUGUSTUS: https://github.com/Gaius-Augustus/Augustus <p>
 
 Make sure to set your AUGUSTUS_CONFIG_PATH variable by appending the following to your ~/.bashrc file: <p>
 ```
 export AUGUSTUS_CONFIG_PATH=/my_path_to_AUGUSTUS/Augustus/config/    #where my_path_to_AUGUSTUS is dependent on where you cloned the augustus repo
 ```
 
+Troubleshooting:
+If you have trouble installing augustus from source, try setting the ZINPUT and COMPGENEPRED variables in the common.mk file to false.
+
+
+</p>
+</p>
+
  <b> Blat2hints:</b>
  
- GENE-FAM requires the blat2hints.pl script from augustus. 
+ GENE-FAM requires the blat2hints.pl script from AUGUSTUS. 
  
- Please dowload the script from the augustus github page as linked below, and place the script in your working directory.
+ Please dowload the script from the AUGUSTUS github page as linked below, and place the script in your working directory.
  https://github.com/nextgenusfs/augustus/blob/master/scripts/blat2hints.pl 
  
 <br>
 
  
 #### <li>BLAT:</li>
-Augustus requires blat to generate hints. Follow instructions here: <p>
+Augustus requires BLAT to generate hints. Please follow the instructions found here: <p>
 https://bioinformaticsreview.com/20200822/installing-blat-a-pairwise-alignment-tool-on-ubuntu/ 
 
 <br>
@@ -54,17 +77,22 @@ sudo apt-get update
 sudo apt-get -y install ncbi-blast+
 ```
 
-<b>Install blast from source:</b> <p>
+<b>Install BLAST from source:</b> <p>
+Please download the latest version of BLAST from the following site:
 https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/
+
+For instructions on how to configure BLAST, please see the NCBI website linked here:
+https://www.ncbi.nlm.nih.gov/books/NBK52640/
 
 
 </ol>
 </p>
+
+<br>
 <br>
 
-
-### <ins>Pipeline:</ins>
-Please see pipeline image for description of the serial steps implemented in the GENE-FAM pipeline.
+### <ins>The Pipeline:</ins>
+<br>
 <br>
 
 <p align="center">
@@ -82,6 +110,7 @@ To run the <b>GENE-FAM</b> pipeline, please use the following command:
 perl GENE-FAM.pl
 ```
 
+<br>
 <br>
 
 ### <ins> Preparing your working directory: </ins>
@@ -132,6 +161,7 @@ If your query species is available on RefSeq, and the genome assembly of interes
 </ol>
 
 <br>
+<br>
 
 ### <ins> Specifying your input files, options and parameters:</ins>
 
@@ -141,7 +171,9 @@ To specify your input files, options and parameters please open the <b>GENE-FAM.
 
 <b>
   
-#### <ins> Input files and profile HMMs: </ins></p>    
+#### <ins> Input files and profile HMMs: </ins>
+
+
 </b> 
 
 To specify the name of your protein alignment file, please set the $pfam_seed variable on line 17 as follows:
@@ -171,11 +203,13 @@ my $nhmm_profile = "my_name.hmm"; #Please note that this must end in ".hmm". #Li
 ```
 
 
-<b>
+
 </ul>
 <br>
 
-#### <ins> Options and parameters:</ins> </p> </b>
+#### <ins> Options and parameters:</ins> 
+
+<br>
 
 <li> <b>General options:</b> </li> </p>
 
