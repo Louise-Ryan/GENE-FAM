@@ -978,7 +978,10 @@ foreach my $genome(@genomes){
 			###################
 			
 			# Pull coords from header
-			my @cds_ncbi_coordinates = $cds_header =~ /(\d+)\.\.(\d+)/g;
+			my $cds_header_clean = $cds_header;
+			$cds_header_clean =~ s/\>//g;
+			$cds_header_clean =~ s/\<//g;
+			my @cds_ncbi_coordinates = $cds_header_clean =~ /(\d+)\.\.(\d+)/g;
 			
 			# Sort array
 			@cds_ncbi_coordinates = sort { $a <=> $b } @cds_ncbi_coordinates;

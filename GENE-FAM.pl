@@ -14,15 +14,15 @@ use List::Util qw( min max );
 ########################
 
 # phmmer and nhmmer alignments for transcription factor domain
-my $pfam_seed = "PF03634_seed.txt"; #protein alignment (E.g PFAM seed alignment)
-my $nuc_alignment = "TCP_DNA_seed.aln"; #Nucleotide alignment
+my $pfam_seed = ""; #protein alignment (E.g PFAM seed alignment)
+my $nuc_alignment = ""; #Nucleotide alignment
 
 # Augustus reference file:
-my $reference_file = "TCP_reference_file.txt"; #if augustus option is on, enter reference file name here.
+my $reference_file = ""; #if augustus option is on, enter reference file name here.
 
 # HMM profile names - these files will be created automatically using your alignment files.
-my $phmm_profile = "TCP_P.hmm"; #nhmmer profile name: use hmmer to build hmm profile from $pfam_seed. Please note that these must end in ".hmm".
-my $nhmm_profile = "TCP_D.hmm"; #phmmer profile name: use hmmer to build hmm profile from $nuc_alignment. Please note that these must end in ".hmm".
+my $phmm_profile = ".hmm"; #nhmmer profile name: use hmmer to build hmm profile from $pfam_seed. Please note that these must end in ".hmm".
+my $nhmm_profile = ".hmm"; #phmmer profile name: use hmmer to build hmm profile from $nuc_alignment. Please note that these must end in ".hmm".
 
 
 ############ 
@@ -33,7 +33,7 @@ my $nhmm_profile = "TCP_D.hmm"; #phmmer profile name: use hmmer to build hmm pro
 my $annotation_available = "yes"; #If NCBI annotations are available for your genome set below variable to "yes". Set as "no" if no annotations are available, and you wish to mine the assembly only.
 
 # Automate download of annotation files? #FOR NCBI REFSEQ GENOMES ONLY!#
-my $automate_download = "no";
+my $automate_download = "yes";
 my $species_list = "species.txt"; #list species names in species.txt file to download files for each species
 
 # hmmsearch evalue threshold (protein):
@@ -982,7 +982,6 @@ foreach my $genome(@genomes){
 			$cds_header_clean =~ s/\>//g;
 			$cds_header_clean =~ s/\<//g;
 			my @cds_ncbi_coordinates = $cds_header_clean =~ /(\d+)\.\.(\d+)/g;
-			
 			
 			# Sort array
 			@cds_ncbi_coordinates = sort { $a <=> $b } @cds_ncbi_coordinates;
