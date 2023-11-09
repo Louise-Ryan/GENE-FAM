@@ -384,10 +384,14 @@ unless( -e $nuc_alignment){
     print "$nuc_alignment does not exist! Did you specify the \$nuc_alignment variable? \n\n";
     $die_signal ++;
 }
-unless(-e $reference_file){
-    print "$reference_file does not exist! Did you specify the \$reference_file variable? \n\n";
-    $die_signal ++;
+
+unless($predict_new_hits =~ m/^no$/i){
+    unless(-e $reference_file){
+	print "$reference_file does not exist! Did you specify the \$reference_file variable? \n\n";
+	$die_signal ++;
+    }
 }
+
 if($automate_download eq "Yes" || $automate_download eq "yes"){
     unless(-e $species_list){
 	print "$species_list does not exist! Did you specify the \$species_list variable? \n\n";
