@@ -27,7 +27,7 @@ https://github.com/EddyRivasLab/hmmer
 <b>Quick install with root privilages:</b>
 ```
 sudo apt-get update
-sudo apt-get install AUGUSTUS
+sudo apt-get install augustus
 ```
 
 <p></p>
