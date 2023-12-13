@@ -68,6 +68,19 @@ If you have trouble installing AUGUSTUS from source, try setting the ZINPUT and 
  
 #### <li>BLAT:</li>
 AUGUSTUS requires BLAT to generate hints. Please follow the installation instructions found here: <p>
+
+```
+wget http://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64/blat/blat
+chmod +x blat
+
+# If you have root privillages:
+cp blat /usr/local/bin/ #with root privillege
+
+# Alternatively you can add the blat file path to the '~/.bashrc' file, or copy 'blat' to your working directory:
+cp blat /home/my/working/directory
+```
+
+Alternatively, you can install and compile blat following the instructions linked below:
 https://bioinformaticsreview.com/20200822/installing-blat-a-pairwise-alignment-tool-on-ubuntu/ 
 
 You may encounter the following error when installing libpng (dependency for blat): configure: "error: zlib not installed". To overcome this issue, try executing the following command:
