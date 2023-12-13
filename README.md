@@ -70,6 +70,11 @@ If you have trouble installing AUGUSTUS from source, try setting the ZINPUT and 
 AUGUSTUS requires BLAT to generate hints. Please follow the installation instructions found here: <p>
 https://bioinformaticsreview.com/20200822/installing-blat-a-pairwise-alignment-tool-on-ubuntu/ 
 
+You may encounter the following error when installing blat: configure: "error: zlib not installed". To overcome this issue, try executing the following command:
+```
+sudo apt-get install zlib1g-dev
+```
+
 <br>
 
 #### <li>BLAST (optional) :</li>
