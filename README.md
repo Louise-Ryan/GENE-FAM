@@ -66,8 +66,8 @@ If you have trouble installing AUGUSTUS from source, try setting the ZINPUT and 
 <br>
 
  
-#### <li>BLAT:</li>
-AUGUSTUS requires BLAT to generate hints. Please follow the installation instructions found here: <p>
+#### <li>blat:</li>
+AUGUSTUS requires blat to generate hints. To <b>download a precompiled version of blat</b> follow the below commands: <p>
 
 ```
 wget http://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64/blat/blat
@@ -78,6 +78,11 @@ cp blat /usr/local/bin/ #with root privillege
 
 # Alternatively you can add the blat file path to the '~/.bashrc' file, or copy 'blat' to your working directory:
 cp blat /home/my/working/directory
+```
+
+<b> Install blat with conda: </b>
+```
+conda install ucsc-blat
 ```
 
 Alternatively, you can install and compile blat following the instructions linked below:
