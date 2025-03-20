@@ -123,7 +123,7 @@ https://www.ncbi.nlm.nih.gov/books/NBK52640/
 <br>
 
 <p align="center">
-<img src = "pipeline_image/GENE-FAM (draft).png" width="600">
+<img src = "pipeline_image/GENE-FAM_coloured.png" width="600">
 </p>
 
 <br>
