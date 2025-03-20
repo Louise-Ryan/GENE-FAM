@@ -152,7 +152,7 @@ In order for the pipeline to work, you must first prepare your working directory
 <ol type="1">
   
 <li> <b> GENE-FAM.pl :</b></li> This is the pipeline script, which should be downloaded from this github repository. </p>
-<li><b> blast2hints.pl :</b> </li> This script is required to generate hints which guide AUGUSTUS gene prediction. Please download this from the AUGUSTUS github repository (link above).
+<li><b> blat2hints.pl :</b> </li> This script is required to generate hints which guide AUGUSTUS gene prediction. Please download this from the AUGUSTUS github repository (link above).
 
 </ol>
 
