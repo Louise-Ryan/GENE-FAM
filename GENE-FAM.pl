@@ -473,7 +473,7 @@ my $nhmmer_out ="_nhmmer.out"; #nhmmer outfile
 
 
 ####################################
-# 4. Run TFAM:
+# 4. Run GENE-FAM:
 ####################################
 
 foreach my $genome(@genomes){
