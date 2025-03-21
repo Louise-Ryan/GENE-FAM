@@ -213,7 +213,7 @@ $pfam_seed = "protein_alignment.aln"; #Line 17
 
 To specify the name of your nucleotide alignment file, please set the $nuc_alignment variable on line 18 as follows:
 ```
-$nuc_alignmnent = "nucletide_alignment.aln"; #Line 18
+$nuc_alignmnent = "nucleotide_alignment.aln"; #Line 18
 ```
 
 </p>
