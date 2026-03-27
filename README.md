@@ -5,15 +5,25 @@
 
 <br>
 
-### <ins>Dependencies:</ins>
+<h2> 🧩 Dependencies:</h2>
 
-<br>
 
 <ol type="1">
   
-#### <li>HMMER and easel miniapps:</li>
-To install hmmer and easel miniapps, please follow instructions from the HMMER user manual (pgs 17-18): <p>
+#### <li>HMMER and Easel miniapps:</li>
+To install hmmer and easel miniapps, please follow instructions below, as described in detail in the HMMER user manual (pgs 17-18): <p>
 http://eddylab.org/software/hmmer/Userguide.pdf </p>
+
+```
+wget http://eddylab.org/software/hmmer/hmmer.tar.gz
+tar zxf hmmer.tar.gz
+cd hmmer-3.4
+./configure --prefix /your/install/path   # NB: replace file path with your desired location
+make
+make check
+make install       
+cd easel; make install  # Install Easel tools
+```
 
 <p></p>
 
@@ -21,10 +31,11 @@ Alternatively, please visit the HMMER github page for instructions:
 
 https://github.com/EddyRivasLab/hmmer
 
-<br></br>
+<br>
+
 
 #### <li>AUGUSTUS:</li>
-<b>Quick install with root privilages:</b>
+<b>Quick install with root privileges:</b>
 ```
 sudo apt-get update
 sudo apt-get install augustus
@@ -73,8 +84,8 @@ AUGUSTUS requires blat to generate hints. To <b>download a precompiled version o
 wget http://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64/blat/blat
 chmod +x blat
 
-# If you have root privillages:
-sudo cp blat /usr/local/bin/ #with root privillege
+# If you have root privileges:
+sudo cp blat /usr/local/bin/ #with root privileges
 
 # Alternatively you can add the blat file path to the '~/.bashrc' file, or copy 'blat' to your working directory:
 cp blat /home/my/working/directory
@@ -98,7 +109,7 @@ sudo apt-get install zlib1g-dev
 #### <li>BLAST (optional) :</li>
 BLAST is only required if you want to remove potential duplicates in the output CDS files based on percentage identity. If you do not wish to use this feature, you do not need to install BLAST.
 
-<b>Quick install with root privilages:</b>
+<b>Quick install with root privileges:</b>
 ```
 sudo apt-get update
 sudo apt-get -y install ncbi-blast+
@@ -118,7 +129,9 @@ https://www.ncbi.nlm.nih.gov/books/NBK52640/
 <br>
 <br>
 
-### <ins>The Pipeline:</ins>
+
+<h2> 🧬 The GENE-FAM Pipeline:</h2>
+
 <br>
 <br>
 
@@ -128,8 +141,7 @@ https://www.ncbi.nlm.nih.gov/books/NBK52640/
 
 <br>
 
-
-### <ins>Running GENE-FAM:</ins>
+<h2> ⚙️ Running GENE-FAM:</h2>
 
 <p>Prior to running GENE-FAM, the user should prepare their working directory and specify their input files as outlined in the instructions below. </p>
 <p></p>To run the <b>GENE-FAM</b> pipeline, please use the following command:</p>
@@ -141,11 +153,11 @@ perl GENE-FAM.pl
 <br>
 <br>
 
-### <ins> Preparing your working directory: </ins>
+<h2> 📂 Preparing your working directory: </h2>
+
 
 In order for the pipeline to work, you must first prepare your working directory with the required input files. The following files should be placed in your working directory: </p>
 
-<br>
 
 #### <ins>Scripts</ins>:
 
@@ -156,7 +168,6 @@ In order for the pipeline to work, you must first prepare your working directory
 
 </ol>
 
-<br>
   
 #### <ins>Input Files</ins>: 
 
@@ -172,7 +183,6 @@ In order for the pipeline to work, you must first prepare your working directory
 </ol> 
 </ol>
 
-<br>
 
 #### <ins>Assembly and Annotation files:</ins>
 If your query species is available on RefSeq, and the genome assembly of interest is the reference genome for that species, then the genome assembly and following annotation files can be automatically downloaded using GENE-FAM (please see options and parameters below). Otherwise, you should manually download the following files from the NCBI database for your query species. Note, if no annotation files are available for your query species, only the genome assembly should be downloaded and the $annotation_available option should be set to "no" in the GENE-FAM.pl script (please see below for instructions).
@@ -187,20 +197,16 @@ If your query species is available on RefSeq, and the genome assembly of interes
 </p>
 
 </ol>
-
-<br>
 <br>
 
-### <ins> Specifying your input files, options and parameters:</ins>
+
+<h2>⚙️ Specifying your input files, options and parameters:</h2>
 
 To specify your input files, options and parameters please open the <b>GENE-FAM.pl</b> script with a text editor and edit the variables on the lines outlined below. 
-
-<br>
 
 <b>
   
 #### <ins> Input files and profile HMMs: </ins>
-
 
 </b> 
 
@@ -213,7 +219,7 @@ $pfam_seed = "protein_alignment.aln"; #Line 17
 
 To specify the name of your nucleotide alignment file, please set the $nuc_alignment variable on line 18 as follows:
 ```
-$nuc_alignmnent = "nucleotide_alignment.aln"; #Line 18
+$nuc_alignment = "nucleotide_alignment.aln"; #Line 18
 ```
 
 </p>
@@ -231,9 +237,8 @@ my $nhmm_profile = "my_name.hmm"; #Please note that this must end in ".hmm". #Li
 ```
 
 
-
 </ul>
-<br>
+
 
 #### <ins> Options and parameters:</ins> 
 
@@ -275,7 +280,7 @@ $phmmer_evalue = "1e-5"; #Line 41
 ```
 </p>
 
-If you wish to use the default e-value (1e-5) for <b> nhmmer (nucleotide) </b>, please set the $default_nhmmer_evalue variable to "yes" on line 40. For custom e-values, set this variable to "no".
+If you wish to use the default e-value (1e-5) for <b> nhmmer (nucleotide) </b>, please set the $default_nhmmer_evalue variable to "yes" on line 44. For custom e-values, set this variable to "no".
 ```
 $default_nhmmer_evalue = "yes"; #Line 44
 ```
@@ -312,7 +317,7 @@ my $number_hints = "all";  #Line 51
 ```
 </p>
 
-If using AUGUSTUS, you can chose to append the mined NCBI sequences from each query species to the reference file to guide gene prediction. If you wish to do this, set the $append_query variable on line 52 to "yes". Otherwise, this should be set to "no".
+If using AUGUSTUS, you can choose to append the mined NCBI sequences from each query species to the reference file to guide gene prediction. If you wish to do this, set the $append_query variable on line 52 to "yes". Otherwise, this should be set to "no".
 ```
 my $append_query = "no"; #Line 52
 ```
