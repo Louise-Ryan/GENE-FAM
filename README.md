@@ -1,5 +1,7 @@
 <p align="left">
-<img src = "pipeline_image/GENE-FAM-LOGO-TMP3.png" max-width=100%>
+<!-<img src = "pipeline_image/GENE-FAM-LOGO-TMP3.png" max-width=100%>>
+
+<img src = "pipeline_image/GENE-FAM-Logo-Transparent-Affinity.svg" max-width=100%>
 
 <hr>
 
