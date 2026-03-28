@@ -1,5 +1,6 @@
 <p align="left">
-<img src = "pipeline_image/GENE-FAM-LOGO-TMP3.png" max-width=100%>
+
+<img src = "pipeline_image/GENE-FAM-Logo-Transparent-Affinity.svg" max-width=100%>
 
 <hr>
 
@@ -200,7 +201,7 @@ If your query species is available on RefSeq, and the genome assembly of interes
 <br>
 
 
-<h2>⚙️ Specifying your input files, options and parameters:</h2>
+<h2>🎛️ Specifying your input files, options and parameters:</h2>
 
 To specify your input files, options and parameters please open the <b>GENE-FAM.pl</b> script with a text editor and edit the variables on the lines outlined below. 
 
