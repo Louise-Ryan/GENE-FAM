@@ -400,6 +400,10 @@ my $duplicate_threshold = 0.9; #Line 70
 </p>
 
 <p>When identifying potential duplicates, the pipeline can make use of two distinct algorithms - "pairwise" or "clustered".</p>
+
+<p align="center">
+<img src="pipeline_image/Remove-Duplicates.svg" width="90%">
+  
 <p> In the <b>"pairwise"</b> algorithm, duplicate pairs are identified as mutual best scoring hits in the percent identity matrix. Note that more than 2 members may exist in a given pair, if each member shares the same maximum identity score. Mutual best scores are only considered pairs if they exceed the $duplicate_threshold set above. The member in each pair which is located on the longest contig is retained. </p> 
 <p> In the <b>"clustered"</b> algorithm, genes which share percent identity greater than the user defined threshold are combined into clusters. The member in each cluster which is located on the longest contig is retained. </p>
 <p>To specify whether you want to use the "pairwise" or "clustered" algorithms, please set the $duplicate_type variable on line 71 as follows:</p>
