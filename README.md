@@ -426,6 +426,14 @@ my $threads = 8; #Line 74
 <br>
 
 
+<h2>📄 Citation:</h2>
+
+If you use GENE-FAM in your work, please cite:
+
+> Ryan L, Trubanova N, Pender G, Melzer R, Hughes GM, Schilling S. **GENE-FAM: An automated pipeline for mining gene families and its application to MADS-box genes in *Cannabis sativa***. *bioRxiv* (2026). doi:10.64898/2026.06.10.731441.
+
+
+
 
 
 
