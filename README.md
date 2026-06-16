@@ -152,7 +152,7 @@ perl GENE-FAM.pl
 ```
 
 <br>
-<br>
+
 
 <h2> 📂 Preparing your working directory: </h2>
 
