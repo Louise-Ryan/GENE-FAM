@@ -428,25 +428,22 @@ my $threads = 8; #Line 74
 
 <h2>📄 Citations:</h2>
 
+
 If you use **GENE-FAM** in your work, please cite:
 
-> Ryan L, Trubanova N, Pender G, Melzer R, Hughes GM, Schilling S. **GENE-FAM: An automated pipeline for mining gene families and its application to MADS-box genes in *Cannabis sativa***. *bioRxiv* (2026). doi:10.64898/2026.06.10.731441.
+> Ryan L, Trubanova N, Pender G, Melzer R, Hughes GM, Schilling S. **GENE-FAM: An automated pipeline for mining gene families and its application to MADS-box genes in *Cannabis sativa***. *bioRxiv* (2026). [doi:10.64898/2026.06.10.731441](https://doi.org/10.64898/2026.06.10.731441).
 
 <br>
 
 As GENE-FAM relies on **HMMER** for profile HMM searches, please also cite:
 
-> Eddy SR. **Accelerated Profile HMM Searches.** *PLoS Computational Biology*. 2011;7(10):e1002195. doi:10.1371/journal.pcbi.1002195.
+> Eddy SR. **Accelerated Profile HMM Searches.** *PLoS Computational Biology*. 2011;7(10):e1002195. [doi:10.1371/journal.pcbi.1002195](https://doi.org/10.1371/journal.pcbi.1002195).
 
 <br>
 
 If you use **AUGUSTUS** for _ab initio_ gene prediction, please also cite:
 
-> Stanke M, Steinkamp R, Waack S, Morgenstern B. **AUGUSTUS: a web server for gene finding in eukaryotes.** *Nucleic Acids Research*. 2004;32(Web Server issue):W309–W312. doi:10.1093/nar/gkh379.
-
-
-
-
+> Stanke M, Diekhans M, Baertsch R, Haussler D. **Using native and syntenically mapped cDNA alignments to improve de novo gene finding.** *Bioinformatics*. 2008;24(5):637–644. [doi:10.1093/bioinformatics/btn013](https://doi.org/10.1093/bioinformatics/btn013). 
 
 
 
