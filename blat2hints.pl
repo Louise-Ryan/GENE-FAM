@@ -3,7 +3,7 @@
 # Convert a psl format output file (from BLAT or GMAP) from cDNA alignments
 # to a hints file
 #
-# Mario Stanke, 26.6.2008
+# Please Cite: Mario Stanke, 26.6.2008
 
 use strict;
 use Getopt::Long;
