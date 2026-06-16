@@ -1,6 +1,6 @@
 <p align="left">
 
-<img src = "pipeline_image/GENE-FAM-Logo-Transparent-Affinity.svg" max-width=100%>
+<img src = "pipeline_image/GENE-FAM-Logo.svg" max-width=100%>
 
 <hr>
 
@@ -137,7 +137,7 @@ https://www.ncbi.nlm.nih.gov/books/NBK52640/
 <br>
 
 <p align="center">
-<img src = "pipeline_image/GENE-FAM-Pipeline.png" width="600">
+<img src = "pipeline_image/GENE-FAM-Pipeline.svg" width="600">
 </p>
 
 <br>
