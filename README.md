@@ -435,7 +435,7 @@ If you use **GENE-FAM** in your work, please cite:
 
 <br>
 
-As GENE-FAM relies on **HMMER** for profile HMM searches, please also cite:
+As GENE-FAM relies on **HMMER**, please also cite:
 
 > Eddy SR. **Accelerated Profile HMM Searches.** *PLoS Computational Biology*. 2011;7(10):e1002195. [doi:10.1371/journal.pcbi.1002195](https://doi.org/10.1371/journal.pcbi.1002195).
 
