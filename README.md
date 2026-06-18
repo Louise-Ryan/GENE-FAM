@@ -6,6 +6,24 @@
 
 <br>
 
+**GENE-FAM** is an automated pipeline designed to mine gene families based on conserved domains and motifs. The pipeline implements a series of homology searches and gene prediction steps to detect both annotated and previously unannotated loci across target genome assemblies. 
+
+For an in-depth description of the pipeline and example applications, please see:
+
+>Ryan L, Trubanova N, Pender G, Melzer R, Hughes GM, Schilling S. **GENE-FAM: An automated pipeline for mining gene families and its application to MADS-box genes in *Cannabis sativa***. *bioRxiv* (2026). [doi:10.64898/2026.06.10.731441](https://doi.org/10.64898/2026.06.10.731441).
+
+<br>
+
+## 📖 Contents
+- [Dependencies](#dependencies)
+- [The GENE-FAM Pipeline](#pipeline)
+- [Running GENE-FAM](#running)
+- [Preparing your Working Directory](#working-directory)
+- [Input Files, Options and Parameters](#parameters)
+- [Citations](#citations)
+<br>
+
+<a id="dependencies"></a>
 <h2> 🧩 Dependencies:</h2>
 
 
@@ -130,7 +148,7 @@ https://www.ncbi.nlm.nih.gov/books/NBK52640/
 <br>
 <br>
 
-
+<a id="pipeline"></a>
 <h2> 🧬 The GENE-FAM Pipeline:</h2>
 
 <br>
@@ -141,7 +159,7 @@ https://www.ncbi.nlm.nih.gov/books/NBK52640/
 </p>
 
 <br>
-
+<a id="running"></a>
 <h2> ⚙️ Running GENE-FAM:</h2>
 
 <p>Prior to running GENE-FAM, the user should prepare their working directory and specify their input files as outlined in the instructions below. </p>
@@ -153,7 +171,7 @@ perl GENE-FAM.pl
 
 <br>
 
-
+<a id="working-directory"></a>
 <h2> 📂 Preparing your working directory: </h2>
 
 
@@ -200,7 +218,7 @@ If your query species is available on RefSeq, and the genome assembly of interes
 </ol>
 <br>
 
-
+<a id="parameters"></a>
 <h2>🎛️ Specifying your input files, options and parameters:</h2>
 
 To specify your input files, options and parameters please open the <b>GENE-FAM.pl</b> script with a text editor and edit the variables on the lines outlined below. 
@@ -425,7 +443,7 @@ my $threads = 8; #Line 74
 </ul>
 <br>
 
-
+<a id="citations"></a>
 <h2>📄 Citations:</h2>
 
 
