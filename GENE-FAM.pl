@@ -1,33 +1,36 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 use strict;
 use warnings;
 use Cwd;
 use Scalar::Util qw(looks_like_number);
 use List::Util qw( min max );
+use Getopt::Long;
+use File::Basename;
+use Time::HiRes qw(time);
 
 ###########################################################################
 #USER PARAMETERS:                                                         #
 ###########################################################################
 
 ########################
-# Essential file names
+# Essential files
 ########################
 
 # phmmer and nhmmer alignments for transcription factor domain
-my $pfam_seed = ""; #protein alignment (E.g PFAM seed alignment)
-my $nuc_alignment = ""; #Nucleotide alignment
+my $pfam_seed; #protein alignment (E.g PFAM seed alignment)
+my $nuc_alignment; #Nucleotide alignment
 
 # Augustus reference file:
-my $reference_file = ""; #if augustus option is on, enter reference file name here.
+my $reference_file; #if augustus option is on, enter reference file name here.
 
 # HMM profile names - these files will be created automatically using your alignment files.
-my $phmm_profile = ".hmm"; #nhmmer profile name: use hmmer to build hmm profile from $pfam_seed. Please note that these must end in ".hmm".
-my $nhmm_profile = ".hmm"; #phmmer profile name: use hmmer to build hmm profile from $nuc_alignment. Please note that these must end in ".hmm".
+my $phmm_profile; #nhmmer profile name: use hmmer to build hmm profile from $pfam_seed. Please note that these must end in ".hmm".
+my $nhmm_profile; #phmmer profile name: use hmmer to build hmm profile from $nuc_alignment. Please note that these must end in ".hmm".
 
 
-############ 
-# Options
-############
+#########################
+# Options and defaults
+#########################
 
 # Annotation files available?
 my $annotation_available = "yes"; #If NCBI annotations are available for your genome set below variable to "yes". Set as "no" if no annotations are available, and you wish to mine the assembly only.
@@ -74,7 +77,366 @@ my $duplicate_type = "clustered"; #pairwise or clustered.
 my $threads = 8;
 
 
+########################
+# Command-line options
+########################
 
+if (grep { $_ eq "--help" || $_ eq "-h" } @ARGV) {
+
+	my @lines = (
+        "    _____   ______   _   _   ______            ______            __  __ ",
+        "   / ____| |  ____| | \\ | | |  ____|          |  ____|   /\\     |  \\/  |",
+        "  | |  __  | |__    |  \\| | | |__     ______  | |__     /  \\    | \\  / |",
+        "  | | |_ | |  __|   | . ` | |  __|   |______| |  __|   / /\\ \\   | |\\/| |",
+        "  | |__| | | |____  | |\\  | | |____           | |     / ____ \\  | |  | |",
+        "   \\_____| |______| |_| \\_| |______|          |_|    /_/    \\_\\ |_|  |_|"
+    );
+
+    my $max_length = length($lines[0]);
+
+    for my $line (@lines) {
+        my $length = length($line);
+        $max_length = $length if $length > $max_length;
+    }
+
+    print "\n", "=" x 80, "\n";
+
+    foreach my $line (@lines) {
+        my $padding = $max_length - length($line);
+        print $line . ' ' x $padding . "\n";
+    }
+
+    print "\n", "=" x 80, "\n\n";
+
+    print <<"HELP";
+
+	GENE-FAM - A Gene Family Mining and Prediction Pipeline
+
+	Usage:
+		perl GENE-FAM.pl [options]
+
+	-----------
+	INPUT FILES
+	-----------
+		--prot-alignment FILE
+			Protein alignment used to identify the target gene family.
+			This should contain the protein sequences used to build the
+			protein HMM profile. This may be a seed alignment downloaded
+			from the InterPro database, or a custom built amino acid 
+			alignment for your domain of interest.
+
+		--nuc-alignment FILE
+			Nucleotide alignment used to identify the target gene family.
+			This is used to build the nucleotide HMM profile.
+
+		--reference FILE
+			Reference nucleotide sequences used to support AUGUSTUS 
+			gene prediction. Required when AUGUSTUS prediction
+			is enabled.
+
+	------------------------------
+	ANNOTATION AND GENOME DOWNLOAD
+	------------------------------
+
+		--annotation-available VALUE
+			Specify whether genome annotation files are available.
+
+			yes    Use available NCBI annotation files.
+			no     Mine the genome assembly directly when annotation
+				   files are not available.
+
+			Default: yes
+
+		--automate-download VALUE
+			Automatically download annotation files for NCBI RefSeq
+			genomes.
+
+			yes    Automatically download annotation files.
+			no     Do not automatically download annotation files.
+
+			Default: yes
+
+			This option is intended for NCBI RefSeq genomes only.
+
+		--species-list FILE
+			File containing the species names for which genome and
+			annotation files should be downloaded. Required if 
+			automate-download is set to "yes".
+
+			Default: species.txt
+
+	---------------------
+	HMM SEARCH PARAMETERS
+	---------------------
+
+		--default-phmmer-evalue VALUE
+			Specify whether to use the default protein HMM search
+			E-value threshold.
+
+			yes    Use the default threshold.
+			no     Use the value specified with --phmmer-evalue.
+
+			Default: yes
+
+		--phmmer-evalue VALUE
+			E-value threshold used for the protein HMM search when
+			--default-phmmer-evalue is set to no.
+
+			Default: 1e-5
+
+		--default-nhmmer-evalue VALUE
+			Specify whether to use the default nucleotide HMM search
+			E-value threshold.
+
+			yes    Use the default threshold.
+			no     Use the value specified with --nhmmer-evalue.
+
+			Default: yes
+
+		--nhmmer-evalue VALUE
+			E-value threshold used for the nucleotide HMM search when
+			--default-nhmmer-evalue is set to no.
+
+			Default: 1e-5
+
+	------------------------
+	AUGUSTUS GENE PREDICTION
+	------------------------
+
+		--predict-new-hits VALUE
+			Specify whether AUGUSTUS should be used to predict
+			previously unannotated gene family members.
+
+			yes    Predict new hits using AUGUSTUS.
+			no     Do not perform AUGUSTUS prediction.
+
+			Default: yes
+
+		--augustus-species NAME
+			AUGUSTUS species model used for gene prediction.
+			Select a closely related species for the target genomes.
+
+			Default: arabidopsis
+
+		--minidentity VALUE
+			Minimum sequence identity required between a reference
+			sequence and a genomic hit for the sequence to be used
+			to generate AUGUSTUS prediction hints.
+
+			Default: 60
+
+		--number-hints VALUE
+			Number of reference sequences used to generate AUGUSTUS
+			prediction hints.
+
+			all    Use all reference sequences.
+			INTEGER
+				Use the specified number of top BLAST hits.
+
+			Default: all
+
+		--append-query VALUE
+			Specify whether newly mined sequences should be added to
+			the reference file and used to guide subsequent AUGUSTUS
+			predictions.
+
+			yes    Add newly mined sequences to the reference file.
+			no     Do not modify the reference file.
+
+			Default: no
+
+		--hit-prefix PREFIX
+			Prefix used to name newly identified gene family members.
+
+			For example:
+				--hit-prefix Hit
+
+			produces names such as Hit1, Hit2, Hit3, etc.
+
+			Default: Hit
+
+		--domain-cover-threshold VALUE
+			Minimum proportion of the HMM-identified region that an
+			AUGUSTUS prediction must cover to be retained.
+
+			Value should be between 0 and 1.
+
+			Default: 0.9
+
+		--hmm-filter-type TYPE
+			HMM type used to validate AUGUSTUS predictions.
+
+			protein
+				Validate predictions using a protein HMM.
+
+			nucleotide
+				Validate predictions using a nucleotide HMM.
+
+			Default: protein
+
+	----------------------
+	UNANNOTATED HIT SEARCH
+	----------------------
+
+		--nhmmer-plus INTEGER
+			Number of nucleotides added to the 3' end of an nhmmer
+			hit when extracting the genomic region for AUGUSTUS
+			gene prediction.
+
+			Default: 20000
+
+		--nhmmer-minus INTEGER
+			Number of nucleotides added to the 5' end of an nhmmer
+			hit when extracting the genomic region for AUGUSTUS
+			gene prediction.
+
+			Default: 5000
+
+		--nhmmer-genome-database VALUE
+			Specify whether to create a genome database for nhmmer.
+
+			yes    Build a genome database. This can increase search
+				speed for large genomes but may reduce sensitivity.
+
+			no     Search the raw genome assembly directly.
+
+			Default: no
+
+	--------------------------
+	PSEUDOGENE IDENTIFICATION
+	--------------------------
+
+		--pseudogene-check VALUE
+			Specify whether to identify potential pseudogenes.
+
+			yes    Identify sequences containing in-frame stop codons
+				or sequences below the minimum length threshold.
+			no     Do not perform pseudogene checking.
+
+			Default: yes
+
+		--pseudogene-length INTEGER
+			Minimum coding sequence length. Coding sequences shorter
+			than this threshold are classified as potential
+			pseudogenes.
+
+			Length is specified in nucleotides.
+
+			Default: 300
+
+	-----------------
+	DUPLICATE REMOVAL
+	-----------------
+
+		--remove-duplicates VALUE
+			Specify whether potential duplicate sequences should be
+			removed.
+
+			yes    Remove potential duplicates and retain the sequence
+				associated with the longest contig.
+			no     Retain all sequences.
+
+			Default: yes
+
+		--duplicate-threshold VALUE
+			Sequence identity threshold used to identify potential
+			duplicate sequences.
+
+			Value should be between 0 and 1.
+
+			Default: 0.9
+
+		--duplicate-type TYPE
+			Method used to identify duplicate sequences.
+
+			pairwise
+				Compare sequences pairwise.
+
+			clustered
+				Group sequences into clusters based on the identity
+				threshold.
+
+			Default: clustered
+
+	-----------
+	PERFORMANCE
+	-----------
+
+		--threads INTEGER
+			Number of CPU threads to use where supported.
+
+			Default: 8
+
+
+		-h, --help
+			Display this help message and exit.
+
+	--------
+	EXAMPLES
+	--------
+
+		GENE-FAM.pl --help
+
+		GENE-FAM.pl \\
+			--prot-alignment protein_alignment.fa \\
+			--nuc-alignment nucleotide_alignment.fa \\
+			--reference reference.fa
+
+HELP
+	exit 0;
+}
+
+
+GetOptions(
+
+    # Essential files
+    "prot-alignment=s"         => \$pfam_seed,
+    "nuc-alignment=s"          => \$nuc_alignment,
+    "reference=s"              => \$reference_file,
+
+    # Options
+    "annotation-available=s"   => \$annotation_available,
+    "automate-download=s"      => \$automate_download,
+    "species-list=s"           => \$species_list,
+
+    "default-phmmer-evalue=s"  => \$default_phmmer_evalue,
+    "phmmer-evalue=s"          => \$phmmer_evalue,
+
+    "default-nhmmer-evalue=s"  => \$default_nhmmer_evalue,
+    "nhmmer-evalue=s"          => \$nhmmer_evalue,
+
+    "predict-new-hits=s"       => \$predict_new_hits,
+    "augustus-species=s"       => \$augustus_species,
+    "minidentity=f"            => \$minidentity,
+    "number-hints=s"           => \$number_hints,
+    "append-query=s"           => \$append_query,
+    "hit-prefix=s"             => \$hit_prefix,
+    "domain-cover-threshold=f" => \$domain_cover_threshold,
+    "hmm-filter-type=s"        => \$hmm_filter_type,
+
+    "nhmmer-plus=i"             => \$nhmmer_plus,
+    "nhmmer-minus=i"            => \$nhmmer_minus,
+
+    "nhmmer-genome-database=s" => \$nhmmer_genome_database,
+
+    "pseudogene-check=s"       => \$pseudogene_check,
+    "pseudogene-length=i"      => \$pseudogene_length,
+
+    "remove-duplicates=s"      => \$remove_duplicates,
+    "duplicate-threshold=f"    => \$duplicate_threshold,
+    "duplicate-type=s"         => \$duplicate_type,
+
+    "threads=i"                => \$threads,
+
+) or die "Error parsing command line arguments\n";
+
+
+########################
+# Check required files
+########################
+
+die "Usage: $0 --prot-alignment <protein.fa> --nuc-alignment <nucleotide.fa> --reference <reference> \n"
+    unless $pfam_seed && $nuc_alignment && $reference_file;
 
 #############################################################################
 #MAIN CODE                                                                  #
@@ -125,9 +487,16 @@ my $cds_nucleotide_seqfile="_longest_isoforms_cds_nucleotide.fa"; #Longest cds t
 my $cds_protein_seqfile = "_longest_isoforms_cds_protein.fa"; #Longest cds transcripts (protein)
 my $nhmmer_unnanotated_seqfile = "_unannotated_newhits_from_assembly.fa"; #Unannotated hits from nhmmer on assembly
 
+#Profile HMM names
+$phmm_profile = $pfam_seed;
+$phmm_profile =~ s/\.[^.]*$/.hmm/; #nhmmer profile name: use hmmer to build hmm profile from $pfam_seed.
+$nhmm_profile = $nuc_alignment;
+$nhmm_profile =~ s/\.[^.]*$/.hmm/; #phmmer profile name: use hmmer to build hmm profile from $nuc_alignment. 
 
 ###########################################################################
 #Annotations: Functional vs Pseudogene
+###########################################################################
+
 my $annotation_short = "pseudogene_short"; #If prediction is shorter than $pseudogene_length, gene will be annotated as pseudogene regardless of conditions (1-6).
 my $annotation_1 = "functional"; #START codon && no in frame stop codons.........: ATG -----------
 my $annotation_2 = "functional"; #no START codon && no stop codons in any frame..: ---------------
@@ -475,7 +844,7 @@ my $nhmmer_out ="_nhmmer.out"; #nhmmer outfile
 ####################################
 # 4. Run GENE-FAM:
 ####################################
-
+open(my $runtime_log, ">", "runtime.log") or die "Cannot open runtime.log: $!";
 foreach my $genome(@genomes){
     my @genome_files = ();
     my @genome_IDs = ();
@@ -492,6 +861,7 @@ foreach my $genome(@genomes){
     ####################################################
 
     unless ($genome =~ m/$cds_suffix/i){
+	my $start_time = time();
 	print "-" x 60, "\n";
 	print "Mining $genome:\n";
 	print "-" x 60, "\n";
@@ -738,10 +1108,10 @@ foreach my $genome(@genomes){
 
      		print "running nhmmer on mRNA annotations ...\n\n";
 		if($default_nhmmer_evalue =~ m/^yes$/i){
-		    `nhmmer --cpu $threads $nhmm_profile $nucleotide >> $nhmmer_transcript_file`;
+		    `nhmmer --dna --cpu $threads $nhmm_profile $nucleotide >> $nhmmer_transcript_file`;
 		}
 		else{
-		    `nhmmer --cpu $threads --incE $nhmmer_evalue $nhmm_profile $nucleotide >> $nhmmer_transcript_file`;
+		    `nhmmer --dna --cpu $threads --incE $nhmmer_evalue $nhmm_profile $nucleotide >> $nhmmer_transcript_file`;
 		}
 
 		########################
@@ -828,10 +1198,10 @@ foreach my $genome(@genomes){
 
 		print "running nhmmer on nucleotide CDS annotations  ...\n\n";
 		if($default_nhmmer_evalue =~ m/^yes$/i){
-		    `nhmmer --cpu $threads $nhmm_profile $cds >> $nhmmer_cds_file`;
+		    `nhmmer --dna --cpu $threads $nhmm_profile $cds >> $nhmmer_cds_file`;
 		}
 		else{
-		    `nhmmer --cpu $threads --incE $nhmmer_evalue $nhmm_profile $cds >> $nhmmer_cds_file`;
+		    `nhmmer --dna --cpu $threads --incE $nhmmer_evalue $nhmm_profile $cds >> $nhmmer_cds_file`;
 		}
 
 		
@@ -1299,9 +1669,9 @@ foreach my $genome(@genomes){
 			`esl-sfetch --index $genome`; #index genomefile
 			
 			if($default_nhmmer_evalue =~ m/^yes$/i){
-			    `nhmmer --cpu $threads $nhmm_profile $genome_db >> $nhmmer_file`;
+			    `nhmmer --dna --cpu $threads $nhmm_profile $genome_db >> $nhmmer_file`;
 			}else{
-			    `nhmmer --cpu $threads --incE $nhmmer_evalue $nhmm_profile $genome_db >> $nhmmer_file`;
+			    `nhmmer --dna --cpu $threads --incE $nhmmer_evalue $nhmm_profile $genome_db >> $nhmmer_file`;
 			}
 			# remove files
 			`rm $genome_db`;
@@ -1312,9 +1682,9 @@ foreach my $genome(@genomes){
 			print "running nhmmer on whole genome assembly to pull new hits ...\n\n";
 			`esl-sfetch --index $genome`; #index genomefile
 			if($default_nhmmer_evalue =~ m/^yes$/i){
-			    `nhmmer --cpu $threads $nhmm_profile $genome >> $nhmmer_file`;
+			    `nhmmer --dna --cpu $threads $nhmm_profile $genome >> $nhmmer_file`;
 			}else{
-			    `nhmmer --cpu $threads --incE $nhmmer_evalue $nhmm_profile $genome >> $nhmmer_file`;
+			    `nhmmer --dna --cpu $threads --incE $nhmmer_evalue $nhmm_profile $genome >> $nhmmer_file`;
 			}
 		    }
 		    
@@ -1470,7 +1840,7 @@ foreach my $genome(@genomes){
 		
 		`mkdir $subdir`;
 		`mkdir $subdir2`;
-		if(-e $nhmmer_file && $phmmer_file && $nhmmer_transcript_file){
+		if(-e $nhmmer_file && -e $phmmer_file && -e $nhmmer_transcript_file){
 		    `mv $nhmmer_file $phmmer_file $nhmmer_transcript_file $subdir`;
 		    `mv $nhmmer_cds_file $subdir`;
 		}
@@ -1510,9 +1880,9 @@ foreach my $genome(@genomes){
 			`esl-sfetch --index $genome`; #index genomefile
 			
 			if($default_nhmmer_evalue =~ m/^yes$/i){
-			    `nhmmer --cpu $threads $nhmm_profile $genome_db >> $nhmmer_file`;
+			    `nhmmer --dna --cpu $threads $nhmm_profile $genome_db >> $nhmmer_file`;
 			}else{
-			    `nhmmer --cpu $threads --incE $nhmmer_evalue $nhmm_profile $genome_db >> $nhmmer_file`;
+			    `nhmmer --dna --cpu $threads --incE $nhmmer_evalue $nhmm_profile $genome_db >> $nhmmer_file`;
 			}
 			# remove files
 			`rm $genome_db`;
@@ -1523,9 +1893,9 @@ foreach my $genome(@genomes){
 			print "running nhmmer on whole genome assembly to pull new hits ...\n\n";
 			`esl-sfetch --index $genome`; #index genomefile
 			if($default_nhmmer_evalue =~ m/^yes$/i){
-			    `nhmmer --cpu $threads $nhmm_profile $genome >> $nhmmer_file`;
+			    `nhmmer --dna --cpu $threads $nhmm_profile $genome >> $nhmmer_file`;
 			}else{
-			    `nhmmer --cpu $threads --incE $nhmmer_evalue $nhmm_profile $genome >> $nhmmer_file`;
+			    `nhmmer --dna --cpu $threads --incE $nhmmer_evalue $nhmm_profile $genome >> $nhmmer_file`;
 			}
 		    }
 		    
@@ -2523,7 +2893,8 @@ foreach my $genome(@genomes){
 		    my @domain_seqs = "";
 		    
 		    if(-e $copy_reference_file){
-			my $append_reference_file = $genome_ID."_".$reference_file; 
+			my $append_reference_file = $genome_ID."_".basename($reference_file);
+			#my $append_reference_file = $genome_ID."_".$reference_file; 
 			`cp $reference_file $append_reference_file`;
 			`mv $copy_reference_file $reference_file`;
 		    }
@@ -2979,8 +3350,33 @@ foreach my $genome(@genomes){
 	    if(-e $tsv_summary){
 		`mv $tsv_summary $outdir`;
 	    }
-	}
     }
+	my $end_time = time();
+	my $runtime = $end_time - $start_time;
+
+	if ($runtime >= 3600) {
+
+		my $hours = int($runtime / 3600);
+		my $minutes = int(($runtime % 3600) / 60);
+		my $seconds = $runtime % 60;
+
+		printf "%s\tRuntime: %d h %d min %d sec\n\n", $genome, $hours, $minutes, $seconds;
+		printf $runtime_log "%s\t%d h %d min %d sec\n", $genome, $hours, $minutes, $seconds;
+
+	} elsif ($runtime >= 60) {
+
+		my $minutes = int($runtime / 60);
+		my $seconds = $runtime % 60;
+
+		printf "%s\tRuntime: %d min %d sec\n\n", $genome, $minutes, $seconds;
+		printf $runtime_log "%s\t%d min %d sec\n", $genome, $minutes, $seconds;
+
+	} else {
+
+		printf "%s\tRuntime: %d seconds\n\n", $genome, $runtime;
+		printf $runtime_log "%s\t%d seconds\n", $genome, $runtime;
+	}
+	}
 }
 
 ##################################
@@ -3093,8 +3489,10 @@ sub downloadGenomes {
 		    my $link=$1; 
 		    if($link=~m/(GCF_+[0-9]+\.[0-9])/){ #Match and store genome acession number for summary files
 			my $accession =$1." "; 
-			if($link=~m/\/(GCF\_[\S]+)/){
-			    my $accession = $1;
+			if($link=~m/\/(GCF_[^\/]+)/){
+    			my $accession = $1;
+			#if($link=~m/\/(GCF\_[\S]+)/){
+			    #my $accession = $1;
 			    my $file_cds =$accession."_".$cds_suffix.".gz"; #Append file extension
 			    my $file_genome = $accession."_".$genome_suffix.".gz";
 			    my $file_rna = $accession."_".$nt_transcript_suffix.".gz";
