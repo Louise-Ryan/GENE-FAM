@@ -905,11 +905,7 @@ As these are RefSeq genomes with annotation files available, the genomes can be 
 
 The species of interest are specified in the `species.txt` file.
 
-TAARs are members of the G protein-coupled receptor (GPCR) family and share sequence similarity with other GPCRs.
-
-To reduce the inclusion of non-TAAR GPCRs, a stringent E-value threshold is required for both `phmmer` and `nhmmer` searches.
-
-For this example, the default E-value settings need to be disabled and an E-value of `1e-100` specified for both searches.
+TAARs share sequence similarity with other GPCRs. To reduce the inclusion of non-TAAR GPCRs, a stringent E-value threshold is required for both `phmmer` and `nhmmer` searches. For this example, the default E-value settings need to be disabled and an E-value of `1e-100` specified for both searches.
 
 Furthermore, as we are investigating mammals, the AUGUSTUS training species needs to be changed from the default `Arabidopsis` to `human`.
 
@@ -936,7 +932,7 @@ perl GENE-FAM.pl \
     --augustus-species human
 ```
 
-The additional parameters in this example adjust the search settings and AUGUSTUS training species for the mammalian TAAR analysis. See the [Preparing your working directory](#working-directory) section for further information on these parameters.
+The additional parameters in this example adjust the search settings and AUGUSTUS training species for the mammalian TAAR analysis. See the [Input Files, Options and Parameters](#parameters) section for further information on these parameters.
 
 #### Running GENE-FAM using Docker
 
