@@ -274,7 +274,7 @@ In order for the pipeline to work, you must first prepare your working directory
 <ol type="1">
 <li> <b> Protein alignment file: </b> </li> This protein alignment file should contain aligned amino acid sequences from your gene family of interest. If you are interested in a gene family in which members share a conserved domain, this alignment may contain sequences for the domain of interest. <b>Seed alignments for your domain of interest may be available for download from the <a href="https://www.ebi.ac.uk/interpro/entry/pfam/#table">InterPro</a> database</b>. </p>
 
-<li> <b> Nucleotide alignment file: </b> </li> This nucleotide alignment file should contain aligned nucleotide sequences from your gene family of interest. Similarly to the protein alignment, this alignment may contain aligned sequences for a conserved domain of interest. </p>
+<li> <b> Nucleotide alignment file: </b> </li> This nucleotide alignment file should contain aligned nucleotide sequences from your gene family of interest. Similarly to the protein alignment, this alignment may contain aligned sequences for a conserved domain of interest. We recommend that users inspect their alignments visually to ensure they are of the highest possible quality before running GENE-FAM. </p>
 
 <li> <b> Reference file: </b> </li> This file is used to guide AUGUSTUS gene prediction. This file should be in fasta format, and should contain nucleotide mRNA sequences from closely related species for your gene family of interest. </p>
 
@@ -558,6 +558,8 @@ To specify the percentage identity threshold for which genes are considered dupl
 ```
 --duplicate-type clustered
 ```
+
+If the duplicate removal feature is enabled, we note that sequences flagged as duplicates by GENE-FAM remain accessible in the output files with the standard `.fa` extension. Files with duplicates removed are labelled with `_remove_duplicates_X.fa`, where `X` indicates the duplicate removal threshold. We also summarise the sequences flagged as duplicates in the automatically generated summary `.tsv` file under the `Remove as duplicated (yes/no)` column.
 
 </p>
 <br>
