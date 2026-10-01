@@ -164,7 +164,7 @@ sudo apt-get install zlib1g-dev
 <p></p>
 <p></p>
 
-#### <li>BLAST (optional) :</li>
+#### <li>BLAST (optional):</li>
 BLAST is only required if you want to remove potential duplicates in the output CDS files based on percentage identity. If you do not wish to use this feature, you do not need to install BLAST.
 
 <b>Quick install with root privileges:</b>
