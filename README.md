@@ -1013,5 +1013,5 @@ If you use **AUGUSTUS** for _ab initio_ gene prediction, please also cite:
 
 If you use **BLAST** to identify potential duplicate sequences, please also cite:
 
-> Altschul SF, Gish W, Miller W, Myers EW, Lipman DJ. **Basic local alignment search tool.** *J Mol Biol.* 1990;215(3):403–410. [doi:10.1016/S0022-2836(05)80360-2](https://doi.org/10.1016/S0022-2836(05)80360-2)
+> Altschul SF, Gish W, Miller W, Myers EW, Lipman DJ. **Basic local alignment search tool.** *J Mol Biol.* 1990;215(3):403–410. [doi:10.1016/S0022-2836(05)80360-2](https://doi.org/10.1016/S0022-2836(05)80360-2).
 
